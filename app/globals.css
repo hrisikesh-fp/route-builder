@@ -1,0 +1,307 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* ============================================================
+     ROUTE BUILDER — DESIGN TOKENS
+     Extracted from Figma: tbb6l7lTDhlN0jFo7pYeJw
+     Nodes: 2618-193536 (Filter view), 2624-133579 (Workspace view)
+     Do not edit manually — update design-spec.md then regenerate
+     ============================================================ */
+
+  /* Backgrounds */
+  --rb-bg-app: #111111;
+  --rb-bg-panel: #1B1B1B;
+  --rb-bg-card: #1F1F1F;
+  --rb-bg-badge: #171717;
+  --rb-bg-hover: rgba(255, 255, 255, 0.05);
+
+  /* Borders */
+  --rb-border: #282828;
+  --rb-border-subtle: rgba(115, 115, 115, 0.2);
+  --rb-border-button: #333333;
+
+  /* Text */
+  --rb-text-primary: #FFFFFF;
+  --rb-text-near-white: #FAFAFA;
+  --rb-text-secondary: #E5E5E5;
+  --rb-text-muted: #A3A3A3;
+  --rb-text-disabled: #737373;
+
+  /* Accent */
+  --rb-orange: #FA6400;
+  --rb-indigo: #4D55F8;
+  --rb-blue: #3B82F6;
+
+  /* Alert / utilization */
+  --rb-alert-text: #EAB308;
+  --rb-alert-bg: rgba(234, 179, 8, 0.09);
+
+  /* Tank threshold dots */
+  --rb-tank-high: #E15252;
+  --rb-tank-medium: #FDE68A;
+  --rb-tank-low: #69BF88;
+  --rb-tank-na: #60A5FA;
+
+  /* Tank threshold badge backgrounds */
+  --rb-tank-high-badge: #AA3C3C;
+  --rb-tank-medium-badge: #CEA655;
+  --rb-tank-low-badge: #71B78A;
+  --rb-tank-na-badge: #3759A3;
+
+  /* Route color bars (left strip on cards) */
+  --rb-route-purple: #D8B4FE;
+  --rb-route-orange: #FDBA74;
+  --rb-route-blue: #93C5FD;
+  --rb-route-pink: #FBCFE8;
+  --rb-route-red: #FCA5A5;
+
+  /* Infrastructure markers */
+  --rb-infra-terminal: #EC4899;
+  --rb-infra-bulk-plant: #22D3EE;
+  --rb-infra-warehouse: #854D0E;
+  --rb-infra-hub: #3B82F6;
+
+  /* Shadows (from Figma shadow/xs, sm, md, 2xl) */
+  --rb-shadow-xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+  --rb-shadow-sm: 0px 1px 2px -1px rgba(0, 0, 0, 0.1), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  --rb-shadow-md: 0px 2px 4px -2px rgba(0, 0, 0, 0.1), 0px 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --rb-shadow-2xl: 0px 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* Typography scale (Geist font, matches Tailwind defaults) */
+  --rb-font-family: 'Geist', sans-serif;
+  --rb-text-xs: 0.75rem;    /* 12px */
+  --rb-text-sm: 0.875rem;   /* 14px */
+  --rb-text-base: 1rem;     /* 16px */
+  --rb-text-lg: 1.125rem;   /* 18px */
+  --rb-font-light: 300;
+  --rb-font-normal: 400;
+  --rb-font-medium: 500;
+  --rb-font-semibold: 600;
+
+  /* Spacing (inferred from Figma layout padding/gap — matches 4px Tailwind scale) */
+  /* Tailwind defaults match: p-1=4px, p-2=8px, p-3=12px, p-4=16px, p-5=20px, p-6=24px, p-7=28px */
+  /* Custom values needed: */
+  --rb-space-panel-padding: 20px;    /* filter sheet, workspace body padding */
+  --rb-space-card-padding: 16px 16px 12px 20px;  /* route card asymmetric padding */
+  --rb-space-tab-height: 56px;       /* workspace tab height */
+
+  /* Component dimensions */
+  --rb-filter-width: 320px;
+  --rb-filter-collapsed: 44px;
+  --rb-workspace-width: 560px;
+  --rb-route-card-width: 460px;
+  --rb-color-bar-width: 6px;
+  --rb-nav-height: 68px;
+
+  /* Border radius */
+  --rb-radius-sm: 4px;
+  --rb-radius-md: 8px;
+  --rb-radius-full: 9999px;
+  --rb-radius-card: 4px 4px 0px 4px;    /* route card: flat bottom-left */
+  --rb-radius-alert: 0px 0px 4px 4px;   /* alert bar: rounds only bottom */
+  --rb-radius-tab-expand: 0px 8px 8px 0px;
+
+  /* Dark theme inspired by logistics/fleet management aesthetic */
+  --background: oklch(0.12 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.15 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.15 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.65 0.19 35);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.22 0 0);
+  --secondary-foreground: oklch(0.95 0 0);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.65 0.19 35);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.25 0 0);
+  --input: oklch(0.25 0 0);
+  --ring: oklch(0.65 0.19 35);
+  --chart-1: oklch(0.65 0.19 35);
+  --chart-2: oklch(0.6 0.15 200);
+  --chart-3: oklch(0.7 0.18 140);
+  --chart-4: oklch(0.75 0.2 60);
+  --chart-5: oklch(0.55 0.18 280);
+  --radius: 0.5rem;
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* shadcn/ui semantic tokens */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Route Builder — Figma design tokens → Tailwind utilities
+     Usage: bg-rb-bg-app, text-rb-orange, border-rb-border, etc. */
+
+  /* Backgrounds */
+  --color-rb-bg-app: var(--rb-bg-app);
+  --color-rb-bg-panel: var(--rb-bg-panel);
+  --color-rb-bg-card: var(--rb-bg-card);
+  --color-rb-bg-badge: var(--rb-bg-badge);
+  --color-rb-bg-hover: var(--rb-bg-hover);
+
+  /* Borders */
+  --color-rb-border: var(--rb-border);
+  --color-rb-border-subtle: var(--rb-border-subtle);
+  --color-rb-border-button: var(--rb-border-button);
+
+  /* Text */
+  --color-rb-text-primary: var(--rb-text-primary);
+  --color-rb-text-near-white: var(--rb-text-near-white);
+  --color-rb-text-secondary: var(--rb-text-secondary);
+  --color-rb-text-muted: var(--rb-text-muted);
+  --color-rb-text-disabled: var(--rb-text-disabled);
+
+  /* Accent */
+  --color-rb-orange: var(--rb-orange);
+  --color-rb-indigo: var(--rb-indigo);
+  --color-rb-blue: var(--rb-blue);
+
+  /* Alert */
+  --color-rb-alert-text: var(--rb-alert-text);
+  --color-rb-alert-bg: var(--rb-alert-bg);
+
+  /* Tank threshold */
+  --color-rb-tank-high: var(--rb-tank-high);
+  --color-rb-tank-medium: var(--rb-tank-medium);
+  --color-rb-tank-low: var(--rb-tank-low);
+  --color-rb-tank-na: var(--rb-tank-na);
+  --color-rb-tank-high-badge: var(--rb-tank-high-badge);
+  --color-rb-tank-medium-badge: var(--rb-tank-medium-badge);
+  --color-rb-tank-low-badge: var(--rb-tank-low-badge);
+  --color-rb-tank-na-badge: var(--rb-tank-na-badge);
+
+  /* Route color bars */
+  --color-rb-route-purple: var(--rb-route-purple);
+  --color-rb-route-orange: var(--rb-route-orange);
+  --color-rb-route-blue: var(--rb-route-blue);
+  --color-rb-route-pink: var(--rb-route-pink);
+  --color-rb-route-red: var(--rb-route-red);
+
+  /* Infrastructure */
+  --color-rb-infra-terminal: var(--rb-infra-terminal);
+  --color-rb-infra-bulk-plant: var(--rb-infra-bulk-plant);
+  --color-rb-infra-warehouse: var(--rb-infra-warehouse);
+  --color-rb-infra-hub: var(--rb-infra-hub);
+
+  /* Shadows */
+  --shadow-rb-xs: var(--rb-shadow-xs);
+  --shadow-rb-sm: var(--rb-shadow-sm);
+  --shadow-rb-md: var(--rb-shadow-md);
+  --shadow-rb-2xl: var(--rb-shadow-2xl);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Map pin hover state */
+.custom-map-pin .pin-wrapper:hover svg path:first-child {
+  fill: #A1A1AA;
+}
+
+.custom-map-pin {
+  cursor: pointer;
+}
+
+/* Route arrow markers */
+.route-arrow-marker {
+  pointer-events: none;
+  z-index: 400;
+}
+
+.route-arrow-marker svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
