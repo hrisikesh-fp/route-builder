@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react"
 import type { ExtractionOrder, ShipTo } from "@/lib/mock-data"
+import { mockRoutes } from "@/lib/mock-data"
 import { renderMapPinToHTML } from "@/components/map-pin"
 import { base1Infrastructure, clusterInfrastructure } from "@/lib/infrastructure-data"
-import { renderInfrastructureMarkerHTML } from "@/components/infrastructure-marker"
+import { renderInfrastructureMarkerHTML, buildTerminalTooltipHTML, type TerminalLoadInfo, type TerminalTooltipInfo } from "@/components/infrastructure-marker"
 import { renderMapPinTooltip } from "@/components/map-pin-tooltip"
 import { renderRouteLineTooltip } from "@/components/route-line-tooltip"
 import { type TankThreshold } from "@/lib/routes-data"
@@ -93,15 +94,22 @@ export interface RouteMapProps {
   isCreatePanelOpen?: boolean
   isLassoActive?: boolean
   onRouteClick?: (routeId: string) => void
+  onTerminalClick?: (terminalId: string) => void
   selectedRouteIds?: string[]
   checkedRouteIds?: string[]
   hoveredWorkspaceRouteId?: string | null
   isWorkspaceOpen?: boolean
+  addedLoadOrders?: Record<string, ExtractionOrder[]>
 }
 
-// Route colors — saturated versions for polylines (pastel bar colors are for sidebar cards)
-const ROUTE_COLORS = ["#C084FC", "#FB923C", "#3B82F6", "#EC4899", "#EF4444"]
+// Fallback route colors if route not found in mockRoutes
+const ROUTE_COLORS = ["#C084FC", "#FB923C", "#3B82F6", "#EC4899", "#EF4444", "#4ADE80"]
 const DEFAULT_GREY = "#52525B"
+
+function getRouteColor(routeId: string, fallbackIndex: number): string {
+  const route = mockRoutes.find((r) => r.id === routeId)
+  return route?.color ?? ROUTE_COLORS[fallbackIndex % ROUTE_COLORS.length]
+}
 
 // ─── component ───────────────────────────────────────────────────────────────
 
@@ -121,10 +129,12 @@ export function RouteMap({
   isCreatePanelOpen = false,
   isLassoActive = false,
   onRouteClick,
+  onTerminalClick,
   selectedRouteIds = [],
   checkedRouteIds = [],
   hoveredWorkspaceRouteId = null,
   isWorkspaceOpen = false,
+  addedLoadOrders = {},
 }: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null) // mapboxgl.Map
@@ -204,8 +214,11 @@ export function RouteMap({
         console.warn("[RouteMap] Failed to fetch map config")
       }
 
+      // Re-check after awaits — component may have unmounted
+      if (!mapContainer.current || mapRef.current) return
+
       const map = new mb.Map({
-        container: mapContainer.current!,
+        container: mapContainer.current,
         style: "mapbox://styles/mapbox/dark-v11",
         center: [-97.65, 30.35],
         zoom: 9,
@@ -253,7 +266,27 @@ export function RouteMap({
 
     ;(window as any).__zoomToRoute = (routeId: string) => {
       const bounds = routeBoundsRef.current.get(routeId)
-      if (bounds && mapRef.current) mapRef.current.fitBounds(bounds, { padding: 80, maxZoom: 14, duration: 800 })
+      if (bounds && mapRef.current) {
+        // Right padding accounts for 560px workspace panel so route stays centred in visible area
+        mapRef.current.fitBounds(bounds, {
+          padding: { top: 80, right: 640, bottom: 80, left: 80 },
+          maxZoom: 13,
+          duration: 800,
+        })
+      }
+    }
+
+    ;(window as any).__zoomToTerminal = (terminalId: string) => {
+      const terminal = base1Infrastructure.find((i) => i.id === terminalId)
+      if (terminal && mapRef.current) {
+        mapRef.current.flyTo({
+          center: [terminal.longitude, terminal.latitude],
+          zoom: 12,
+          duration: 800,
+          // Shift focal point left so terminal centres in the visible portion (workspace is 560px right)
+          padding: { top: 0, right: 560, bottom: 0, left: 0 },
+        })
+      }
     }
   }, [mapReady])
 
@@ -288,8 +321,8 @@ export function RouteMap({
 
     if (!entityVisibility.shipTosWithOrders) return
 
-    // Render every order as an individual pin (clustering removed)
-    orders.forEach((order) => {
+    // Skip load (L) and transfer (T) orders — they're co-located with infrastructure markers
+    orders.filter((order) => order.orderType !== "L" && order.orderType !== "T").forEach((order) => {
       const threshold = getTankThreshold(order.currentLevel)
       const isActive = order.routeId ? selectedRouteIds.includes(order.routeId) : false
       const showBadges = isActive || showBadgesValue
@@ -376,6 +409,8 @@ export function RouteMap({
 
     hubMarkersRef.current.forEach((m) => m.remove())
     hubMarkersRef.current = []
+    // Remove any lingering terminal tooltips from previous render
+    mapContainer.current?.querySelectorAll(".terminal-detached-tooltip").forEach((el) => el.remove())
 
     if (currentZoom < 7) return
 
@@ -392,10 +427,72 @@ export function RouteMap({
     clusters.forEach((cluster) => {
       const el = document.createElement("div")
       el.className = "custom-infrastructure-icon"
-      el.innerHTML = renderInfrastructureMarkerHTML(cluster)
 
-      // Popup on click
-      el.addEventListener("click", () => {
+      // inf-1 = Flint Hills - Johnny Morris — load terminal with badge + tooltip
+      let loadInfo: TerminalLoadInfo | undefined
+      let tooltipInfo: TerminalTooltipInfo | undefined
+      const isLoadTerminal = cluster.items.some((i) => i.id === "inf-1")
+      if (isLoadTerminal) {
+        loadInfo = { orderCount: 1 }
+        tooltipInfo = {
+          address: "7501 Johnny Morris Road, Austin, TX",
+          supplierCount: 5,
+          suppliers: "Tesoro / 332023, Marathon Unbranded / 311275, Marathon - NGL Crude Logistics, Marathon - Boyett Petroleum",
+        }
+      }
+
+      el.innerHTML = renderInfrastructureMarkerHTML(cluster, loadInfo, tooltipInfo)
+
+      // Hover: show detached tooltip (appended to map container) + darken icon to pink-600
+      if (tooltipInfo) {
+        const tooltipEl = document.createElement("div")
+        tooltipEl.style.cssText = `
+          display: none;
+          position: absolute;
+          width: 320px;
+          background: #111111;
+          border: 1px solid #282828;
+          border-radius: 4px;
+          padding: 12px 16px;
+          box-shadow: 0px 2px 4px -2px rgba(0,0,0,0.1), 0px 4px 6px -1px rgba(0,0,0,0.1);
+          z-index: 100000;
+          pointer-events: none;
+        `
+        tooltipEl.className = "terminal-detached-tooltip"
+        tooltipEl.innerHTML = buildTerminalTooltipHTML(tooltipInfo, cluster.primaryItem.name)
+        mapContainer.current!.appendChild(tooltipEl)
+
+        // Attach hover only to the icon square (28×28), not the pill label
+        const iconSquareEl = el.querySelector(".infra-icon-square") as HTMLElement | null
+        if (iconSquareEl) {
+          iconSquareEl.addEventListener("mouseenter", () => {
+            iconSquareEl.style.backgroundColor = "#DB2777"
+            // Position tooltip 4px below the icon square, centered on it
+            const rect = iconSquareEl.getBoundingClientRect()
+            const mapRect = mapContainer.current!.getBoundingClientRect()
+            const left = rect.left - mapRect.left + rect.width / 2 - 160 // center 320px tooltip
+            const top = rect.bottom - mapRect.top + 4
+            tooltipEl.style.left = `${left}px`
+            tooltipEl.style.top = `${top}px`
+            tooltipEl.style.display = "block"
+          })
+          iconSquareEl.addEventListener("mouseleave", () => {
+            iconSquareEl.style.backgroundColor = "#EC4899"
+            tooltipEl.style.display = "none"
+          })
+        }
+      }
+
+      // Click: open workspace with routes/orders for this terminal
+      if (isLoadTerminal) {
+        el.addEventListener("click", () => {
+          onTerminalClick?.("inf-1")
+        })
+        // Remove old popup-on-click behavior below by returning early after workspace open
+      }
+
+      // Popup on click (non-load terminals only — load terminals open workspace instead)
+      if (!isLoadTerminal) el.addEventListener("click", () => {
         const content = cluster.items
           .map(
             (item) => `
@@ -424,6 +521,16 @@ export function RouteMap({
       hubMarkersRef.current.push(marker)
     })
   }, [mapReady, currentZoom, entityVisibility.hub, entityVisibility.bulkPlant, entityVisibility.warehouse, entityVisibility.terminals])
+
+  // ── update terminal badge count when load orders are added ───────────────
+  useEffect(() => {
+    const addedCount = Object.values(addedLoadOrders).flat().filter((o) => o.orderType === "L").length
+    const badge = mapContainer.current?.querySelector(".terminal-order-badge")
+    if (badge) {
+      const total = 1 + addedCount
+      badge.textContent = `${total} Order${total !== 1 ? "s" : ""}`
+    }
+  }, [addedLoadOrders])
 
   // ── shipTo markers (no orders) ───────────────────────────────────────────
   useEffect(() => {
@@ -528,7 +635,7 @@ export function RouteMap({
           }
 
           const coords: [number, number][] = data.routes[0].geometry.coordinates
-          const originalColor = ROUTE_COLORS[colorIndex % ROUTE_COLORS.length]
+          const originalColor = getRouteColor(routeId, colorIndex)
 
           let initialColor = DEFAULT_GREY
           let initialOpacity = 0.8
@@ -638,6 +745,60 @@ export function RouteMap({
       }
     })()
   }, [orders, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── update route polylines when load orders are added ──────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapReady) return
+    if (Object.keys(addedLoadOrders).length === 0) return
+
+    ;(async () => {
+      for (const [routeId, extraOrders] of Object.entries(addedLoadOrders)) {
+        if (extraOrders.length === 0) continue
+
+        const layerId = `route-${routeId.replace(/[^a-zA-Z0-9_-]/g, "_")}`
+        if (!map.getSource(layerId)) continue
+
+        // Merge base orders with added load orders, sorted by routeSequence
+        const baseOrders = routeOrdersRef.current.get(routeId) ?? []
+        const allOrders = [...baseOrders, ...extraOrders].sort(
+          (a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0)
+        )
+
+        const hub = base1Infrastructure.find((i) => i.type === "Hub")
+        if (!hub) continue
+
+        const waypoints = [
+          { lng: hub.longitude, lat: hub.latitude },
+          ...allOrders.map((o) => ({ lng: o.longitude, lat: o.latitude })),
+          { lng: hub.longitude, lat: hub.latitude },
+        ]
+
+        const coordParam = waypoints.map((w) => `${w.lng},${w.lat}`).join(";")
+        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordParam}?overview=full&geometries=geojson`
+
+        try {
+          const res = await fetch(osrmUrl)
+          const data = await res.json()
+          if (data.code !== "Ok" || !data.routes?.[0]) continue
+
+          const coords: [number, number][] = data.routes[0].geometry.coordinates
+          const source = map.getSource(layerId) as any
+          source.setData({
+            type: "Feature",
+            properties: {},
+            geometry: { type: "LineString", coordinates: coords },
+          })
+
+          // Update stored coords and orders
+          routeCoordinatesRef.current.set(routeId, coords)
+          routeOrdersRef.current.set(routeId, allOrders)
+        } catch (err) {
+          console.error(`[RouteMap] OSRM update error for ${routeId}:`, err)
+        }
+      }
+    })()
+  }, [addedLoadOrders, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── update route line styles ─────────────────────────────────────────────
   useEffect(() => {
@@ -829,18 +990,20 @@ function createArrowMarkers(
   map: any,
 ): any[] {
   if (!coords || coords.length < 2) return []
-  const markers: any[] = []
-  const total = coords.length
-  const skipStart = Math.floor(total * 0.15)
-  const skipEnd = Math.floor(total * 0.85)
-  const interval = Math.max(12, Math.floor(total / 10))
 
   const toRad = (d: number) => (d * Math.PI) / 180
   const toDeg = (r: number) => (r * 180) / Math.PI
 
-  for (let i = skipStart; i < skipEnd; i += interval) {
-    const prev = coords[Math.max(0, i - 8)]
-    const next = coords[Math.min(coords.length - 1, i + 8)]
+  // Place arrows at fixed percentages of the route (25%, 50%, 75%)
+  // This guarantees they fall between stop pins, never on top of them
+  const total = coords.length
+  const percentages = total < 20 ? [0.5] : [0.25, 0.5, 0.75]
+
+  const markers: any[] = []
+  for (const pct of percentages) {
+    const i = Math.round(pct * (total - 1))
+    const prev = coords[Math.max(0, i - 6)]
+    const next = coords[Math.min(total - 1, i + 6)]
     const point = coords[i]
 
     const lat1 = toRad(prev[1])

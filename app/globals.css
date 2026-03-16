@@ -305,3 +305,15 @@
 .route-arrow-marker svg {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
+
+/* Flicker animation for newly added order cards */
+@keyframes rb-flicker {
+  0%, 100% { background-color: #1F1F1F; }
+  50%       { background-color: rgba(34, 197, 94, 0.18); }
+}
+
+/* Toast slide-in from top */
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

@@ -26,9 +26,15 @@ A **fuel logistics route-builder tool** used by dispatchers at a fuel distributi
 ```bash
 cd /Users/hrisikeshmedhi/Projects/route-builder
 pnpm install
-# Create .env.local with: NEXT_PUBLIC_MAPBOX_TOKEN=your_token_here
 pnpm dev
+# No .env.local needed — Mapbox token is hardcoded in app/api/map-config/route.tsx
 ```
+
+**Deployment:**
+- Platform: **Vercel**
+- Repo must be **public on GitHub** before importing to Vercel (free tier requirement)
+- No extra env vars needed on Vercel — token is already in source
+- ⚠️ Token is exposed in public source — restrict it by allowed URLs in the Mapbox dashboard before going to production
 
 **Source of the code:** Copied from `/Users/hrisikeshmedhi/Projects/v0/phase-1-2-and-beyond/`
 **Prototype reference:** `/Users/hrisikeshmedhi/Projects/figma-mcp-trial/route-builder.html` — single-file HTML/CSS/JS with the working truck/trailer combobox UI (V1/V2/V3 variations)
@@ -52,7 +58,7 @@ pnpm dev
 
 When "Create Route" is clicked, the Route List Sheet slides away and the **Create Route Panel** slides in from the right (also 450px).
 
-The **Lasso Workspace Sheet** (400px) appears on the right when lasso selection is active, replacing other right panels.
+The **Lasso Workspace Sheet** (560px) appears on the right when lasso/route/terminal selection is active. The Route List Sheet has been removed — `RouteSheetCollapsed` (the collapsed tab) now opens the Workspace with empty state.
 
 ---
 
@@ -81,16 +87,14 @@ The **Lasso Workspace Sheet** (400px) appears on the right when lasso selection 
 - A small collapsed tab shown on the left edge when filter sheet is closed
 - Shows applied filter count, clicking it re-opens the filter sheet
 
-### `components/route-list-sheet.tsx` — Right route list panel
-- Width: 450px. Slides in from right.
-- **Header:** "Showing N Routes from Map area" + X close button
-- **Filter tabs:** All / Scheduled / Incomplete (with counts)
-- **Route cards:** Each shows route name, driver name, status badge (Scheduled=white, Incomplete=orange), start hub → N orders → end hub progress bar, arrow button
-- **Footer CTA:** "Create Route" button (white, full width) → opens CreateRoutePanel
-- **Collapse trigger:** A small tab on the LEFT edge of the sheet, pointing right `→`, positioned at vertical center
+### `components/route-list-sheet.tsx` — Right route list panel (**REMOVED from page.tsx**)
+- File still exists but is NOT rendered anywhere — do not re-add it
+- Was replaced by the Workspace Sheet for all route-related interactions
 
-### `components/route-sheet-collapsed.tsx` — Collapsed state of route list
-- Small tab on the right edge when route list is closed, clicking re-opens it
+### `components/route-sheet-collapsed.tsx` — Collapsed workspace tab
+- Small tab on the right edge when workspace is closed
+- Clicking it opens the Workspace sheet in **empty state** (not RouteListSheet)
+- `onExpand={() => setIsWorkspaceOpen(true)}` in page.tsx
 
 ### `components/create-route-panel.tsx` — Create new route (RIGHT SIDE PANEL)
 - Width: 450px. Slides in from right, replaces route list sheet.
@@ -99,11 +103,17 @@ The **Lasso Workspace Sheet** (400px) appears on the right when lasso selection 
 - **Full intended content:** Route Name → Zone → Truck + Trailer selection → Order list with sequence → Time estimates
 
 ### `components/route-map.tsx` — The map (full screen, behind everything)
-- Uses Leaflet.js as the map renderer
-- Shows ship-to location pins (clustered), infrastructure markers (hubs/terminals/bulk plants/warehouses), and route polylines
+- **Uses Mapbox GL JS v3** (Leaflet migration complete — do NOT revert to Leaflet)
+- Shows ship-to pins (Delivery orders only — L and T order types are filtered out), infrastructure markers, and route polylines
 - Entity visibility controlled by `MapEntityVisibility` state from `MapControls`
-- Exposes `window.__mapControls` for zoom/pan, `window.__zoomToCity`, `window.__zoomToRoute`
+- Exposes window globals: `__mapControls`, `__zoomToCity`, `__zoomToRoute`, `__zoomToTerminal`
 - `isLassoActive` prop disables map dragging when lasso tool is on
+- `onRouteClick(routeId)` and `onTerminalClick(terminalId)` props wired from page.tsx
+- Infrastructure markers: outer element must NOT have `position: relative` or `zIndex` inline styles — breaks Mapbox geo-anchoring
+- Terminal hover tooltip is a **detached DOM element** appended to mapContainer (not inside marker HTML) — prevents hover zone bleed
+- Terminal badge (order count) is always visible (not on hover), positioned top-right of icon
+- Route `fitBounds` uses `padding: { top:80, right:640, bottom:80, left:80 }` to account for 560px workspace panel
+- `__zoomToTerminal` uses `flyTo` with `padding: { right: 560 }` to center in visible map area
 
 ### `components/map-controls.tsx` — Floating map controls (right side)
 - Floats on right side of map, adjusts `right` position based on which panels are open:
@@ -121,13 +131,17 @@ The **Lasso Workspace Sheet** (400px) appears on the right when lasso selection 
 - Esc key cancels
 
 ### `components/lasso-workspace-sheet.tsx` — Lasso selection workspace (right panel)
-- Width: 400px. Appears when lasso/route-click selection is active.
-- **Empty state:** "Draw around orders on the map to select them" instructions
+- Width: **560px**. Appears for lasso/route-click/terminal-click selection AND as default right panel (empty state).
+- **Empty state:** "Workspace is Empty" (18px w600) + subtitle (14px #737373) + X close button. Shown when `isWorkspaceOpen=true` but no orders selected.
 - **With selection:** Two tabs — "Driver Routes (N)" and "Unassigned Orders (N)"
-  - Driver Routes: list of route groups, each with color bar, driver name, order count, checkbox
-  - Unassigned Orders: individual order cards with tank level bar
-  - Select all checkbox, hover on route highlights it on map
-- **Footer:** "Publish Routes" button (indigo)
+  - Driver Routes: collapsed route cards with color bar, checkbox+chevron, driver name, order count badge, info row, alert bar
+  - Expanded route card: TruckHubStartRow → NoLoadOrderRow → stop timeline (sequence badge + time + stop card) → ending hub row
+  - Unassigned Orders: individual order cards
+  - Select all checkbox, hover on route highlights it on map (`onHoveredRouteChange`)
+  - Order card hover: bg `#333333`
+- **NoLoadOrderRow:** Shows "No Load Orders added yet" banner + "Add Load Order" button. Clicking opens inline terminal picker dropdown: search input + list of terminals (name + supplier count + ChevronRight). Terminals from `base1Infrastructure` filtered by `type === "Terminal"`.
+- **Footer:** "Publish Routes" button (`#4D55F8` indigo, 40px, full width)
+- Imports: `base1Infrastructure` from `@/lib/infrastructure-data`
 
 ### `components/settings-modal.tsx` — Settings modal
 - Opened from profile dropdown → Settings
@@ -155,30 +169,17 @@ The **Lasso Workspace Sheet** (400px) appears on the right when lasso selection 
 
 ---
 
-## Critical: Mapbox GL JS migration
+## Mapbox GL JS migration — COMPLETE
 
-The current map uses Leaflet.js with Mapbox raster tiles. This MUST be migrated to native Mapbox GL JS.
+`route-map.tsx` has been fully rewritten from Leaflet to Mapbox GL JS v3. Do not reference Leaflet anywhere.
 
-**Current Leaflet integration points (in `route-map.tsx`, 1214 lines):**
-- `L.map()` initialization, `L.marker()` with `L.divIcon()` for custom HTML markers
-- `L.polyline()` for route lines with OSRM-generated geometries
-- `L.tileLayer()` for base maps, event handlers (zoomend, mouseover, click)
-- Markers stored in refs: `markersRef`, `shipToMarkersRef`, `hubMarkersRef`
-- Window globals: `window.__mapControls`, `window.__zoomToCity`, `window.__zoomToRoute`
-- Lasso tool uses `data-order-id` attributes on Leaflet divIcon markers + `getBoundingClientRect()`
-
-**Key files affected by Mapbox migration:**
-- `components/route-map.tsx` — MAJOR rewrite (Leaflet → Mapbox GL JS)
-- `components/lasso-canvas.tsx` — Minor (marker detection may change)
-- `app/api/map-config/route.tsx` — Minor (style URL format)
-- `components/map-pin.tsx` — Marker rendering approach changes
-- `components/infrastructure-marker.tsx` — Marker rendering approach changes
-
-**What stays the same:**
-- All panel components (filter, route list, workspace, create route)
-- OSRM route fetching logic
-- Data models and mock data
-- Map controls UI (just rewire to Mapbox API)
+Key implementation details:
+- `import mapboxgl from "mapbox-gl"` + `import "mapbox-gl/dist/mapbox-gl.css"` at top level (ssr: false component)
+- Markers: `new mapboxgl.Marker({ element: el, anchor: "bottom" })` — outer element must have NO `position: relative` or inline `zIndex`
+- Route polylines: GeoJSON source + line layer per route
+- `fitBounds` with asymmetric padding to account for workspace panel
+- `data-order-id` attribute on marker elements — lasso detection via `getBoundingClientRect()` unchanged
+- Window globals: `__mapControls`, `__zoomToCity`, `__zoomToRoute`, `__zoomToTerminal`
 
 ---
 
@@ -214,7 +215,14 @@ The workspace sheet shows selected orders with two main views:
 
 ## What needs to be built next
 
-### Priority 1: Truck + Trailer combobox in `create-route-panel.tsx`
+### In progress: Add Load Order — terminal submenu + order list
+After clicking a terminal in the `NoLoadOrderRow` dropdown (implemented), next steps:
+1. Hover submenu per terminal row (showing suppliers or preview)
+2. Click terminal row → inner container showing all load orders for that terminal
+
+Figma references already fetched: node `6049-88749` (terminal picker dropdown)
+
+### Next priority: Truck + Trailer combobox in `create-route-panel.tsx`
 Port the **V3 combobox** from the prototype into a React component.
 
 **V3 interaction model (from prototype at `route-builder.html`):**
@@ -291,10 +299,10 @@ components/
   map-header.tsx               ← Top nav
   filter-side-sheet.tsx        ← Left filter panel (expanded)
   filter-sheet-collapsed.tsx   ← Left filter panel (collapsed tab)
-  route-list-sheet.tsx         ← Right route list (expanded)
-  route-sheet-collapsed.tsx    ← Right route list (collapsed tab)
+  route-list-sheet.tsx         ← UNUSED — not rendered anywhere, do not re-add
+  route-sheet-collapsed.tsx    ← Collapsed tab (right edge) → opens Workspace empty state
   create-route-panel.tsx       ← Create route panel — NEEDS TRUCK/TRAILER COMBOBOX
-  route-map.tsx                ← Full-screen map (MIGRATE from Leaflet to Mapbox GL JS)
+  route-map.tsx                ← Full-screen map — Mapbox GL JS v3 (migration complete)
   map-controls.tsx             ← Floating zoom/compass/lasso/layers controls
   lasso-canvas.tsx             ← Freehand selection overlay
   lasso-workspace-sheet.tsx    ← Lasso results workspace (right panel)

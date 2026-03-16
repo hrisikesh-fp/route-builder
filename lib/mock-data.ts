@@ -2940,6 +2940,16 @@ const route5Orders: ExtractionOrder[] = [
   { id: "r5-5", customerId: "c-r5-5", customerName: "Dripping Springs ISD", shipToAddress: "510 W Mercer St Dripping Springs TX 78620", latitude: 30.1901, longitude: -98.0867, status: "assigned", volume: 250, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Dripping Springs", state: "TX", zip: "78620", tankSize: 2000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-19", zone: "Dripping Springs", routeId: "route-5", routeSequence: 5 },
 ]
 
+// Route 6 - Green (Tom Hanks) — west Austin / Lakeway / Bee Cave area, no truck
+const route6Orders: ExtractionOrder[] = [
+  { id: "r6-1", customerId: "c-r6-1", customerName: "Lakeway Fuel Stop", shipToAddress: "1902 Ranch Rd 620, Lakeway, TX 78734", latitude: 30.3567, longitude: -97.9834, status: "assigned", volume: 550, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Lakeway", state: "TX", zip: "78734", tankSize: 4000, currentLevel: 72, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-22", zone: "Lakeway", routeId: "route-6", routeSequence: 1, orderType: "D" },
+  { id: "r6-2", customerId: "c-r6-2", customerName: "Bee Cave Builders Supply", shipToAddress: "12600 Bee Cave Pkwy, Bee Cave, TX 78738", latitude: 30.3089, longitude: -97.9523, status: "assigned", volume: 700, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Bee Cave", state: "TX", zip: "78738", tankSize: 5000, currentLevel: 38, daysUntilEmpty: 9, priority: "Medium", lastDelivery: "2026-01-19", zone: "Bee Cave", routeId: "route-6", routeSequence: 2, orderType: "D" },
+  { id: "r6-3", customerId: "c-r6-3", customerName: "Westlake Hills Auto", shipToAddress: "920 Westbank Dr, Westlake Hills, TX 78746", latitude: 30.2934, longitude: -97.8112, status: "assigned", volume: 450, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Westlake Hills", state: "TX", zip: "78746", tankSize: 3500, currentLevel: 55, daysUntilEmpty: 6, priority: "Medium", lastDelivery: "2026-01-17", zone: "Westlake Hills", routeId: "route-6", routeSequence: 3, orderType: "D" },
+  { id: "r6-4", customerId: "c-r6-4", customerName: "Lost Creek Equipment", shipToAddress: "3800 Lost Creek Blvd, Austin, TX 78735", latitude: 30.2789, longitude: -97.8334, status: "assigned", volume: 600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78735", tankSize: 4200, currentLevel: 18, daysUntilEmpty: 2, priority: "High", lastDelivery: "2026-01-20", zone: "West Austin", routeId: "route-6", routeSequence: 4, orderType: "D" },
+  { id: "r6-5", customerId: "c-r6-5", customerName: "Barton Creek Ranch", shipToAddress: "4600 Barton Creek Blvd, Austin, TX 78735", latitude: 30.2456, longitude: -97.8534, status: "assigned", volume: 350, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78735", tankSize: 3000, currentLevel: 62, daysUntilEmpty: 11, priority: "Low", lastDelivery: "2026-01-15", zone: "Barton Creek", routeId: "route-6", routeSequence: 5, orderType: "D" },
+  { id: "r6-6", customerId: "c-r6-6", customerName: "Circle C Fuel Co", shipToAddress: "7900 W Slaughter Ln, Austin, TX 78749", latitude: 30.2123, longitude: -97.8712, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78749", tankSize: 5500, currentLevel: 45, daysUntilEmpty: 7, priority: "Medium", lastDelivery: "2026-01-18", zone: "Circle C", routeId: "route-6", routeSequence: 6, orderType: "D" },
+]
+
 // Unassigned orders (scattered around Austin metro - unique locations that don't overlap with route orders)
 const unassignedOrders: ExtractionOrder[] = [
   { id: "u-1", customerId: "c-u-1", customerName: "South Austin Fuel", shipToAddress: "6500 S 1st St, Austin, TX 78745", latitude: 30.2156, longitude: -97.7834, status: "pending", volume: 600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78745", tankSize: 4000, currentLevel: 85, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-20", zone: "South Austin" },
@@ -2999,6 +3009,7 @@ export const austinOrders: ExtractionOrder[] = [
   ...route3Orders,
   ...route4Orders,
   ...route5Orders,
+  ...route6Orders,
   ...unassignedOrders,
 ]
 
@@ -3015,6 +3026,7 @@ export const mockRoutes: any[] = [
     orders: route1Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
+    truckName: null,
   },
   {
     id: "route-2",
@@ -3025,6 +3037,7 @@ export const mockRoutes: any[] = [
     orders: route2Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
+    truckName: "H-109 · 2018 Lube Box Truck",
   },
   {
     id: "route-3",
@@ -3035,6 +3048,7 @@ export const mockRoutes: any[] = [
     orders: route3Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
+    truckName: "H-215 · 2022 Freightliner Cascadia",
   },
   {
     id: "route-4",
@@ -3045,6 +3059,7 @@ export const mockRoutes: any[] = [
     orders: route4Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
+    truckName: "H-133 · 2016 International ProStar",
   },
   {
     id: "route-5",
@@ -3055,5 +3070,17 @@ export const mockRoutes: any[] = [
     orders: route5Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
+    truckName: "H-301 · 2021 Peterbilt 389 Tanker",
+  },
+  {
+    id: "route-6",
+    name: "Route 6 - Green",
+    driverId: "driver-6",
+    driverName: "Tom Hanks",
+    color: "#4ADE80",
+    orders: route6Orders.map((o) => o.id),
+    status: "active",
+    createdAt: "2026-02-05",
+    truckName: null,
   },
 ]
