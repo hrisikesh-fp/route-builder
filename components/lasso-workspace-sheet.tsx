@@ -1,10 +1,11 @@
 "use client"
 
-import { X, ChevronRight, ChevronLeft, ChevronDown, MoreVertical, Home, Truck, Info, TriangleAlert, Plus, Search, ArrowUp, ArrowDown } from "lucide-react"
+import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, TriangleAlert, Plus, ArrowUp, ArrowDown } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
 import { base1Infrastructure } from "@/lib/infrastructure-data"
+import { AddLoadOrderModal } from "@/components/add-load-order-modal"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -751,63 +752,11 @@ const TERMINAL_LOAD_ORDERS: Record<string, Array<{ id: string; gal: number; prod
 const terminals = base1Infrastructure.filter((i) => i.type === "Terminal")
 
 // "No Load Orders added yet" banner row — shown when route has no L-type orders
-function NoLoadOrderRow({ driverName, onLoadOrderAdded }: { driverName: string; onLoadOrderAdded: (info: LoadOrderInfo) => void }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState("")
-  const [hoveredTerminalId, setHoveredTerminalId] = useState<string | null>(null)
-  const [selectedTerminalId, setSelectedTerminalId] = useState<string | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+function NoLoadOrderRow({ onOpenModal }: { onOpenModal: () => void }) {
   const DOT_SIZE = 8
 
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-        setSelectedTerminalId(null)
-        setSearch("")
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [isOpen])
-
-  const filtered = terminals.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase())
-  )
-
-  const handleTerminalClick = (terminalId: string) => {
-    setSelectedTerminalId(terminalId)
-    setSearch("")
-  }
-
-  const handleBack = () => {
-    setSelectedTerminalId(null)
-    setSearch("")
-  }
-
-  const handleLoadOrderClick = (order: { id: string; time: string; gal: number; products: number }) => {
-    if (!selectedTerminalId || !selectedTerminal) return
-    setIsOpen(false)
-    setSelectedTerminalId(null)
-    setSearch("")
-    onLoadOrderAdded({
-      terminalId: selectedTerminalId,
-      terminalName: selectedTerminal.name,
-      terminalLat: selectedTerminal.latitude,
-      terminalLng: selectedTerminal.longitude,
-      terminalAddress: selectedTerminal.address,
-      time: order.time,
-      gal: order.gal,
-      products: order.products,
-    })
-  }
-
-  const selectedTerminal = selectedTerminalId ? terminals.find((t) => t.id === selectedTerminalId) : null
-  const loadOrders = selectedTerminalId ? (TERMINAL_LOAD_ORDERS[selectedTerminalId] ?? []) : []
-
   return (
-    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 20 }}>
       {/* Banner row */}
       <div style={{ display: "flex", flexDirection: "row", gap: SEQ_TO_CARD_GAP, alignItems: "center" }}>
         {/* Seq col: small dot */}
@@ -844,229 +793,30 @@ function NoLoadOrderRow({ driverName, onLoadOrderAdded }: { driverName: string; 
               No Load Orders added yet
             </span>
           </div>
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <button
-              onClick={() => { setIsOpen((v) => !v); if (isOpen) { setSelectedTerminalId(null); setSearch("") } }}
-              style={{
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                padding: "8px 12px",
-                height: 32,
-                borderRadius: 4,
-                backgroundColor: isOpen ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isOpen ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.05)")}
-            >
-              <Plus size={16} color="#FAFAFA" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA", whiteSpace: "nowrap" }}>
-                Add Load Order
-              </span>
-            </button>
-
-            {/* Dropdown — 4px below button, right edges aligned, 400px wide */}
-            {isOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "calc(100% + 4px)",
-                  right: 0,
-                  width: 400,
-                  backgroundColor: "#111111",
-                  border: "1px solid #333333",
-                  borderRadius: 4,
-                  boxShadow: "0px 4px 6px -2px rgba(0,0,0,0.3), 0px 10px 15px -3px rgba(0,0,0,0.4)",
-                  overflow: "visible",
-                  zIndex: 100,
-                }}
-              >
-          {/* Search input */}
-          <div
+          <button
+            onClick={onOpenModal}
             style={{
               display: "flex",
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              padding: "10px 12px",
-              borderBottom: "1px solid #333333",
+              padding: "8px 12px",
+              height: 32,
+              borderRadius: 4,
+              backgroundColor: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+              cursor: "pointer",
+              flexShrink: 0,
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)")}
           >
-            <Search size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Load Orders by Terminals"
-              style={{
-                flex: 1,
-                background: "transparent",
-                border: "none",
-                outline: "none",
-                fontSize: 14,
-                fontWeight: 400,
-                color: "#E5E5E5",
-                fontFamily: "Geist, sans-serif",
-              }}
-            />
-          </div>
-
-          {/* Level 1: Terminal list */}
-          {!selectedTerminalId && (
-            <div style={{ overflow: "hidden", borderRadius: "0 0 4px 4px" }}>
-              {filtered.length === 0 ? (
-                <div style={{ padding: "12px 16px", fontSize: 14, color: "#737373" }}>No terminals found</div>
-              ) : (
-                <div style={{ padding: 4 }}>
-                  {filtered.map((terminal) => {
-                    const supplierInfo = TERMINAL_SUPPLIERS[terminal.id]
-                    const isHovered = hoveredTerminalId === terminal.id
-                    return (
-                      <div
-                        key={terminal.id}
-                        style={{ position: "relative" }}
-                        onMouseEnter={() => setHoveredTerminalId(terminal.id)}
-                        onMouseLeave={() => setHoveredTerminalId(null)}
-                        onClick={() => handleTerminalClick(terminal.id)}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            padding: "6px 8px",
-                            borderRadius: 2,
-                            cursor: "pointer",
-                            backgroundColor: isHovered ? "rgba(255,255,255,0.06)" : "transparent",
-                          }}
-                        >
-                          <span style={{ fontSize: 16, fontWeight: 400, color: "#E5E5E5" }}>{terminal.name}</span>
-                          <ChevronRight size={16} color="#737373" style={{ flexShrink: 0 }} />
-                        </div>
-
-                        {/* Hover tooltip — floats to the left */}
-                        {isHovered && supplierInfo && (
-                          <div
-                            style={{
-                              position: "absolute",
-                              right: "calc(100% + 8px)",
-                              top: 0,
-                              width: 240,
-                              backgroundColor: "#111111",
-                              border: "1px solid #333333",
-                              borderRadius: 4,
-                              padding: "12px 16px",
-                              boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.3), 0px 2px 4px -2px rgba(0,0,0,0.3)",
-                              zIndex: 50,
-                              pointerEvents: "none",
-                            }}
-                          >
-                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                              <span style={{ fontSize: 16, fontWeight: 400, color: "#E5E5E5", display: "block" }}>
-                                {terminal.name}
-                              </span>
-                              <span style={{ fontSize: 14, color: "#A3A3A3", display: "block" }}>
-                                {supplierInfo.address}
-                              </span>
-                            </div>
-                            <div
-                              style={{
-                                margin: "10px 0",
-                                borderBottom: "1px dashed #333333",
-                              }}
-                            />
-                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                              <span style={{ fontSize: 14, color: "#A3A3A3" }}>{supplierInfo.count} Suppliers</span>
-                              <span style={{ fontSize: 12, color: "#737373", lineHeight: "16px" }}>
-                                {supplierInfo.names}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Level 2: Load orders for selected terminal */}
-          {selectedTerminalId && selectedTerminal && (
-            <div style={{ overflow: "hidden", borderRadius: "0 0 4px 4px" }}>
-              <div style={{ padding: 4, borderBottom: "1px solid #333333" }}>
-                <button
-                  onClick={handleBack}
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "6px 8px",
-                    height: 32,
-                    borderRadius: 4,
-                    backgroundColor: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    width: "100%",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  <ChevronLeft size={16} color="#FAFAFA" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA" }}>{selectedTerminal.name}</span>
-                </button>
-              </div>
-              <div style={{ padding: 4, maxHeight: 278, overflowY: "auto" }}>
-                {loadOrders.length === 0 ? (
-                  <div style={{ padding: "12px 16px", fontSize: 14, color: "#737373" }}>No load orders available</div>
-                ) : (
-                  loadOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      onClick={() => handleLoadOrderClick(order)}
-                      style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "6px 8px",
-                        borderRadius: 2,
-                        cursor: "pointer",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                    >
-                      <span style={{ fontSize: 14, fontWeight: 400, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0 }}>
-                        {order.time}
-                      </span>
-                      {(order.products > 0 || order.gal > 0) && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                          {order.products > 0 && (
-                            <span style={{ fontSize: 14, color: "#A3A3A3" }}>{order.products} Products</span>
-                          )}
-                          {order.products > 0 && order.gal > 0 && (
-                            <div style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#737373", flexShrink: 0 }} />
-                          )}
-                          {order.gal > 0 && (
-                            <span style={{ fontSize: 14, color: "#A3A3A3" }}>{order.gal.toLocaleString()} gal</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-              </div>
-            )}
-          </div>
+            <Plus size={16} color="#FAFAFA" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA", whiteSpace: "nowrap" }}>
+              Add Load Order
+            </span>
+          </button>
         </div>
       </div>
     </div>
@@ -1079,7 +829,7 @@ function ExpandedRouteCard({
   truckName,
   driverName,
   recentlyAddedOrderId,
-  onLoadOrderAdded,
+  onOpenModal,
   onTruckChange,
 }: {
   orders: ExtractionOrder[]
@@ -1088,7 +838,7 @@ function ExpandedRouteCard({
   truckName: string | null
   driverName: string
   recentlyAddedOrderId?: string | null
-  onLoadOrderAdded: (info: LoadOrderInfo) => void
+  onOpenModal: () => void
   onTruckChange?: (truck: TruckItem) => void
 }) {
   return (
@@ -1116,7 +866,7 @@ function ExpandedRouteCard({
         />
         {/* Show "No Load Orders" banner if no L-type orders exist on this route */}
         {!orders.some((o) => o.orderType === "L") && (
-          <NoLoadOrderRow driverName={driverName} onLoadOrderAdded={onLoadOrderAdded} />
+          <NoLoadOrderRow onOpenModal={onOpenModal} />
         )}
         {orders.map((order, idx) => {
           // Load orders carry their actual time in scheduledDate
@@ -1375,6 +1125,9 @@ export function LassoWorkspaceSheet({
   const [recentlyAddedOrderId, setRecentlyAddedOrderId] = useState<string | null>(null)
   // Selected trucks per route: { [routeId]: TruckItem }
   const [selectedTrucks, setSelectedTrucks] = useState<Record<string, TruckItem>>({})
+  // Add Load Order modal state
+  const [isAddLoadModalOpen, setIsAddLoadModalOpen] = useState(false)
+  const [activeRouteIdForModal, setActiveRouteIdForModal] = useState<string | null>(null)
 
   const toggleExpanded = (routeId: string) => {
     setExpandedRouteIds((prev) =>
@@ -1771,65 +1524,9 @@ export function LassoWorkspaceSheet({
                             driverName={driverName}
                             recentlyAddedOrderId={recentlyAddedOrderId}
                             onTruckChange={(truck) => setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))}
-                            onLoadOrderAdded={(info) => {
-                              // Find insertion position using MOCK_STOP_TIMES
-                              const newTimeMins = timeStrToMins(info.time)
-                              let insertAfterIdx = -1
-                              for (let i = 0; i < sortedOrders.length; i++) {
-                                const stopMins = timeStrToMins(MOCK_STOP_TIMES[i] || "")
-                                if (stopMins <= newTimeMins) {
-                                  insertAfterIdx = i
-                                } else {
-                                  break
-                                }
-                              }
-                              const prevSeq = insertAfterIdx >= 0
-                                ? (sortedOrders[insertAfterIdx].routeSequence ?? insertAfterIdx + 1)
-                                : 0
-                              const nextIdx = insertAfterIdx + 1
-                              const nextSeq = nextIdx < sortedOrders.length
-                                ? (sortedOrders[nextIdx].routeSequence ?? nextIdx + 1)
-                                : prevSeq + 1
-                              const newSeq = (prevSeq + nextSeq) / 2
-
-                              const hubId = orders[0]?.hubId ?? ""
-                              const newOrder: import("@/lib/mock-data").ExtractionOrder = {
-                                id: `load-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                                customerId: "terminal",
-                                customerName: info.terminalName,
-                                shipToAddress: info.terminalAddress,
-                                latitude: info.terminalLat,
-                                longitude: info.terminalLng,
-                                status: "assigned",
-                                volume: info.gal,
-                                scheduledDate: info.time,
-                                zoneId: "",
-                                hubId,
-                                city: "",
-                                state: "",
-                                zip: "",
-                                tankSize: 0,
-                                currentLevel: 0,
-                                daysUntilEmpty: 0,
-                                priority: "Medium",
-                                lastDelivery: "",
-                                zone: "",
-                                routeId,
-                                routeSequence: newSeq,
-                                orderType: "L",
-                              }
-
-                              const updated = {
-                                ...addedLoadOrders,
-                                [routeId]: [...(addedLoadOrders[routeId] ?? []), newOrder],
-                              }
-                              setAddedLoadOrders(updated)
-                              onAddedLoadOrdersChange?.(updated)
-
-                              setRecentlyAddedOrderId(newOrder.id)
-                              setTimeout(() => setRecentlyAddedOrderId(null), 4500)
-
-                              onShowToast?.(driverName.split(" ")[0])
+                            onOpenModal={() => {
+                              setActiveRouteIdForModal(routeId)
+                              setIsAddLoadModalOpen(true)
                             }}
                           />
                         )}
@@ -1976,6 +1673,87 @@ export function LassoWorkspaceSheet({
             </button>
           </div>
         </>
+      )}
+
+      {/* Add Load Order Modal */}
+      {isAddLoadModalOpen && activeRouteIdForModal && (
+        <AddLoadOrderModal
+          isOpen={isAddLoadModalOpen}
+          driverName={(() => {
+            const route = mockRoutes.find((r) => r.id === activeRouteIdForModal)
+            return route?.driverName ?? "Driver"
+          })()}
+          onClose={() => {
+            setIsAddLoadModalOpen(false)
+            setActiveRouteIdForModal(null)
+          }}
+          onConfirm={(info) => {
+            const routeId = activeRouteIdForModal
+            const routeOrders = [...(selectedOrders.filter((o) => o.routeId === routeId)), ...(addedLoadOrders[routeId] ?? [])]
+            const sortedRouteOrders = [...routeOrders].sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
+
+            // Find insertion position by time
+            const newTimeMins = timeStrToMins(info.time)
+            let insertAfterIdx = -1
+            for (let i = 0; i < sortedRouteOrders.length; i++) {
+              const stopMins = timeStrToMins(MOCK_STOP_TIMES[i] || "")
+              if (stopMins <= newTimeMins) insertAfterIdx = i
+              else break
+            }
+            const prevSeq = insertAfterIdx >= 0
+              ? (sortedRouteOrders[insertAfterIdx].routeSequence ?? insertAfterIdx + 1)
+              : 0
+            const nextIdx = insertAfterIdx + 1
+            const nextSeq = nextIdx < sortedRouteOrders.length
+              ? (sortedRouteOrders[nextIdx].routeSequence ?? nextIdx + 1)
+              : prevSeq + 1
+            const newSeq = (prevSeq + nextSeq) / 2
+
+            const hubId = routeOrders[0]?.hubId ?? ""
+            const newOrder: ExtractionOrder = {
+              id: `load-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              customerId: "terminal",
+              customerName: info.terminalName,
+              shipToAddress: info.terminalAddress,
+              latitude: info.terminalLat,
+              longitude: info.terminalLng,
+              status: "assigned",
+              volume: info.gal,
+              scheduledDate: info.time,
+              zoneId: "",
+              hubId,
+              city: "",
+              state: "",
+              zip: "",
+              tankSize: 0,
+              currentLevel: 0,
+              daysUntilEmpty: 0,
+              priority: "Medium",
+              lastDelivery: "",
+              zone: "",
+              routeId,
+              routeSequence: newSeq,
+              orderType: "L",
+            }
+
+            const updated = {
+              ...addedLoadOrders,
+              [routeId]: [...(addedLoadOrders[routeId] ?? []), newOrder],
+            }
+            setAddedLoadOrders(updated)
+            onAddedLoadOrdersChange?.(updated)
+
+            setRecentlyAddedOrderId(newOrder.id)
+            setTimeout(() => setRecentlyAddedOrderId(null), 4500)
+
+            const route = mockRoutes.find((r) => r.id === routeId)
+            const driverFirstName = (route?.driverName ?? "Driver").split(" ")[0]
+            onShowToast?.(driverFirstName)
+
+            setIsAddLoadModalOpen(false)
+            setActiveRouteIdForModal(null)
+          }}
+        />
       )}
     </div>
   )
