@@ -49,6 +49,18 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     return mockExtractionOrders
   }, [])
 
+  // Zoom to Tom Hanks' route on initial load
+  useEffect(() => {
+    const tryZoom = () => {
+      if ((window as any).__zoomToRoute) {
+        ;(window as any).__zoomToRoute("route-6")
+      } else {
+        setTimeout(tryZoom, 200)
+      }
+    }
+    setTimeout(tryZoom, 500)
+  }, [])
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.shiftKey && e.key.toLowerCase() === "l") {
