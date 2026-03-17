@@ -18,6 +18,7 @@ interface LassoWorkspaceSheetProps {
   onHoveredRouteChange: (routeId: string | null) => void
   onAddedLoadOrdersChange?: (added: Record<string, ExtractionOrder[]>) => void
   onShowToast?: (driverName: string) => void
+  initialExpandedRouteIds?: string[]
 }
 
 type LoadOrderInfo = {
@@ -1118,9 +1119,10 @@ export function LassoWorkspaceSheet({
   onHoveredRouteChange,
   onAddedLoadOrdersChange,
   onShowToast,
+  initialExpandedRouteIds = [],
 }: LassoWorkspaceSheetProps) {
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
-  const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>([])
+  const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>(initialExpandedRouteIds)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
   const [recentlyAddedOrderId, setRecentlyAddedOrderId] = useState<string | null>(null)
   // Selected trucks per route: { [routeId]: TruckItem }

@@ -32,7 +32,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     mockExtractionOrders.filter((o) => o.routeId === "route-6")
   )
   const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>(["route-6"])
-  const [checkedRouteIds, setCheckedRouteIds] = useState<string[]>([])
+  const [checkedRouteIds, setCheckedRouteIds] = useState<string[]>(["route-6"])
   const [hoveredWorkspaceRouteId, setHoveredWorkspaceRouteId] = useState<string | null>(null)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
   const [entityVisibility, setEntityVisibility] = useState<MapEntityVisibility>({
@@ -329,6 +329,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         hoveredRouteId={hoveredWorkspaceRouteId}
         onHoveredRouteChange={setHoveredWorkspaceRouteId}
         onAddedLoadOrdersChange={setAddedLoadOrders}
+        initialExpandedRouteIds={["route-6"]}
         onShowToast={(driverName) => {
           setToastMessage(`Load Order added to ${driverName}'s Route successfully`)
           setTimeout(() => setToastMessage(null), 5000)
