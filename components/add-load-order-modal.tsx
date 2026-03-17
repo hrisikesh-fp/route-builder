@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Link } from "lucide-react"
+import { X, Link, ArrowUpDown } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,11 +107,13 @@ interface AddLoadOrderModalProps {
 export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: AddLoadOrderModalProps) {
   const [selectedTerminalId, setSelectedTerminalId] = useState<string | null>(null)
   const [selectedLoadOrderId, setSelectedLoadOrderId] = useState<string | null>(null)
+  const [loadOrderTab, setLoadOrderTab] = useState<"all" | "unlinked" | "linked">("all")
 
   useEffect(() => {
     if (isOpen) {
       setSelectedTerminalId(null)
       setSelectedLoadOrderId(null)
+      setLoadOrderTab("all")
     }
   }, [isOpen])
 
@@ -120,6 +122,16 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
   const loadOrdersForTerminal = selectedTerminalId
     ? LOAD_ORDERS.filter((o) => o.terminalId === selectedTerminalId)
     : []
+
+  const allCount = loadOrdersForTerminal.length
+  const unlinkedCount = loadOrdersForTerminal.filter((o) => o.linkedDeliveryCount === null).length
+  const linkedCount = loadOrdersForTerminal.filter((o) => o.linkedDeliveryCount !== null).length
+
+  const filteredLoadOrders = loadOrdersForTerminal.filter((o) => {
+    if (loadOrderTab === "unlinked") return o.linkedDeliveryCount === null
+    if (loadOrderTab === "linked") return o.linkedDeliveryCount !== null
+    return true
+  })
 
   const selectedTerminal = selectedTerminalId ? TERMINALS.find((t) => t.id === selectedTerminalId) ?? null : null
   const selectedLoadOrder = selectedLoadOrderId ? LOAD_ORDERS.find((o) => o.id === selectedLoadOrderId) ?? null : null
@@ -233,17 +245,10 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
               paddingRight: 24,
             }}
           >
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 400,
-                color: "#A3A3A3",
-                marginBottom: 16,
-                flexShrink: 0,
-              }}
-            >
-              Terminals
-            </span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexShrink: 0 }}>
+              <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Terminals</span>
+              <SortButton />
+            </div>
 
             {/* Scrollable terminal list */}
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -257,6 +262,7 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
                     onClick={() => {
                       setSelectedTerminalId(terminal.id)
                       setSelectedLoadOrderId(null)
+                      setLoadOrderTab("all")
                     }}
                   />
                 )
@@ -298,14 +304,46 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
                   paddingBottom: 24,
                   paddingLeft: 24,
                   paddingRight: 24,
-                  gap: 16,
+                  gap: 12,
                 }}
               >
-                <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", flexShrink: 0 }}>
-                  Load Orders
-                </span>
+                {/* Load Orders header + Sort */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                  <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Load Orders</span>
+                  <SortButton />
+                </div>
+
+                {/* Tabs */}
+                <div style={{ borderBottom: "1px solid #333333", display: "flex", flexShrink: 0, marginTop: -8 }}>
+                  {(["all", "unlinked", "linked"] as const).map((tab) => {
+                    const label = tab === "all" ? `All (${allCount})` : tab === "unlinked" ? `Unlinked (${unlinkedCount})` : `Linked (${linkedCount})`
+                    const isActive = loadOrderTab === tab
+                    return (
+                      <button
+                        key={tab}
+                        onClick={() => setLoadOrderTab(tab)}
+                        style={{
+                          background: isActive ? "#282828" : "transparent",
+                          border: "none",
+                          borderBottom: isActive ? "1px solid #6366f1" : "1px solid transparent",
+                          borderRadius: "4px 4px 0 0",
+                          padding: "8px 16px",
+                          fontSize: 14,
+                          fontWeight: isActive ? 500 : 400,
+                          color: isActive ? "#E5E5E5" : "#A3A3A3",
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                          marginBottom: -1,
+                        }}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+
                 <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-                  {loadOrdersForTerminal.map((order) => {
+                  {filteredLoadOrders.map((order) => {
                     const isSelected = selectedLoadOrderId === order.id
                     return (
                       <LoadOrderCard
@@ -334,9 +372,10 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
                   minWidth: 320,
                 }}
               >
-                <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", flexShrink: 0 }}>
-                  Order Details
-                </span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                  <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Order Details</span>
+                  <div style={{ opacity: 0 }}><SortButton /></div>
+                </div>
                 <div
                   style={{
                     flex: 1,
@@ -407,25 +446,6 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
               flexShrink: 0,
             }}
           >
-            {/* Go Back — invisible until load order selected */}
-            <button
-              onClick={() => setSelectedLoadOrderId(null)}
-              style={{
-                height: 36,
-                padding: "0 16px",
-                borderRadius: 4,
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#FAFAFA",
-                backgroundColor: "#262626",
-                border: "none",
-                cursor: "pointer",
-                opacity: selectedLoadOrderId ? 1 : 0,
-                pointerEvents: selectedLoadOrderId ? "auto" : "none",
-              }}
-            >
-              Go Back
-            </button>
             {/* Add Load Order */}
             <button
               onClick={handleConfirm}
@@ -450,6 +470,35 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
         )}
       </div>
     </div>
+  )
+}
+
+// ─── Sort Button ──────────────────────────────────────────────────────────────
+
+function SortButton() {
+  return (
+    <button
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        height: 32,
+        padding: "0 12px",
+        border: "1px solid #333333",
+        borderRadius: 4,
+        background: "transparent",
+        cursor: "pointer",
+        color: "#A3A3A3",
+        fontSize: 14,
+        fontWeight: 500,
+        flexShrink: 0,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#555555")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#333333")}
+    >
+      <ArrowUpDown size={16} />
+      Sort
+    </button>
   )
 }
 
