@@ -166,7 +166,7 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
           borderRadius: 8,
           overflow: "hidden",
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.7)",
-          width: 720,
+          width: 1200,
           maxHeight: "90vh",
         }}
       >
