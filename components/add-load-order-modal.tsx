@@ -180,6 +180,7 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.7)",
           width: selectedTerminalId ? 1200 : 720,
           transition: "width 250ms ease",
+          height: 580,
           maxHeight: "90vh",
         }}
       >
@@ -227,10 +228,10 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ display: "flex", flexDirection: "row", height: 480, overflow: "hidden" }}>
+        {/* Body — Modal row */}
+        <div style={{ display: "flex", flexDirection: "row", flex: 1, overflow: "hidden" }}>
 
-          {/* Column 1 — Terminals */}
+          {/* Group_Terminal — left column, no footer, standalone */}
           <div
             style={{
               width: 368,
@@ -239,7 +240,7 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
               flexDirection: "column",
               borderRight: "1px solid #282828",
               overflow: "hidden",
-              paddingTop: 16,
+              paddingTop: 20,
               paddingBottom: 24,
               paddingLeft: 24,
               paddingRight: 24,
@@ -249,8 +250,6 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
               <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Terminals</span>
               <SortButton />
             </div>
-
-            {/* Scrollable terminal list */}
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
               {TERMINALS.map((terminal) => {
                 const isSelected = selectedTerminalId === terminal.id
@@ -270,204 +269,143 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
             </div>
           </div>
 
-          {/* Right pane — changes based on state */}
-          {!selectedTerminalId ? (
-            /* Empty state */
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#111111",
-                margin: 16,
-                borderRadius: 4,
-              }}
-            >
-              <span style={{ fontSize: 14, fontWeight: 400, color: "#737373", textAlign: "center" }}>
-                Select a Terminal to see Load Orders
-              </span>
-            </div>
-          ) : (
-            /* Load Orders + Order Details */
-            <div style={{ display: "flex", flexDirection: "row", flex: 1, overflow: "hidden" }}>
-
-              {/* Column 2 — Load Orders */}
-              <div
-                style={{
-                  width: 384,
-                  flexShrink: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
-                  paddingTop: 20,
-                  paddingBottom: 24,
-                  paddingLeft: 24,
-                  paddingRight: 24,
-                  gap: 12,
-                }}
-              >
-                {/* Load Orders header + Sort */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-                  <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Load Orders</span>
-                  <SortButton />
-                </div>
-
-                {/* Tabs */}
-                <div style={{ borderBottom: "1px solid #333333", display: "flex", flexShrink: 0, marginTop: -8 }}>
-                  {(["all", "unlinked", "linked"] as const).map((tab) => {
-                    const label = tab === "all" ? `All (${allCount})` : tab === "unlinked" ? `Unlinked (${unlinkedCount})` : `Linked (${linkedCount})`
-                    const isActive = loadOrderTab === tab
-                    return (
-                      <button
-                        key={tab}
-                        onClick={() => setLoadOrderTab(tab)}
-                        style={{
-                          background: isActive ? "#282828" : "transparent",
-                          border: "none",
-                          borderBottom: isActive ? "1px solid #6366f1" : "1px solid transparent",
-                          borderRadius: "4px 4px 0 0",
-                          padding: "8px 16px",
-                          fontSize: 14,
-                          fontWeight: isActive ? 500 : 400,
-                          color: isActive ? "#E5E5E5" : "#A3A3A3",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                          marginBottom: -1,
-                        }}
-                      >
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-                  {filteredLoadOrders.map((order) => {
-                    const isSelected = selectedLoadOrderId === order.id
-                    return (
-                      <LoadOrderCard
-                        key={order.id}
-                        order={order}
-                        isSelected={isSelected}
-                        onClick={() => setSelectedLoadOrderId(order.id)}
-                      />
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Column 3 — Order Details */}
-              <div
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  paddingTop: 20,
-                  paddingLeft: 24,
-                  paddingRight: 24,
-                  paddingBottom: 24,
-                  gap: 16,
-                  overflow: "hidden",
-                  minWidth: 320,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-                  <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Order Details</span>
-                  <div style={{ opacity: 0 }}><SortButton /></div>
-                </div>
-                <div
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#111111",
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  {!selectedLoadOrderId ? (
-                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 14, color: "#737373", textAlign: "center", padding: "0 24px" }}>
-                        Select a Load Order to see details
-                      </span>
-                    </div>
-                  ) : orderDetails ? (
-                    <div style={{ padding: 16, overflowY: "auto" }}>
-                      {/* Table header */}
-                      <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 8, borderBottom: "1px solid #282828" }}>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Product</span>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Planned Qty</span>
-                      </div>
-                      {orderDetails.map((row, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            padding: "10px 0",
-                            borderBottom: "1px solid #282828",
-                          }}
-                        >
-                          <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.product}</span>
-                          <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.plannedQty.toLocaleString()} gal</span>
-                        </div>
-                      ))}
-                      <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0" }}>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>Total</span>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>
-                          {orderDetails.reduce((s, r) => s + r.plannedQty, 0).toLocaleString()} gal
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 14, color: "#737373", textAlign: "center", padding: "0 24px" }}>
-                        No product details available
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer — only when terminal selected */}
-        {selectedTerminalId && (
+          {/* Alert Dialog — right pane, flex-col: [content flex:1] + [footer] */}
           <div
             style={{
+              flex: 1,
               display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 8,
-              padding: "12px 24px",
-              borderTop: "1px solid #282828",
-              flexShrink: 0,
+              flexDirection: "column",
+              overflow: "hidden",
+              paddingTop: 20,
+              paddingLeft: 24,
+              paddingRight: 24,
+              paddingBottom: 24,
+              gap: 24,
+              minWidth: 0,
             }}
           >
-            {/* Add Load Order */}
-            <button
-              onClick={handleConfirm}
-              disabled={!selectedLoadOrderId}
-              style={{
-                height: 36,
-                padding: "0 16px",
-                borderRadius: 4,
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#171717",
-                backgroundColor: "#E5E5E5",
-                border: "none",
-                cursor: selectedLoadOrderId ? "pointer" : "default",
-                opacity: selectedLoadOrderId ? 1 : 0.5,
-                transition: "opacity 150ms ease",
-              }}
-            >
-              Add Load Order
-            </button>
+            {/* Load Orders + Order Details (flex: 1) */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden", gap: 32, minWidth: 0 }}>
+              {!selectedTerminalId ? (
+                /* Empty state */
+                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#111111", borderRadius: 4 }}>
+                  <span style={{ fontSize: 14, fontWeight: 400, color: "#737373" }}>Select a Terminal to see Load Orders</span>
+                </div>
+              ) : (
+                <>
+                  {/* Load Orders column */}
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 12, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                      <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Load Orders</span>
+                      <SortButton />
+                    </div>
+                    {/* Tabs */}
+                    <div style={{ borderBottom: "1px solid #333333", display: "flex", flexShrink: 0, marginTop: -4 }}>
+                      {(["all", "unlinked", "linked"] as const).map((tab) => {
+                        const label = tab === "all" ? `All (${allCount})` : tab === "unlinked" ? `Unlinked (${unlinkedCount})` : `Linked (${linkedCount})`
+                        const isActive = loadOrderTab === tab
+                        return (
+                          <button
+                            key={tab}
+                            onClick={() => setLoadOrderTab(tab)}
+                            style={{
+                              background: isActive ? "#282828" : "transparent",
+                              border: "none",
+                              borderBottom: isActive ? "1px solid #6366f1" : "1px solid transparent",
+                              borderRadius: "4px 4px 0 0",
+                              padding: "8px 16px",
+                              fontSize: 14,
+                              fontWeight: isActive ? 500 : 400,
+                              color: isActive ? "#E5E5E5" : "#A3A3A3",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                              marginBottom: -1,
+                            }}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+                      {filteredLoadOrders.map((order) => (
+                        <LoadOrderCard
+                          key={order.id}
+                          order={order}
+                          isSelected={selectedLoadOrderId === order.id}
+                          onClick={() => setSelectedLoadOrderId(order.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Order Details column */}
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 16, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                      <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Order Details</span>
+                      <div style={{ opacity: 0 }}><SortButton /></div>
+                    </div>
+                    <div style={{ flex: 1, backgroundColor: "#111111", borderRadius: 4, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                      {!selectedLoadOrderId ? (
+                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontSize: 14, color: "#737373", textAlign: "center", padding: "0 24px" }}>Select a Load Order to see details</span>
+                        </div>
+                      ) : orderDetails ? (
+                        <div style={{ padding: 16, overflowY: "auto" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 8, borderBottom: "1px solid #282828" }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Product</span>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Planned Qty</span>
+                          </div>
+                          {orderDetails.map((row, i) => (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #282828" }}>
+                              <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.product}</span>
+                              <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.plannedQty.toLocaleString()} gal</span>
+                            </div>
+                          ))}
+                          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0" }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>Total</span>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>
+                              {orderDetails.reduce((s, r) => s + r.plannedQty, 0).toLocaleString()} gal
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontSize: 14, color: "#737373", textAlign: "center", padding: "0 24px" }}>No product details available</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* _AlertDialogFooter — inside right pane, only when terminal selected */}
+            {selectedTerminalId && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", flexShrink: 0 }}>
+                <button
+                  onClick={handleConfirm}
+                  disabled={!selectedLoadOrderId}
+                  style={{
+                    height: 36,
+                    padding: "0 16px",
+                    borderRadius: 4,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: "#171717",
+                    backgroundColor: "#E5E5E5",
+                    border: "none",
+                    cursor: selectedLoadOrderId ? "pointer" : "default",
+                    opacity: selectedLoadOrderId ? 1 : 0.5,
+                    transition: "opacity 150ms ease",
+                  }}
+                >
+                  Add Load Order
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
