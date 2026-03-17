@@ -353,11 +353,40 @@ export function RouteMap({
           volume: order.volume,
           tankSize: order.tankSize,
         })
+
+        // Smart anchor: pick direction with most space, accounting for 68px nav bar
+        const point = mapRef.current!.project([order.longitude, order.latitude])
+        const mapW = mapContainer.current!.offsetWidth
+        const mapH = mapContainer.current!.offsetHeight
+        const NAV_H = 68
+        const TIP_H = 240 // approximate tooltip height
+        const TIP_W = 420
+        const spaceAbove = point.y - NAV_H
+        const spaceBelow = mapH - point.y
+        const spaceLeft = point.x
+        const spaceRight = mapW - point.x
+        const vertAnchor = spaceAbove >= TIP_H ? "bottom" : spaceBelow >= TIP_H ? "top" : spaceAbove >= spaceBelow ? "bottom" : "top"
+        let anchor = vertAnchor
+        if (spaceRight < TIP_W / 2 && spaceLeft >= TIP_W / 2) anchor = `${vertAnchor}-right` as any
+        else if (spaceLeft < TIP_W / 2 && spaceRight >= TIP_W / 2) anchor = `${vertAnchor}-left` as any
+
+        // Per-anchor offsets: "bottom" (popup above pin) needs 40px to clear the 32px pin body
+        const popupOffset: Record<string, [number, number]> = {
+          "bottom":       [0, -40],
+          "bottom-left":  [0, -40],
+          "bottom-right": [0, -40],
+          "top":          [0,  10],
+          "top-left":     [0,  10],
+          "top-right":    [0,  10],
+          "left":         [-10, 0],
+          "right":        [10,  0],
+        }
         activePopupRef.current = new mbRef.current.Popup({
           closeButton: false,
           closeOnClick: false,
-          offset: 10,
+          offset: popupOffset,
           className: "rb-pin-popup",
+          anchor,
         })
           .setLngLat([order.longitude, order.latitude])
           .setHTML(html)
