@@ -34,6 +34,7 @@ type ModalLoadOrder = {
   volumeGal: number | null   // null = "No product details" dashed card
   products: string[]
   linkedDeliveryCount: number | null  // null = no link row
+  groupId?: string  // orders with same groupId render as one grouped card
 }
 
 type OrderDetailRow = { product: string; plannedQty: number }
@@ -41,45 +42,60 @@ type OrderDetailRow = { product: string; plannedQty: number }
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
 const TERMINALS: ModalTerminal[] = [
-  { id: "t-1", name: "Flint Hills - Johnny Morris", loadOrderCount: 28, miles: 3,   warning: null,                              lat: 30.3271, lng: -97.6198, address: "7501 Johnny Morris Road, Austin, TX" },
-  { id: "t-2", name: "Valero Taylor",               loadOrderCount: 15, miles: 1.5, warning: "2 out of 4 products unavailable",  lat: 30.5912, lng: -97.4092, address: "3100 N Main Street, Taylor, TX" },
-  { id: "t-3", name: "BP San Fransisco",            loadOrderCount: 32, miles: 5,   warning: null,                              lat: 30.5234, lng: -97.6789, address: "1500 Gattis School Road, Round Rock, TX" },
-  { id: "t-4", name: "Kinder Morgan San Jose Terminal", loadOrderCount: 15, miles: 1.5, warning: "1 out of 4 products unavailable", lat: 30.4011, lng: -97.8395, address: "4801 Kinder Morgan Dr, Cedar Park, TX" },
-  { id: "t-5", name: "NUSTAR SF",                   loadOrderCount: 32, miles: 5,   warning: null,                              lat: 30.3515, lng: -97.5312, address: "9200 NuStar Pkwy, Austin, TX" },
-  { id: "t-6", name: "ZENITH San Jose",             loadOrderCount: 32, miles: 5,   warning: null,                              lat: 30.2701, lng: -97.7423, address: "1100 Zenith Way, Austin, TX" },
-  { id: "t-7", name: "BP TACOMA",                   loadOrderCount: 32, miles: 5,   warning: null,                              lat: 30.2910, lng: -97.6901, address: "800 BP Terminal Rd, Austin, TX" },
+  { id: "t-1", name: "Flint Hills - Johnny Morris", loadOrderCount: 9,  miles: 3,   warning: null,                              lat: 30.3271, lng: -97.6198, address: "7501 Johnny Morris Road, Austin, TX" },
+  { id: "t-2", name: "Valero Taylor",               loadOrderCount: 6,  miles: 1.5, warning: "2 out of 4 products unavailable",  lat: 30.5912, lng: -97.4092, address: "3100 N Main Street, Taylor, TX" },
+  { id: "t-3", name: "BP San Fransisco",            loadOrderCount: 3,  miles: 5,   warning: null,                              lat: 30.5234, lng: -97.6789, address: "1500 Gattis School Road, Round Rock, TX" },
+  { id: "t-4", name: "Kinder Morgan San Jose Terminal", loadOrderCount: 4, miles: 1.5, warning: "1 out of 4 products unavailable", lat: 30.4011, lng: -97.8395, address: "4801 Kinder Morgan Dr, Cedar Park, TX" },
+  { id: "t-5", name: "NUSTAR SF",                   loadOrderCount: 5,  miles: 5,   warning: null,                              lat: 30.3515, lng: -97.5312, address: "9200 NuStar Pkwy, Austin, TX" },
+  { id: "t-6", name: "ZENITH San Jose",             loadOrderCount: 4,  miles: 5,   warning: null,                              lat: 30.2701, lng: -97.7423, address: "1100 Zenith Way, Austin, TX" },
+  { id: "t-7", name: "BP TACOMA",                   loadOrderCount: 3,  miles: 5,   warning: null,                              lat: 30.2910, lng: -97.6901, address: "800 BP Terminal Rd, Austin, TX" },
 ]
 
 const LOAD_ORDERS: ModalLoadOrder[] = [
-  // Flint Hills
-  { id: "lo-1",  terminalId: "t-1", time: "06:45 AM", volumeGal: 3200, products: ["ULSD #2", "ULSD CLEAR DIESEL"],                      linkedDeliveryCount: 1 },
-  { id: "lo-2",  terminalId: "t-1", time: "06:45 AM", volumeGal: 2800, products: ["87 OCT W/ 10% ETH", "87 UNLEDED"],                   linkedDeliveryCount: 1 },
-  { id: "lo-3",  terminalId: "t-1", time: "08:45 AM", volumeGal: 7200, products: ["100*DIESEL-ONROAD CLEAR", "200*DIESEL-OFFROAD RED",
-                                                                                    "300*DIESEL-OFFROAD RED",  "400*DIESEL-OFFROAD RED"], linkedDeliveryCount: null },
-  { id: "lo-4",  terminalId: "t-1", time: "07:00 AM", volumeGal: null, products: [],                                                    linkedDeliveryCount: null },
-  { id: "lo-5",  terminalId: "t-1", time: "11:00 AM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],              linkedDeliveryCount: 1 },
-  { id: "lo-6",  terminalId: "t-1", time: "12:45 PM", volumeGal: null, products: [],                                                    linkedDeliveryCount: null },
-  { id: "lo-7",  terminalId: "t-1", time: "01:45 PM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],              linkedDeliveryCount: null },
-  { id: "lo-8",  terminalId: "t-1", time: "02:45 PM", volumeGal: 2800, products: ["87 UNLEDED", "100*DIESEL-ONROAD CLEAR"],              linkedDeliveryCount: null },
-  { id: "lo-9",  terminalId: "t-1", time: "04:45 AM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],              linkedDeliveryCount: null },
-  // Valero Taylor
-  { id: "lo-10", terminalId: "t-2", time: "05:30 AM", volumeGal: 4000, products: ["ULSD #2", "87 UNLEDED"],                             linkedDeliveryCount: 2 },
-  { id: "lo-11", terminalId: "t-2", time: "08:00 AM", volumeGal: 3500, products: ["87 OCT W/ 10% ETH"],                                 linkedDeliveryCount: 1 },
-  { id: "lo-12", terminalId: "t-2", time: "10:00 AM", volumeGal: null, products: [],                                                    linkedDeliveryCount: null },
-  // BP San Francisco
-  { id: "lo-13", terminalId: "t-3", time: "06:00 AM", volumeGal: 5500, products: ["100*DIESEL-ONROAD CLEAR", "ULSD #2"],                linkedDeliveryCount: 3 },
-  { id: "lo-14", terminalId: "t-3", time: "09:30 AM", volumeGal: 3000, products: ["87 UNLEDED"],                                        linkedDeliveryCount: 1 },
-  { id: "lo-15", terminalId: "t-3", time: "02:00 PM", volumeGal: null, products: [],                                                    linkedDeliveryCount: null },
-  // Kinder Morgan
-  { id: "lo-16", terminalId: "t-4", time: "07:15 AM", volumeGal: 4500, products: ["ULSD CLEAR DIESEL", "87 OCT W/ 10% ETH"],            linkedDeliveryCount: 2 },
-  { id: "lo-17", terminalId: "t-4", time: "11:30 AM", volumeGal: null, products: [],                                                    linkedDeliveryCount: null },
-  // NUSTAR SF
-  { id: "lo-18", terminalId: "t-5", time: "06:30 AM", volumeGal: 6000, products: ["100*DIESEL-ONROAD CLEAR", "200*DIESEL-OFFROAD RED"], linkedDeliveryCount: 4 },
-  { id: "lo-19", terminalId: "t-5", time: "10:00 AM", volumeGal: 2500, products: ["87 UNLEDED"],                                        linkedDeliveryCount: 1 },
-  // ZENITH San Jose
-  { id: "lo-20", terminalId: "t-6", time: "07:00 AM", volumeGal: 3800, products: ["ULSD #2"],                                           linkedDeliveryCount: 2 },
-  // BP TACOMA
-  { id: "lo-21", terminalId: "t-7", time: "05:45 AM", volumeGal: 4200, products: ["87 OCT W/ 10% ETH", "87 UNLEDED"],                   linkedDeliveryCount: 2 },
+  // ── Flint Hills - Johnny Morris (t-1) — 9 orders: 3 linked, 6 unlinked ──
+  // Grouped pair — both linked to same 1 Delivery Order
+  { id: "lo-1", terminalId: "t-1", time: "06:45 AM", volumeGal: 3200, products: ["ULSD #2", "ULSD CLEAR DIESEL"],                                         linkedDeliveryCount: 1, groupId: "g-1" },
+  { id: "lo-2", terminalId: "t-1", time: "06:45 AM", volumeGal: 2800, products: ["87 OCT W/ 10% ETH", "87 UNLEDED"],                                      linkedDeliveryCount: 1, groupId: "g-1" },
+  // Individual linked
+  { id: "lo-5", terminalId: "t-1", time: "11:00 AM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],                                linkedDeliveryCount: 1 },
+  // Unlinked
+  { id: "lo-3", terminalId: "t-1", time: "08:45 AM", volumeGal: 7200, products: ["100*DIESEL-ONROAD CLEAR", "200*DIESEL-OFFROAD RED", "300*DIESEL-OFFROAD RED", "400*DIESEL-OFFROAD RED"], linkedDeliveryCount: null },
+  { id: "lo-4", terminalId: "t-1", time: "07:00 AM", volumeGal: null, products: [],                                                                        linkedDeliveryCount: null },
+  { id: "lo-6", terminalId: "t-1", time: "12:45 PM", volumeGal: null, products: [],                                                                        linkedDeliveryCount: null },
+  { id: "lo-7", terminalId: "t-1", time: "01:45 PM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],                                linkedDeliveryCount: null },
+  { id: "lo-8", terminalId: "t-1", time: "02:45 PM", volumeGal: 2800, products: ["87 UNLEDED", "100*DIESEL-ONROAD CLEAR"],                                linkedDeliveryCount: null },
+  { id: "lo-9", terminalId: "t-1", time: "04:45 AM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],                                linkedDeliveryCount: null },
+  // ── Valero Taylor (t-2) — 6 orders ──
+  { id: "lo-10", terminalId: "t-2", time: "05:30 AM", volumeGal: 4000, products: ["ULSD #2", "87 UNLEDED"],                                               linkedDeliveryCount: 2 },
+  { id: "lo-11", terminalId: "t-2", time: "08:00 AM", volumeGal: 3500, products: ["87 OCT W/ 10% ETH"],                                                   linkedDeliveryCount: 1 },
+  { id: "lo-12", terminalId: "t-2", time: "10:00 AM", volumeGal: null, products: [],                                                                       linkedDeliveryCount: null },
+  { id: "lo-22", terminalId: "t-2", time: "06:15 AM", volumeGal: 3800, products: ["ULSD CLEAR DIESEL", "87 UNLEDED"],                                     linkedDeliveryCount: 1 },
+  { id: "lo-23", terminalId: "t-2", time: "09:45 AM", volumeGal: null, products: [],                                                                       linkedDeliveryCount: null },
+  { id: "lo-24", terminalId: "t-2", time: "01:00 PM", volumeGal: 2600, products: ["ULSD #2"],                                                             linkedDeliveryCount: null },
+  // ── BP San Fransisco (t-3) — 3 orders ──
+  { id: "lo-13", terminalId: "t-3", time: "06:00 AM", volumeGal: 5500, products: ["100*DIESEL-ONROAD CLEAR", "ULSD #2"],                                  linkedDeliveryCount: 3 },
+  { id: "lo-14", terminalId: "t-3", time: "09:30 AM", volumeGal: 3000, products: ["87 UNLEDED"],                                                           linkedDeliveryCount: 1 },
+  { id: "lo-15", terminalId: "t-3", time: "02:00 PM", volumeGal: null, products: [],                                                                       linkedDeliveryCount: null },
+  // ── Kinder Morgan (t-4) — 4 orders ──
+  { id: "lo-16", terminalId: "t-4", time: "07:15 AM", volumeGal: 4500, products: ["ULSD CLEAR DIESEL", "87 OCT W/ 10% ETH"],                             linkedDeliveryCount: 2 },
+  { id: "lo-17", terminalId: "t-4", time: "11:30 AM", volumeGal: null, products: [],                                                                       linkedDeliveryCount: null },
+  { id: "lo-25", terminalId: "t-4", time: "08:45 AM", volumeGal: 3200, products: ["ULSD #2", "87 UNLEDED"],                                               linkedDeliveryCount: 1 },
+  { id: "lo-26", terminalId: "t-4", time: "02:30 PM", volumeGal: null, products: [],                                                                       linkedDeliveryCount: null },
+  // ── NUSTAR SF (t-5) — 5 orders ──
+  { id: "lo-18", terminalId: "t-5", time: "06:30 AM", volumeGal: 6000, products: ["100*DIESEL-ONROAD CLEAR", "200*DIESEL-OFFROAD RED"],                   linkedDeliveryCount: 4 },
+  { id: "lo-19", terminalId: "t-5", time: "10:00 AM", volumeGal: 2500, products: ["87 UNLEDED"],                                                           linkedDeliveryCount: 1 },
+  { id: "lo-27", terminalId: "t-5", time: "07:45 AM", volumeGal: 3800, products: ["ULSD #2", "87 OCT W/ 10% ETH"],                                       linkedDeliveryCount: null },
+  { id: "lo-28", terminalId: "t-5", time: "01:15 PM", volumeGal: null, products: [],                                                                       linkedDeliveryCount: null },
+  { id: "lo-29", terminalId: "t-5", time: "03:00 PM", volumeGal: 2200, products: ["87 UNLEDED"],                                                           linkedDeliveryCount: null },
+  // ── ZENITH San Jose (t-6) — 4 orders ──
+  { id: "lo-20", terminalId: "t-6", time: "07:00 AM", volumeGal: 3800, products: ["ULSD #2"],                                                             linkedDeliveryCount: 2 },
+  { id: "lo-30", terminalId: "t-6", time: "09:30 AM", volumeGal: 4200, products: ["87 OCT W/ 10% ETH", "ULSD CLEAR DIESEL"],                             linkedDeliveryCount: 1 },
+  { id: "lo-31", terminalId: "t-6", time: "12:00 PM", volumeGal: null, products: [],                                                                       linkedDeliveryCount: null },
+  { id: "lo-32", terminalId: "t-6", time: "02:45 PM", volumeGal: 2800, products: ["87 UNLEDED"],                                                           linkedDeliveryCount: null },
+  // ── BP TACOMA (t-7) — 3 orders ──
+  { id: "lo-21", terminalId: "t-7", time: "05:45 AM", volumeGal: 4200, products: ["87 OCT W/ 10% ETH", "87 UNLEDED"],                                    linkedDeliveryCount: 2 },
+  { id: "lo-33", terminalId: "t-7", time: "08:30 AM", volumeGal: 3600, products: ["ULSD #2", "100*DIESEL-ONROAD CLEAR"],                                  linkedDeliveryCount: null },
+  { id: "lo-34", terminalId: "t-7", time: "01:00 PM", volumeGal: null, products: [],                                                                       linkedDeliveryCount: null },
 ]
 
 const ORDER_DETAILS: Record<string, OrderDetailRow[]> = {
@@ -91,6 +107,7 @@ const ORDER_DETAILS: Record<string, OrderDetailRow[]> = {
   "lo-11": [{ product: "87 OCT W/ 10% ETH", plannedQty: 3500 }],
   "lo-13": [{ product: "100*DIESEL-ONROAD CLEAR", plannedQty: 2750 }, { product: "ULSD #2", plannedQty: 2750 }],
   "lo-16": [{ product: "ULSD CLEAR DIESEL", plannedQty: 2250 }, { product: "87 OCT W/ 10% ETH", plannedQty: 2250 }],
+  "lo-22": [{ product: "ULSD CLEAR DIESEL", plannedQty: 1900 }, { product: "87 UNLEDED", plannedQty: 1900 }],
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -100,6 +117,29 @@ interface AddLoadOrderModalProps {
   driverName: string
   onClose: () => void
   onConfirm: (info: LoadOrderInfo) => void
+}
+
+// ─── DisplayItem type + helper ────────────────────────────────────────────────
+
+type DisplayItem =
+  | { type: "single"; order: ModalLoadOrder }
+  | { type: "grouped"; groupId: string; orders: ModalLoadOrder[]; linkedDeliveryCount: number }
+
+function buildDisplayItems(orders: ModalLoadOrder[]): DisplayItem[] {
+  const items: DisplayItem[] = []
+  const seenGroups = new Set<string>()
+  for (const order of orders) {
+    if (order.groupId) {
+      if (!seenGroups.has(order.groupId)) {
+        seenGroups.add(order.groupId)
+        const grouped = orders.filter((o) => o.groupId === order.groupId)
+        items.push({ type: "grouped", groupId: order.groupId, orders: grouped, linkedDeliveryCount: grouped[0].linkedDeliveryCount ?? 1 })
+      }
+    } else {
+      items.push({ type: "single", order })
+    }
+  }
+  return items
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -133,21 +173,26 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
     return true
   })
 
+  const displayItems = buildDisplayItems(filteredLoadOrders)
+
   const selectedTerminal = selectedTerminalId ? TERMINALS.find((t) => t.id === selectedTerminalId) ?? null : null
   const selectedLoadOrder = selectedLoadOrderId ? LOAD_ORDERS.find((o) => o.id === selectedLoadOrderId) ?? null : null
-  const orderDetails = selectedLoadOrderId ? ORDER_DETAILS[selectedLoadOrderId] ?? null : null
 
   const handleConfirm = () => {
-    if (!selectedLoadOrder || !selectedTerminal) return
+    if (!selectedTerminal) return
+    // Handle group selection
+    const groupOrders = LOAD_ORDERS.filter((o) => o.groupId === selectedLoadOrderId)
+    const order = groupOrders.length > 0 ? groupOrders[0] : selectedLoadOrder
+    if (!order) return
     onConfirm({
       terminalId: selectedTerminal.id,
       terminalName: selectedTerminal.name,
       terminalLat: selectedTerminal.lat,
       terminalLng: selectedTerminal.lng,
       terminalAddress: selectedTerminal.address,
-      time: selectedLoadOrder.time,
-      gal: selectedLoadOrder.volumeGal ?? 0,
-      products: selectedLoadOrder.products.length,
+      time: order.time,
+      gal: order.volumeGal ?? 0,
+      products: order.products.length,
     })
     onClose()
   }
@@ -329,14 +374,23 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
                       })}
                     </div>
                     <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-                      {filteredLoadOrders.map((order) => (
-                        <LoadOrderCard
-                          key={order.id}
-                          order={order}
-                          isSelected={selectedLoadOrderId === order.id}
-                          onClick={() => setSelectedLoadOrderId(order.id)}
-                        />
-                      ))}
+                      {displayItems.map((item) =>
+                        item.type === "grouped" ? (
+                          <GroupedLoadOrderCard
+                            key={item.groupId}
+                            item={item}
+                            isSelected={selectedLoadOrderId === item.groupId}
+                            onClick={() => setSelectedLoadOrderId(item.groupId)}
+                          />
+                        ) : (
+                          <LoadOrderCard
+                            key={item.order.id}
+                            order={item.order}
+                            isSelected={selectedLoadOrderId === item.order.id}
+                            onClick={() => setSelectedLoadOrderId(item.order.id)}
+                          />
+                        )
+                      )}
                     </div>
                   </div>
 
@@ -351,30 +405,75 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
                         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <span style={{ fontSize: 14, color: "#737373", textAlign: "center", padding: "0 24px" }}>Select a Load Order to see details</span>
                         </div>
-                      ) : orderDetails ? (
-                        <div style={{ padding: 16, overflowY: "auto" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 8, borderBottom: "1px solid #282828" }}>
-                            <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Product</span>
-                            <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Planned Qty</span>
-                          </div>
-                          {orderDetails.map((row, i) => (
-                            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #282828" }}>
-                              <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.product}</span>
-                              <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.plannedQty.toLocaleString()} gal</span>
+                      ) : (() => {
+                        // Check if it's a group selection
+                        const groupOrders = LOAD_ORDERS.filter((o) => o.groupId === selectedLoadOrderId)
+                        if (groupOrders.length > 0) {
+                          // Grouped: render two tables with subheaders
+                          return (
+                            <div style={{ padding: "16px", overflowY: "auto" }}>
+                              {groupOrders.map((groupOrder, idx) => {
+                                const details = ORDER_DETAILS[groupOrder.id]
+                                return (
+                                  <div key={groupOrder.id} style={{ marginBottom: idx < groupOrders.length - 1 ? 24 : 0 }}>
+                                    {/* Subheader */}
+                                    <div style={{ fontSize: 12, fontWeight: 500, color: "#737373", marginBottom: 8, paddingBottom: 6, borderBottom: "1px solid #282828", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                      {groupOrder.time} · {groupOrder.volumeGal?.toLocaleString()} gal
+                                    </div>
+                                    {details ? (
+                                      <>
+                                        <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 8, borderBottom: "1px solid #282828" }}>
+                                          <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Product</span>
+                                          <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Planned Qty</span>
+                                        </div>
+                                        {details.map((row, i) => (
+                                          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #282828" }}>
+                                            <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.product}</span>
+                                            <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.plannedQty.toLocaleString()} gal</span>
+                                          </div>
+                                        ))}
+                                        <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0" }}>
+                                          <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>Total</span>
+                                          <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>{details.reduce((s, r) => s + r.plannedQty, 0).toLocaleString()} gal</span>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div style={{ padding: "12px 0", color: "#737373", fontSize: 14 }}>No product details</div>
+                                    )}
+                                  </div>
+                                )
+                              })}
                             </div>
-                          ))}
-                          <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0" }}>
-                            <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>Total</span>
-                            <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>
-                              {orderDetails.reduce((s, r) => s + r.plannedQty, 0).toLocaleString()} gal
-                            </span>
+                          )
+                        }
+                        // Single order
+                        const details = ORDER_DETAILS[selectedLoadOrderId]
+                        if (details) {
+                          return (
+                            <div style={{ padding: 16, overflowY: "auto" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 8, borderBottom: "1px solid #282828" }}>
+                                <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Product</span>
+                                <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3" }}>Planned Qty</span>
+                              </div>
+                              {details.map((row, i) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #282828" }}>
+                                  <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.product}</span>
+                                  <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.plannedQty.toLocaleString()} gal</span>
+                                </div>
+                              ))}
+                              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0" }}>
+                                <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>Total</span>
+                                <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>{details.reduce((s, r) => s + r.plannedQty, 0).toLocaleString()} gal</span>
+                              </div>
+                            </div>
+                          )
+                        }
+                        return (
+                          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ fontSize: 14, color: "#737373", textAlign: "center", padding: "0 24px" }}>No product details available</span>
                           </div>
-                        </div>
-                      ) : (
-                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <span style={{ fontSize: 14, color: "#737373", textAlign: "center", padding: "0 24px" }}>No product details available</span>
-                        </div>
-                      )}
+                        )
+                      })()}
                     </div>
                   </div>
                 </>
@@ -528,44 +627,28 @@ function LoadOrderCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        backgroundColor: isSelected ? "#1F1F1F" : "#282828",
-        border: isSelected
-          ? "2px solid #737373"
-          : isDashed
-          ? "1px dashed #333333"
-          : "2px solid transparent",
+        backgroundColor: isSelected ? "#1F1F1F" : hovered ? "#333333" : "#282828",
+        border: isSelected ? "2px solid #737373" : isDashed ? "1px dashed #333333" : "2px solid transparent",
         borderRadius: 4,
         padding: 12,
         cursor: "pointer",
         flexShrink: 0,
         transition: "background-color 100ms ease",
-        ...(hovered && !isSelected ? { backgroundColor: "#333333" } : {}),
       }}
     >
       {isDashed ? (
-        /* Dashed card — just time + "No product details" */
         <>
-          <p style={{ fontSize: 14, fontWeight: 500, color: "#FFFFFF", margin: 0, marginBottom: 4 }}>
-            {order.time}
-          </p>
-          <p style={{ fontSize: 12, fontWeight: 400, color: "#737373", margin: 0 }}>
-            No product details
-          </p>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#FFFFFF", margin: 0, marginBottom: 4 }}>{order.time}</p>
+          <p style={{ fontSize: 12, fontWeight: 400, color: "#737373", margin: 0 }}>No product details</p>
         </>
       ) : (
-        /* Full card */
         <>
-          {/* Time + volume */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
             <span style={{ fontSize: 14, fontWeight: 500, color: "#FFFFFF" }}>{order.time}</span>
-            <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3" }}>
-              {order.volumeGal?.toLocaleString()} gal
-            </span>
+            <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3" }}>{order.volumeGal?.toLocaleString()} gal</span>
           </div>
-
-          {/* Product tags */}
           {order.products.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+            <div style={{ display: "flex", gap: 4, overflowX: "auto", flexWrap: "nowrap", marginBottom: order.linkedDeliveryCount !== null ? 8 : 0, paddingBottom: 2 }}>
               {order.products.map((p) => (
                 <span
                   key={p}
@@ -578,6 +661,7 @@ function LoadOrderCard({
                     fontWeight: 400,
                     color: "#E5E5E5",
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
                   }}
                 >
                   {p}
@@ -585,24 +669,121 @@ function LoadOrderCard({
               ))}
             </div>
           )}
-
-          {/* Divider */}
           {order.linkedDeliveryCount !== null && (
-            <div style={{ borderTop: "1px solid #333333", marginBottom: 8 }} />
-          )}
-
-          {/* Linked deliveries */}
-          {order.linkedDeliveryCount !== null && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <Link size={12} color="#A3A3A3" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3" }}>
-                Linked to {order.linkedDeliveryCount} Delivery Order
-                {order.linkedDeliveryCount !== 1 ? "s" : ""}
-              </span>
-            </div>
+            <>
+              <div style={{ borderTop: "1px solid #333333", marginBottom: 8 }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <Link size={12} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3" }}>
+                  Linked to {order.linkedDeliveryCount} Delivery Order{order.linkedDeliveryCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </>
           )}
         </>
       )}
+    </div>
+  )
+}
+
+// ─── Grouped Load Order Card ──────────────────────────────────────────────────
+
+function GroupedLoadOrderCard({
+  item,
+  isSelected,
+  onClick,
+}: {
+  item: { type: "grouped"; groupId: string; orders: ModalLoadOrder[]; linkedDeliveryCount: number }
+  isSelected: boolean
+  onClick: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        cursor: "pointer",
+        flexShrink: 0,
+        border: isSelected ? "2px solid #737373" : "2px solid transparent",
+        borderRadius: 4,
+        overflow: "hidden",
+        transition: "border-color 100ms ease",
+      }}
+    >
+      {/* Top section — multiple sub-cards */}
+      <div
+        style={{
+          backgroundColor: hovered && !isSelected ? "#333333" : "#282828",
+          padding: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          transition: "background-color 100ms ease",
+        }}
+      >
+        {item.orders.map((order) => (
+          <div
+            key={order.id}
+            style={{
+              backgroundColor: "#1B1B1B",
+              padding: 12,
+              borderRadius: 2,
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: "#FFFFFF", whiteSpace: "nowrap" }}>{order.time}</span>
+              <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", whiteSpace: "nowrap" }}>{order.volumeGal?.toLocaleString()} gal</span>
+            </div>
+            {order.products.length > 0 && (
+              <div style={{ display: "flex", gap: 4, overflowX: "auto", flexWrap: "nowrap", paddingBottom: 2 }}>
+                {order.products.map((p) => (
+                  <span
+                    key={p}
+                    style={{
+                      backgroundColor: "#1F1F1F",
+                      border: "1px solid #333333",
+                      borderRadius: 4,
+                      padding: "2px 6px",
+                      fontSize: 14,
+                      fontWeight: 400,
+                      color: "#E5E5E5",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {p}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Footer row */}
+      <div
+        style={{
+          backgroundColor: hovered && !isSelected ? "#333333" : "#282828",
+          borderTop: "1px solid #333333",
+          padding: "10px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          transition: "background-color 100ms ease",
+        }}
+      >
+        <Link size={12} color="#A3A3A3" style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3" }}>
+          Linked to {item.linkedDeliveryCount} Delivery Order{item.linkedDeliveryCount !== 1 ? "s" : ""}
+        </span>
+      </div>
     </div>
   )
 }
