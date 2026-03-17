@@ -238,6 +238,7 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
               flexShrink: 0,
               display: "flex",
               flexDirection: "column",
+              gap: 16,
               borderRight: "1px solid #282828",
               overflow: "hidden",
               paddingTop: 20,
@@ -246,7 +247,7 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
               paddingRight: 24,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
               <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Terminals</span>
               <SortButton />
             </div>
@@ -294,13 +295,13 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
               ) : (
                 <>
                   {/* Load Orders column */}
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 12, minWidth: 0 }}>
+                  <div style={{ flex: "1 1 0%", display: "flex", flexDirection: "column", overflow: "hidden", gap: 16, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                       <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Load Orders</span>
                       <SortButton />
                     </div>
                     {/* Tabs */}
-                    <div style={{ borderBottom: "1px solid #333333", display: "flex", flexShrink: 0, marginTop: -4 }}>
+                    <div style={{ borderBottom: "1px solid #333333", display: "flex", flexShrink: 0 }}>
                       {(["all", "unlinked", "linked"] as const).map((tab) => {
                         const label = tab === "all" ? `All (${allCount})` : tab === "unlinked" ? `Unlinked (${unlinkedCount})` : `Linked (${linkedCount})`
                         const isActive = loadOrderTab === tab
@@ -340,7 +341,7 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
                   </div>
 
                   {/* Order Details column */}
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 16, minWidth: 0 }}>
+                  <div style={{ flex: "1 1 0%", display: "flex", flexDirection: "column", overflow: "hidden", gap: 16, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                       <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3" }}>Order Details</span>
                       <div style={{ opacity: 0 }}><SortButton /></div>
