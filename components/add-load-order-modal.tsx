@@ -166,6 +166,7 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
           borderRadius: 8,
           overflow: "hidden",
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.7)",
+          width: 720,
           maxHeight: "90vh",
         }}
       >
@@ -186,12 +187,13 @@ export function AddLoadOrderModal({ isOpen, driverName, onClose, onConfirm }: Ad
             </span>
             <span
               style={{
-                backgroundColor: "#F5F5F5",
-                color: "#171717",
+                backgroundColor: "transparent",
+                border: "1px solid #404040",
+                color: "#A3A3A3",
                 borderRadius: 9999,
-                padding: "2px 8px",
+                padding: "2px 10px",
                 fontSize: 14,
-                fontWeight: 500,
+                fontWeight: 400,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
               }}
