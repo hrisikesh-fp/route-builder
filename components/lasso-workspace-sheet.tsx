@@ -6,7 +6,7 @@ import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
 import { base1Infrastructure } from "@/lib/infrastructure-data"
 import { AddLoadOrderModal } from "@/components/add-load-order-modal"
-import { validateRouteCapacity, type ValidationResult } from "@/lib/capacity-validation"
+import { validateRouteCapacity, getShortProductName, type ValidationResult } from "@/lib/capacity-validation"
 import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 
 interface LassoWorkspaceSheetProps {
@@ -32,6 +32,7 @@ type LoadOrderInfo = {
   time: string
   gal: number
   products: number
+  productBreakdown?: { product: string; volume: number }[]
 }
 
 function timeStrToMins(t: string): number {
@@ -322,7 +323,7 @@ function SeqLineBridge() {
 }
 
 // Starting hub row: truck + hub combined card, arm at bottom-20 (hub row center), vertical line going DOWN only
-function TruckHubStartRow({ truckName, hubName, onTruckChange }: { truckName: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void }) {
+function TruckHubStartRow({ truckName, hubName, onTruckChange, validation, hasLoadOrders }: { truckName: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void; validation?: ValidationResult | null; hasLoadOrders?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "row", gap: SEQ_TO_CARD_GAP }}>
       {/* Seq col: arm + vertical segment going DOWN from arm only */}
@@ -354,13 +355,15 @@ function TruckHubStartRow({ truckName, hubName, onTruckChange }: { truckName: st
       </div>
 
       {/* Truck + Hub combined card */}
-      <TruckHubCard truckNameProp={truckName} hubName={hubName} onTruckChange={onTruckChange} />
+      <TruckHubCard truckNameProp={truckName} hubName={hubName} onTruckChange={onTruckChange} validation={validation} hasLoadOrders={hasLoadOrders} />
     </div>
   )
 }
 
-function TruckHubCard({ truckNameProp, hubName, onTruckChange }: { truckNameProp: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void }) {
-  const [selectedTruck, setSelectedTruck] = useState<TruckItem | null>(null)
+function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLoadOrders }: { truckNameProp: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void; validation?: ValidationResult | null; hasLoadOrders?: boolean }) {
+  const [selectedTruck, setSelectedTruck] = useState<TruckItem | null>(
+    () => (truckNameProp ? TRUCKS.find((t) => t.name === truckNameProp) ?? null : null)
+  )
   const [trailer1, setTrailer1] = useState<TrailerItem | null>(null)
   const [trailer2, setTrailer2] = useState<TrailerItem | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -648,6 +651,21 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange }: { truckNameProp
               </div>
             )}
           </div>
+          {/* Inline message — inside truck section, 4px below dropdown */}
+          {(selectedTruck || truckNameProp) && hasLoadOrders === false && !validation && (
+            <div style={{ padding: "2px 12px 2px" }}>
+              <span style={{ fontSize: 13, fontWeight: 400, color: "#eab308" }}>
+                No fuel loaded. Add a load order to supply this route.
+              </span>
+            </div>
+          )}
+          {validation && validation.truckMessage && (
+            <div style={{ padding: "2px 12px 2px" }}>
+              <span style={{ fontSize: 13, fontWeight: 400, color: "#eab308" }}>
+                {validation.truckMessage}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Hub row */}
@@ -837,8 +855,10 @@ function ExpandedRouteCard({
   driverName,
   recentlyAddedOrderId,
   validation,
+  hasLoadOrders,
   onOpenModal,
   onTruckChange,
+  onReorder,
 }: {
   orders: ExtractionOrder[]
   color?: string
@@ -847,63 +867,35 @@ function ExpandedRouteCard({
   driverName: string
   recentlyAddedOrderId?: string | null
   validation: ValidationResult | null
+  hasLoadOrders: boolean
   onOpenModal: () => void
   onTruckChange?: (truck: TruckItem) => void
+  onReorder?: (fromIdx: number, toIdx: number) => void
 }) {
-  // Build a map of delivery stop index → warnings for inline display
-  const stopWarnings: Record<number, string[]> = {}
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+
+  // Change 6: Build a map of delivery stop index → single warning string (comma-separated short names)
+  const stopWarnings: Record<number, string> = {}
   if (validation?.l3) {
+    const grouped: Record<number, { products: string[]; stopName: string }> = {}
     for (const issue of validation.l3) {
-      if (!stopWarnings[issue.stopIndex]) stopWarnings[issue.stopIndex] = []
-      stopWarnings[issue.stopIndex].push(`⚠ ${issue.product} will run out before this stop`)
+      if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = { products: [], stopName: issue.stopName }
+      grouped[issue.stopIndex].products.push(getShortProductName(issue.product))
+    }
+    for (const [idx, g] of Object.entries(grouped)) {
+      stopWarnings[Number(idx)] = `⚠ ${g.products.join(", ")} will run out before this stop`
     }
   }
 
-  // Track delivery stop counter to match validation stop indices
-  let deliveryIdx = 0
+  // Track unified stop counter to match validation stop indices (loads + deliveries)
+  let stopIdx = 0
 
   return (
     <div style={{ paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column" }}>
 
       {/* Starting hub: truck + hub combined, arm → down only */}
-      <TruckHubStartRow truckName={truckName} hubName={hubName} onTruckChange={onTruckChange} />
-
-      {/* Truck validation message */}
-      {validation && (
-        <div style={{ paddingLeft: CARD_LEFT, paddingRight: 16, paddingTop: 4, paddingBottom: 4 }}>
-          <span style={{
-            fontSize: 13,
-            fontWeight: 400,
-            color: validation.truckMessageColor === "red" ? "#EF4444"
-              : validation.truckMessageColor === "amber" ? "#EAB308"
-              : "#4ADE80",
-          }}>
-            {validation.truckMessage}
-          </span>
-        </div>
-      )}
-
-      {/* Expanded validation banner — issues list */}
-      {validation && validation.expandedIssues.length > 0 && (
-        <div style={{
-          marginLeft: CARD_LEFT,
-          marginRight: 16,
-          marginTop: 4,
-          marginBottom: 4,
-          backgroundColor: "rgba(239, 68, 68, 0.08)",
-          borderRadius: 4,
-          padding: "10px 16px",
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: "#EF4444", marginBottom: 6 }}>
-            ⚠ {validation.expandedIssues.length} {validation.expandedIssues.length === 1 ? "Item needs" : "Items need"} your attention
-          </div>
-          {validation.expandedIssues.map((issue, i) => (
-            <div key={i} style={{ fontSize: 13, color: "#EF4444", paddingLeft: 12, lineHeight: "20px" }}>
-              - {issue}
-            </div>
-          ))}
-        </div>
-      )}
+      <TruckHubStartRow truckName={truckName} hubName={hubName} onTruckChange={onTruckChange} validation={validation} hasLoadOrders={hasLoadOrders} />
 
       {/* Bridge gap between starting hub and orders */}
       <SeqLineBridge />
@@ -927,25 +919,22 @@ function ExpandedRouteCard({
           <NoLoadOrderRow onOpenModal={onOpenModal} />
         )}
         {orders.map((order, idx) => {
-          // Track delivery index for validation matching
+          // Track unified stop index for validation matching (loads + deliveries)
           const isDelivery = !order.orderType || order.orderType === "D"
-          if (isDelivery) deliveryIdx++
-          const currentDeliveryIdx = deliveryIdx
+          const isTransfer = order.orderType === "T"
+          if (!isTransfer) stopIdx++
+          const currentStopIdx = stopIdx
 
           // Check if we need a mid-route "Add Load Order" CTA before this stop
           const showMidRouteCTA = isDelivery
             && validation?.firstFailingStopIndex != null
-            && currentDeliveryIdx === validation.firstFailingStopIndex
+            && currentStopIdx === validation.firstFailingStopIndex
             && orders.some((o) => o.orderType === "L") // only if there's already a load (otherwise the top banner handles it)
 
-          // Load orders carry their actual time in scheduledDate
-          // Delivery orders use routeSequence to stay stable after insertions
-          const stopTime =
-            order.orderType === "L" && order.scheduledDate
-              ? order.scheduledDate
-              : MOCK_STOP_TIMES[(order.routeSequence ?? idx + 1) - 1] || MOCK_STOP_TIMES[idx] || "—"
+          // Use MOCK_STOP_TIMES for ALL order types (load + delivery)
+          const stopTime = MOCK_STOP_TIMES[(order.routeSequence ?? idx + 1) - 1] || MOCK_STOP_TIMES[idx] || "—"
 
-          const warnings = isDelivery ? stopWarnings[currentDeliveryIdx] : undefined
+          const warning = isDelivery ? stopWarnings[currentStopIdx] : undefined
 
           return (
             <div key={order.id}>
@@ -957,7 +946,30 @@ function ExpandedRouteCard({
                 idx={idx}
                 stopTime={stopTime}
                 isNew={order.id === recentlyAddedOrderId}
-                warnings={warnings}
+                warning={warning}
+                draggable
+                isDragOver={dragOverIdx === idx}
+                onDragStart={(e) => {
+                  setDragIdx(idx)
+                  e.dataTransfer.effectAllowed = "move"
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = "move"
+                  setDragOverIdx(idx)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (dragIdx !== null && dragIdx !== idx) {
+                    onReorder?.(dragIdx, idx)
+                  }
+                  setDragIdx(null)
+                  setDragOverIdx(null)
+                }}
+                onDragEnd={() => {
+                  setDragIdx(null)
+                  setDragOverIdx(null)
+                }}
               />
             </div>
           )
@@ -1001,7 +1013,7 @@ function MidRouteAddLoadCTA({ onOpenModal }: { onOpenModal: () => void }) {
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 400, color: "#818CF8" }}>Add load orders</span>
+        <span style={{ fontSize: 13, fontWeight: 400, color: "#818CF8" }}>Add Load Order</span>
         <button
           onClick={onOpenModal}
           style={{
@@ -1033,20 +1045,37 @@ function OrderStopRow({
   idx,
   stopTime,
   isNew,
-  warnings,
+  warning,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
+  isDragOver,
 }: {
   order: ExtractionOrder
   idx: number
   stopTime: string
   isNew?: boolean
-  warnings?: string[]
+  warning?: string
+  draggable?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDragEnd?: (e: React.DragEvent) => void
+  onDrop?: (e: React.DragEvent) => void
+  isDragOver?: boolean
 }) {
   const seq = idx + 1
   const type = order.orderType ?? "D"
-  const hasWarnings = warnings && warnings.length > 0
+  const hasWarning = !!warning
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      onDrop={onDrop}
       style={{
         display: "flex",
         flexDirection: "row",
@@ -1054,6 +1083,8 @@ function OrderStopRow({
         gap: SEQ_TO_CARD_GAP,
         position: "relative",
         zIndex: 1,
+        borderTop: isDragOver ? "2px solid #6366f1" : "2px solid transparent",
+        transition: "border-color 0.1s",
       }}
     >
       {/* Seq column — 68px, zIndex 1 above connector line */}
@@ -1111,8 +1142,7 @@ function OrderStopRow({
           style={{
             flex: 1,
             backgroundColor: "#1F1F1F",
-            borderRadius: hasWarnings ? "4px 4px 0 0" : 4,
-            borderLeft: hasWarnings ? "4px solid #EF4444" : "none",
+            borderRadius: hasWarning ? "4px 4px 0 0" : 4,
             padding: 16,
             gap: 12,
             display: "flex",
@@ -1120,12 +1150,16 @@ function OrderStopRow({
             animation: isNew ? "rb-flicker 0.5s ease 8" : undefined,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#333333"
+            e.currentTarget.style.backgroundColor = "#282828"
+            const grip = e.currentTarget.querySelector<SVGElement>(".order-grip-icon")
+            if (grip) grip.style.opacity = "1"
             const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
             if (btn) btn.style.opacity = "1"
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = "#1F1F1F"
+            const grip = e.currentTarget.querySelector<SVGElement>(".order-grip-icon")
+            if (grip) grip.style.opacity = "0"
             const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
             if (btn) btn.style.opacity = "0"
           }}
@@ -1143,14 +1177,14 @@ function OrderStopRow({
           }}
         >
           <CheckboxInput checked={false} onChange={() => {}} />
-          {/* Grip icon (hidden) */}
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0 }}>
-            <circle cx="7" cy="6" r="1" fill="#A3A3A3" />
-            <circle cx="7" cy="10" r="1" fill="#A3A3A3" />
-            <circle cx="7" cy="14" r="1" fill="#A3A3A3" />
-            <circle cx="13" cy="6" r="1" fill="#A3A3A3" />
-            <circle cx="13" cy="10" r="1" fill="#A3A3A3" />
-            <circle cx="13" cy="14" r="1" fill="#A3A3A3" />
+          {/* Grip icon — visible on hover, cursor grab */}
+          <svg className="order-grip-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0, transition: "opacity 0.15s", cursor: "grab" }}>
+            <circle cx="7" cy="6" r="1.5" fill="#A3A3A3" />
+            <circle cx="7" cy="10" r="1.5" fill="#A3A3A3" />
+            <circle cx="7" cy="14" r="1.5" fill="#A3A3A3" />
+            <circle cx="13" cy="6" r="1.5" fill="#A3A3A3" />
+            <circle cx="13" cy="10" r="1.5" fill="#A3A3A3" />
+            <circle cx="13" cy="14" r="1.5" fill="#A3A3A3" />
           </svg>
         </div>
 
@@ -1201,7 +1235,7 @@ function OrderStopRow({
             >
               {order.customerName}
             </span>
-            {/* 3-dot menu — hidden until card hover */}
+            {/* 3-dot menu — visible on hover */}
             <button
               className="order-menu-btn"
               style={{
@@ -1239,23 +1273,21 @@ function OrderStopRow({
           </span>
         </div>
       </div>
-        {/* Warning strips for products that run out at this stop */}
-        {hasWarnings && warnings.map((w, i) => (
+        {/* Warning strip for products that run out at this stop — one per stop, comma-separated */}
+        {hasWarning && (
           <div
-            key={i}
             style={{
-              backgroundColor: "rgba(239, 68, 68, 0.08)",
-              borderLeft: "4px solid #EF4444",
-              borderRadius: i === warnings.length - 1 ? "0 0 4px 4px" : 0,
+              backgroundColor: "rgba(248, 113, 113, 0.2)",
+              borderRadius: "0 0 4px 4px",
               padding: "6px 16px",
               fontSize: 13,
               fontWeight: 400,
-              color: "#EF4444",
+              color: "#f87171",
             }}
           >
-            {w}
+            {warning}
           </div>
-        ))}
+        )}
       </div>
     </div>
   )
@@ -1279,6 +1311,7 @@ export function LassoWorkspaceSheet({
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
   const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>(initialExpandedRouteIds)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
+  const [reorderedRoutes, setReorderedRoutes] = useState<Record<string, string[]>>({}) // routeId → ordered order IDs
   const [recentlyAddedOrderId, setRecentlyAddedOrderId] = useState<string | null>(null)
   // Selected trucks per route: { [routeId]: TruckItem }
   // Pre-populate from mockRoutes for routes that have truckId
@@ -1517,9 +1550,17 @@ export function LassoWorkspaceSheet({
 
                     // Merge in any added load orders for this route
                     const extraOrders = addedLoadOrders[routeId] ?? []
-                    const sortedOrders = [...orders, ...extraOrders].sort(
+                    const defaultSorted = [...orders, ...extraOrders].sort(
                       (a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0)
                     )
+                    // Apply reorder if user has dragged — stamp new routeSequence so validation engine respects drag order
+                    const reorderIds = reorderedRoutes[routeId]
+                    const sortedOrders = reorderIds
+                      ? reorderIds.map((id, i) => {
+                          const order = defaultSorted.find((o) => o.id === id)
+                          return order ? { ...order, routeSequence: i + 1 } : null
+                        }).filter(Boolean) as ExtractionOrder[]
+                      : defaultSorted
 
                     // Data layer: count unique sequences (all stop types)
                     const uniqueSeqs = new Set(
@@ -1617,52 +1658,85 @@ export function LassoWorkspaceSheet({
                               truckName={truckName ?? "Not Selected"}
                               isHovered={hoveredRouteId === routeId}
                             />
+
+                            {/* Unified banner — inside the card container */}
+                            {validation && validation.collapsedBannerType !== "none" && (() => {
+                              const isRed = validation.collapsedBannerType === "red"
+                              const isAmber = validation.collapsedBannerType === "amber"
+                              const bannerColor = isRed ? "#f87171" : "#eab308"
+                              const bannerBg = isRed ? "rgba(248, 113, 113, 0.2)" : "rgba(234, 179, 8, 0.09)"
+                              const hasIssues = validation.expandedIssues.length > 0
+                              // Use expanded header when route is expanded and there are issues to show as bullets
+                              const bannerText = isExpanded && hasIssues
+                                ? validation.expandedBannerText
+                                : validation.collapsedBannerText
+                              return (
+                              <div
+                                style={{
+                                  backgroundColor: bannerBg,
+                                  borderRadius: isExpanded ? 0 : "0px 0px 4px 4px",
+                                  padding: "6px 24px 6px 20px",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: isExpanded && hasIssues ? 6 : 0,
+                                }}
+                              >
+                                {/* Summary line */}
+                                <div style={{
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  gap: 12,
+                                }}>
+                                  {/* Left: icon + text */}
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                                    {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
+                                    <span style={{
+                                      fontSize: 14,
+                                      fontWeight: 400,
+                                      color: bannerColor,
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                    }}>
+                                      {bannerText}
+                                    </span>
+                                  </div>
+                                  {/* Right: arrow + delta + info — only show arrow/delta for single-issue banners (no "+ N more") */}
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                    {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && isAmber && validation.l1.status === "below" && (
+                                      <ArrowDown size={16} color={bannerColor} />
+                                    )}
+                                    {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && validation.collapsedBannerDelta && (
+                                      <span style={{
+                                        fontSize: 14,
+                                        fontWeight: 400,
+                                        color: bannerColor,
+                                        whiteSpace: "nowrap",
+                                      }}>
+                                        {validation.collapsedBannerDelta}
+                                      </span>
+                                    )}
+                                    <Info size={16} color="#737373" />
+                                  </div>
+                                </div>
+
+                                {/* Expanded bullet points — shown when route is expanded and has issues */}
+                                {isExpanded && hasIssues && (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                    {validation.expandedIssues.map((issue, i) => (
+                                      <div key={i} style={{ fontSize: 13, color: bannerColor, paddingLeft: 24, lineHeight: "20px" }}>
+                                        • {issue}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              )
+                            })()}
                           </div>
                         </div>
-
-                        {/* Alert bar — indented to align with card left edge */}
-                        {validation && validation.collapsedBannerType !== "none" && (
-                          <div style={{ paddingLeft: LEFT_INDENT }}>
-                            <div
-                              style={{
-                                backgroundColor: validation.collapsedBannerType === "red"
-                                  ? "rgba(239, 68, 68, 0.09)"
-                                  : "rgba(234, 179, 8, 0.09)",
-                                borderRadius: "0px 0px 4px 4px",
-                                padding: "6px 16px 6px 20px",
-                                display: "flex",
-                                flexDirection: "row",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                gap: 12,
-                              }}
-                            >
-                              <span style={{
-                                fontSize: 14,
-                                fontWeight: 400,
-                                color: validation.collapsedBannerType === "red" ? "#EF4444" : "#EAB308",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                              }}>
-                                {validation.l3.length > 0 && "⚠ "}{validation.collapsedBannerText}
-                              </span>
-                              {validation.collapsedBannerDelta && (
-                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                                  <span style={{
-                                    fontSize: 14,
-                                    fontWeight: 400,
-                                    color: validation.collapsedBannerType === "red" ? "#EF4444" : "#EAB308",
-                                    whiteSpace: "nowrap",
-                                  }}>
-                                    {validation.collapsedBannerDelta}
-                                  </span>
-                                  <Info size={16} color={validation.collapsedBannerType === "red" ? "#EF4444" : "#EAB308"} />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
 
                         {/* Expanded accordion — full width (no indent), CARD_LEFT handled internally */}
                         {isExpanded && (
@@ -1674,10 +1748,17 @@ export function LassoWorkspaceSheet({
                             driverName={driverName}
                             recentlyAddedOrderId={recentlyAddedOrderId}
                             validation={validation}
+                            hasLoadOrders={sortedOrders.some((o) => o.orderType === "L")}
                             onTruckChange={(truck) => setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))}
                             onOpenModal={() => {
                               setActiveRouteIdForModal(routeId)
                               setIsAddLoadModalOpen(true)
+                            }}
+                            onReorder={(fromIdx, toIdx) => {
+                              const ids = sortedOrders.map((o) => o.id)
+                              const [moved] = ids.splice(fromIdx, 1)
+                              ids.splice(toIdx, 0, moved)
+                              setReorderedRoutes((prev) => ({ ...prev, [routeId]: ids }))
                             }}
                           />
                         )}
@@ -1834,6 +1915,26 @@ export function LassoWorkspaceSheet({
             const route = mockRoutes.find((r) => r.id === activeRouteIdForModal)
             return route?.driverName ?? "Driver"
           })()}
+          routeProducts={(() => {
+            const routeOrders = [...(selectedOrders.filter((o) => o.routeId === activeRouteIdForModal)), ...(addedLoadOrders[activeRouteIdForModal] ?? [])]
+            const products = new Set<string>()
+            for (const o of routeOrders) {
+              if ((!o.orderType || o.orderType === "D") && o.productBreakdown) {
+                for (const pb of o.productBreakdown) products.add(pb.product)
+              }
+            }
+            return Array.from(products)
+          })()}
+          productShortfalls={(() => {
+            const route = mockRoutes.find((r) => r.id === activeRouteIdForModal)
+            const truckId = selectedTrucks[activeRouteIdForModal]?.id ?? route?.truckId
+            const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
+            if (!truckProfile) return []
+            const routeOrders = [...(selectedOrders.filter((o) => o.routeId === activeRouteIdForModal)), ...(addedLoadOrders[activeRouteIdForModal] ?? [])]
+            const v = validateRouteCapacity(routeOrders, truckProfile, route?.retainedFuel)
+            if (!v) return []
+            return v.l2.map((issue) => ({ product: issue.product, shortfall: issue.overflow }))
+          })()}
           onClose={() => {
             setIsAddLoadModalOpen(false)
             setActiveRouteIdForModal(null)
@@ -1885,6 +1986,10 @@ export function LassoWorkspaceSheet({
               routeId,
               routeSequence: newSeq,
               orderType: "L",
+              productBreakdown: info.productBreakdown?.map((pb) => ({
+                product: pb.product as any,
+                volume: pb.volume,
+              })),
             }
 
             const updated = {

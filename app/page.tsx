@@ -23,7 +23,7 @@ import { CheckCircle2 } from "lucide-react"
 export default function Home() {
 const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [isFilterOpen, setIsFilterOpen] = useState(true)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [showAllRoutes, setShowAllRoutes] = useState(true)
   const [isLassoDrawing, setIsLassoDrawing] = useState(false)

@@ -41,13 +41,32 @@ export interface ValidationResult {
 
   // Pre-computed UI strings
   collapsedBannerText: string
+  expandedBannerText: string
   collapsedBannerType: "red" | "amber" | "none"
   collapsedBannerDelta: string // e.g. "↑ 900 gal" or "↓ 1,500 gal" or "200 gal"
   expandedIssues: string[]
   truckMessage: string
   truckMessageColor: "red" | "amber" | "green"
   firstFailingStopIndex: number | null // for mid-route CTA placement (1-based index in sorted orders)
-  noFuelLoaded: boolean // truck selected but no load orders
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+export function getShortProductName(product: FuelProduct | string): string {
+  switch (product) {
+    case "200*DIESEL-OFFROAD RED":
+      return "Red"
+    case "200*DIESEL-ONROAD CLEAR":
+      return "Clear"
+    case "87 OCT W/ 10% ETH":
+      return "Gas 87"
+    case "ULSD CLEAR DIESEL":
+      return "ULSD Clear"
+    case "DEF PACKAGED":
+      return "DEF Pkd"
+    default:
+      return product
+  }
 }
 
 // ─── Main Validation Function ───────────────────────────────────────────────
@@ -64,6 +83,9 @@ export function validateRouteCapacity(
 
   const deliveries = sorted.filter((o) => !o.orderType || o.orderType === "D")
   const loads = sorted.filter((o) => o.orderType === "L")
+
+  // Change 1: No validation without BOTH truck AND load orders
+  if (loads.length === 0) return null
 
   // ── L1: Total capacity check ────────────────────────────────────────────
   const totalPlanned = deliveries.reduce((sum, o) => sum + (o.volume ?? 0), 0)
@@ -92,6 +114,8 @@ export function validateRouteCapacity(
       l2.push({ product, planned, capacity, overflow: planned - capacity })
     }
   }
+  // Sort L2 by largest overflow first
+  l2.sort((a, b) => b.overflow - a.overflow)
 
   // ── L3: Running balance (stop-by-stop) ──────────────────────────────────
   // Collect all products involved
@@ -115,7 +139,6 @@ export function validateRouteCapacity(
   const l3: RunoutIssue[] = []
   const runoutProducts = new Set<FuelProduct>() // track which products already flagged
   let firstFailingStopIndex: number | null = null
-  const noFuelLoaded = loads.length === 0
 
   // Start row (retained)
   runningBalance.push({
@@ -125,10 +148,12 @@ export function validateRouteCapacity(
     balances: { ...balance },
   })
 
-  // Walk through stops
-  let deliveryStopCounter = 0
+  // Walk through stops — unified counter for both loads and deliveries
+  let stopCounter = 0
   for (const order of sorted) {
     if (order.orderType === "T") continue // skip transfers
+
+    stopCounter++
 
     if (order.orderType === "L") {
       // Load: add volumes
@@ -138,21 +163,20 @@ export function validateRouteCapacity(
         }
       }
       runningBalance.push({
-        stopIndex: runningBalance.length,
+        stopIndex: stopCounter,
         stopName: order.customerName,
         type: "load",
         balances: { ...balance },
       })
     } else {
       // Delivery: subtract volumes
-      deliveryStopCounter++
       if (order.productBreakdown) {
         for (const pb of order.productBreakdown) {
           balance[pb.product] = (balance[pb.product] ?? 0) - pb.volume
         }
       }
       runningBalance.push({
-        stopIndex: deliveryStopCounter,
+        stopIndex: stopCounter,
         stopName: order.customerName,
         type: "delivery",
         balances: { ...balance },
@@ -164,12 +188,12 @@ export function validateRouteCapacity(
           runoutProducts.add(product)
           l3.push({
             product,
-            stopIndex: deliveryStopCounter,
+            stopIndex: stopCounter,
             stopName: order.customerName,
             deficit: Math.abs(bal),
           })
           if (firstFailingStopIndex === null) {
-            firstFailingStopIndex = deliveryStopCounter
+            firstFailingStopIndex = stopCounter
           }
         }
       }
@@ -178,78 +202,111 @@ export function validateRouteCapacity(
 
   // ── Compute UI strings ──────────────────────────────────────────────────
   const severity: ValidationResult["severity"] =
-    l3.length > 0 || l1.status === "exceeding" || l2.length > 0
+    l3.length > 0 || l2.length > 0
       ? "error"
-      : l1.status === "below"
+      : l1.status === "exceeding" || l1.status === "below"
         ? "warning"
         : "ok"
 
-  // Collapsed banner
+  // Change 2 & 3: Banner colors — amber=healthy, red=issues; collapsed vs expanded text
   let collapsedBannerText = ""
+  let expandedBannerText = ""
   let collapsedBannerType: ValidationResult["collapsedBannerType"] = "none"
   let collapsedBannerDelta = ""
 
-  if (noFuelLoaded) {
-    // No load orders — every stop would fail, but show a different message
-    collapsedBannerText = ""
-    collapsedBannerType = "none"
-  } else if (l3.length > 0) {
-    // Worst-problem-first: runout issues
-    const worst = l3[0]
-    const shortName = getShortProductName(worst.product)
-    const moreCount = l3.length + l2.length - 1
-    collapsedBannerText =
-      moreCount > 0
-        ? `${shortName} runs out at Stop ${worst.stopIndex} + ${moreCount} more`
-        : `${shortName} runs out at Stop ${worst.stopIndex}`
-    collapsedBannerType = "red"
-    collapsedBannerDelta = ""
-  } else if (l2.length > 0) {
-    collapsedBannerText = "Exceeding Product Capacity"
-    collapsedBannerType = "amber"
-    collapsedBannerDelta = `${l2.reduce((s, i) => s + i.overflow, 0).toLocaleString()} gal`
-  } else if (l1.status === "exceeding") {
-    collapsedBannerText = "Exceeding Truck Capacity"
-    collapsedBannerType = "red"
-    collapsedBannerDelta = `↑ ${diff.toLocaleString()} gal`
+  const hasL3 = l3.length > 0
+  const hasIssues = hasL3 || l2.length > 0 || l1.status === "exceeding"
+
+  let finalExpandedIssues: string[] = []
+
+  if (hasIssues) {
+    // L3 (runout) → red banner; L2-only or L1-exceeding → amber banner
+    collapsedBannerType = hasL3 ? "red" : "amber"
+
+    // Change 5: Build expanded issues with same-stop products merged for L3
+    const expandedIssues: string[] = []
+
+    // L3: group by stopIndex, merge same-stop products
+    if (l3.length > 0) {
+      const grouped: Record<number, { products: FuelProduct[]; stopName: string }> = {}
+      for (const issue of l3) {
+        if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = { products: [], stopName: issue.stopName }
+        grouped[issue.stopIndex].products.push(issue.product)
+      }
+      // Sort by stop index
+      const sortedStops = Object.entries(grouped).sort(([a], [b]) => Number(a) - Number(b))
+      for (const [stopIdx, g] of sortedStops) {
+        const names = g.products.map((p) => getShortProductName(p)).join(", ")
+        expandedIssues.push(
+          `${names} will run out before Stop ${stopIdx} (${g.stopName})`
+        )
+      }
+    }
+
+    // L2: one per product, sorted by largest overflow first (already sorted above)
+    for (const issue of l2) {
+      expandedIssues.push(
+        `${getShortProductName(issue.product)} exceeds available truck capacity by ${issue.overflow.toLocaleString()} gal`
+      )
+    }
+
+    // Item count = bullet count (merged)
+    const itemCount = expandedIssues.length
+
+    // Collapsed text: worst-problem-first
+    if (l3.length > 0) {
+      // L3 is worst — show first runout group
+      const firstGroup = Object.entries(
+        l3.reduce((acc, issue) => {
+          const key = issue.stopIndex
+          if (!acc[key]) acc[key] = []
+          acc[key].push(issue.product)
+          return acc
+        }, {} as Record<number, FuelProduct[]>)
+      ).sort(([a], [b]) => Number(a) - Number(b))[0]
+
+      const [stopIdx, products] = firstGroup
+      const names = products.map((p) => getShortProductName(p)).join(", ")
+      const moreCount = itemCount - 1
+      collapsedBannerText = moreCount > 0
+        ? `${names} runs out at Stop ${stopIdx} + ${moreCount} more`
+        : `${names} runs out at Stop ${stopIdx}`
+    } else if (l2.length > 0) {
+      // L2 only
+      const moreCount = itemCount - 1
+      const delta = `${l2[0].overflow.toLocaleString()} gal`
+      collapsedBannerText = moreCount > 0
+        ? `Exceeding Product Capacity by ${delta} + ${moreCount} more`
+        : `Exceeding Product Capacity by ${delta}`
+    } else if (l1.status === "exceeding") {
+      // L1 exceeding only
+      collapsedBannerText = "Exceeding Truck Capacity"
+      collapsedBannerDelta = `${diff.toLocaleString()} gal`
+    }
+
+    // Expanded text: count header
+    expandedBannerText = itemCount === 1
+      ? "1 Item needs your attention"
+      : `${itemCount} Items need your attention`
+
+    finalExpandedIssues = expandedIssues
   } else if (l1.status === "below") {
-    collapsedBannerText = "Below Truck Capacity"
+    // AMBER banner — below capacity, healthy
     collapsedBannerType = "amber"
-    collapsedBannerDelta = `↓ ${Math.abs(diff).toLocaleString()} gal`
+    collapsedBannerText = "Below Truck Capacity"
+    collapsedBannerDelta = `${Math.abs(diff).toLocaleString()} gal`
+    expandedBannerText = collapsedBannerText
   }
 
-  // Expanded issues (bullet points)
-  const expandedIssues: string[] = []
-  // Runout issues first (most severe)
-  for (const issue of l3) {
-    expandedIssues.push(
-      `${issue.product} will run out before Stop ${issue.stopIndex} (${issue.stopName})`,
-    )
-  }
-  // Then product capacity issues
-  for (const issue of l2) {
-    expandedIssues.push(
-      `${issue.product} exceeds available truck capacity by ${issue.overflow.toLocaleString()} gal`,
-    )
-  }
-
-  // Truck message
+  // Change 7: Truck message — only for healthy state (no "no fuel loaded" here, that's UI layer)
   let truckMessage = ""
   let truckMessageColor: ValidationResult["truckMessageColor"] = "green"
 
-  if (noFuelLoaded) {
-    truckMessage = "No fuel loaded. Add a load order to supply this route."
-    truckMessageColor = "red"
-  } else if (l3.length > 0 || l2.length > 0) {
-    truckMessage = "Truck capacity is insufficient for 1 or more products."
-    truckMessageColor = "red"
-  } else if (l1.status === "exceeding") {
-    truckMessage = "Truck capacity is not sufficient for all orders."
-    truckMessageColor = "red"
-  } else {
+  if (l3.length === 0 && l2.length === 0) {
     truckMessage = "This truck can accommodate more orders."
     truckMessageColor = "amber"
   }
+  // When warnings exist (l3/l2), truckMessage stays empty — banner handles it
 
   return {
     severity,
@@ -258,31 +315,12 @@ export function validateRouteCapacity(
     l3,
     runningBalance,
     collapsedBannerText,
+    expandedBannerText,
     collapsedBannerType,
     collapsedBannerDelta,
-    expandedIssues,
+    expandedIssues: finalExpandedIssues,
     truckMessage,
     truckMessageColor,
     firstFailingStopIndex,
-    noFuelLoaded,
-  }
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function getShortProductName(product: FuelProduct): string {
-  switch (product) {
-    case "200*DIESEL-OFFROAD RED":
-      return "Diesel-Offroad Red"
-    case "200*DIESEL-ONROAD CLEAR":
-      return "Diesel-Onroad Clear"
-    case "87 OCT W/ 10% ETH":
-      return "87 Regular"
-    case "ULSD CLEAR DIESEL":
-      return "ULSD Clear"
-    case "DEF PACKAGED":
-      return "DEF Pkd"
-    default:
-      return product
   }
 }

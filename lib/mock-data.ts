@@ -2886,16 +2886,16 @@ const route1Orders: ExtractionOrder[] = [
 // Load: Valero Taylor 4,200 gal ULSD | 5 deliveries, Planned Qty: 5,100 gal
 const route2Orders: ExtractionOrder[] = [
   // Load: Valero Taylor — 4,200 gal ULSD
-  { id: "r2-load", customerId: "c-r2-load", customerName: "Valero Taylor", shipToAddress: "3200 N Main St Taylor TX 76574", latitude: 30.5912, longitude: -97.4092, status: "assigned", volume: 4200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Taylor", state: "TX", zip: "76574", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-2", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 4200 }] },
-  // Stop 1: Georgetown Fuel Depot — 1,200 gal ULSD
+  { id: "r2-load", customerId: "c-r2-load", customerName: "Valero Taylor", shipToAddress: "3100 N Main Street Taylor TX 78574", latitude: 30.5912, longitude: -97.4092, status: "assigned", volume: 4200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Taylor", state: "TX", zip: "78574", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-2", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 4200 }] },
+  // Stop 2: Georgetown Fuel Depot — 1,200 gal ULSD
   { id: "r2-1", customerId: "c-r2-1", customerName: "Georgetown Fuel Depot", shipToAddress: "500 Industrial Ave Georgetown TX 78626", latitude: 30.6478, longitude: -97.6773, status: "assigned", volume: 1200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Georgetown", state: "TX", zip: "78626", tankSize: 5000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Georgetown", routeId: "route-2", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1200 }] },
-  // Stop 2: Round Rock Storage — 900 gal ULSD
+  // Stop 3: Round Rock Storage — 900 gal ULSD
   { id: "r2-2", customerId: "c-r2-2", customerName: "Round Rock Storage", shipToAddress: "3400 E Palm Valley Blvd Round Rock TX 78665", latitude: 30.5289, longitude: -97.6645, status: "assigned", volume: 900, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Round Rock", state: "TX", zip: "78665", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 6, priority: "Medium", lastDelivery: "2026-01-18", zone: "Round Rock", routeId: "route-2", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 900 }] },
-  // Stop 3: Cedar Park Warehouse — 1,100 gal ULSD
+  // Stop 4: Cedar Park Warehouse — 1,100 gal ULSD
   { id: "r2-3", customerId: "c-r2-3", customerName: "Cedar Park Warehouse", shipToAddress: "1400 E Whitestone Blvd Cedar Park TX 78613", latitude: 30.5156, longitude: -97.7934, status: "assigned", volume: 1100, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Cedar Park", state: "TX", zip: "78613", tankSize: 5000, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-20", zone: "Cedar Park", routeId: "route-2", routeSequence: 4, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1100 }] },
-  // Stop 4: Pflugerville Fleet — 800 gal ULSD
+  // Stop 5: Pflugerville Fleet — 800 gal ULSD
   { id: "r2-4", customerId: "c-r2-4", customerName: "Pflugerville Fleet", shipToAddress: "2301 FM 685 Pflugerville TX 78660", latitude: 30.4523, longitude: -97.5812, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Pflugerville", state: "TX", zip: "78660", tankSize: 3500, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-19", zone: "Pflugerville", routeId: "route-2", routeSequence: 5, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 800 }] },
-  // Stop 5: Hutto Farms Co-op — 1,100 gal ULSD
+  // Stop 6: Hutto Farms Co-op — 1,100 gal ULSD
   { id: "r2-5", customerId: "c-r2-5", customerName: "Hutto Farms Co-op", shipToAddress: "200 Ed Schmidt Blvd Hutto TX 78634", latitude: 30.5378, longitude: -97.5456, status: "assigned", volume: 1100, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Hutto", state: "TX", zip: "78634", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Hutto", routeId: "route-2", routeSequence: 6, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1100 }] },
 ]
 
@@ -3041,7 +3041,7 @@ export const mockRoutes: any[] = [
     name: "Route 1 - Purple",
     driverId: "driver-1",
     driverName: "Mark Ruffalo",
-    color: "#C084FC",
+    color: "#9A7BC7",
     orders: route1Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
@@ -3053,7 +3053,7 @@ export const mockRoutes: any[] = [
     name: "Route 2 - Orange",
     driverId: "driver-2",
     driverName: "Dwayne Johnson",
-    color: "#FB923C",
+    color: "#C4956A",
     orders: route2Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
@@ -3065,7 +3065,7 @@ export const mockRoutes: any[] = [
     name: "Route 3 - Blue",
     driverId: "driver-3",
     driverName: "Jessica Harper",
-    color: "#3B82F6",
+    color: "#6B9DCF",
     orders: route3Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
@@ -3078,7 +3078,7 @@ export const mockRoutes: any[] = [
     name: "Route 4 - Pink",
     driverId: "driver-4",
     driverName: "Kyle Reese",
-    color: "#EC4899",
+    color: "#B87DA3",
     orders: route4Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
@@ -3090,7 +3090,7 @@ export const mockRoutes: any[] = [
     name: "Route 5 - Red",
     driverId: "driver-5",
     driverName: "Forrest Gump",
-    color: "#EF4444",
+    color: "#C07A7A",
     orders: route5Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
@@ -3102,7 +3102,7 @@ export const mockRoutes: any[] = [
     name: "Route 6 - Green",
     driverId: "driver-6",
     driverName: "Tom Hanks",
-    color: "#4ADE80",
+    color: "#7AB88A",
     orders: route6Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-05",

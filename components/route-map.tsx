@@ -103,7 +103,7 @@ export interface RouteMapProps {
 }
 
 // Fallback route colors if route not found in mockRoutes
-const ROUTE_COLORS = ["#C084FC", "#FB923C", "#3B82F6", "#EC4899", "#EF4444", "#4ADE80"]
+const ROUTE_COLORS = ["#9A7BC7", "#C4956A", "#6B9DCF", "#B87DA3", "#C07A7A", "#7AB88A"]
 const DEFAULT_GREY = "#52525B"
 
 function getRouteColor(routeId: string, fallbackIndex: number): string {

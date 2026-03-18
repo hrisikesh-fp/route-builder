@@ -28,11 +28,11 @@ export interface Route {
 
 // Route colors matching Figma design
 export const routeColors = {
-  purple: "#C084FC",
-  orange: "#FB923C",
-  blue: "#3B82F6",
-  pink: "#EC4899",
-  red: "#EF4444",
+  purple: "#9A7BC7",
+  orange: "#C4956A",
+  blue: "#6B9DCF",
+  pink: "#B87DA3",
+  red: "#C07A7A",
 }
 
 // Tank threshold badge colors
