@@ -27,12 +27,10 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [showAllRoutes, setShowAllRoutes] = useState(true)
   const [isLassoDrawing, setIsLassoDrawing] = useState(false)
-  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(true)
-  const [selectedOrders, setSelectedOrders] = useState<ExtractionOrder[]>(() =>
-    mockExtractionOrders.filter((o) => o.routeId === "route-6")
-  )
-  const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>(["route-6"])
-  const [checkedRouteIds, setCheckedRouteIds] = useState<string[]>(["route-6"])
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false)
+  const [selectedOrders, setSelectedOrders] = useState<ExtractionOrder[]>([])
+  const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([])
+  const [checkedRouteIds, setCheckedRouteIds] = useState<string[]>([])
   const [hoveredWorkspaceRouteId, setHoveredWorkspaceRouteId] = useState<string | null>(null)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
   const [entityVisibility, setEntityVisibility] = useState<MapEntityVisibility>({
@@ -49,17 +47,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     return mockExtractionOrders
   }, [])
 
-  // Zoom to Tom Hanks' route on initial load
-  useEffect(() => {
-    const tryZoom = () => {
-      if ((window as any).__zoomToRoute) {
-        ;(window as any).__zoomToRoute("route-6")
-      } else {
-        setTimeout(tryZoom, 200)
-      }
-    }
-    setTimeout(tryZoom, 500)
-  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -329,7 +316,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         hoveredRouteId={hoveredWorkspaceRouteId}
         onHoveredRouteChange={setHoveredWorkspaceRouteId}
         onAddedLoadOrdersChange={setAddedLoadOrders}
-        initialExpandedRouteIds={["route-6"]}
+        initialExpandedRouteIds={[]}
         onShowToast={(driverName) => {
           setToastMessage(`Load Order added to ${driverName}'s Route successfully`)
           setTimeout(() => setToastMessage(null), 5000)
