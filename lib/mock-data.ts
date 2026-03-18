@@ -1,3 +1,10 @@
+import type { FuelProduct } from "./truck-data"
+
+export interface ProductBreakdown {
+  product: FuelProduct
+  volume: number
+}
+
 export interface ExtractionOrder {
   id: string
   customerId: string
@@ -6,7 +13,7 @@ export interface ExtractionOrder {
   latitude: number
   longitude: number
   status: "pending" | "assigned" | "in-progress" | "completed"
-  volume: number // in gallons
+  volume: number // in gallons (total across all products)
   scheduledDate: string
   zoneId: string
   hubId: string
@@ -23,6 +30,7 @@ export interface ExtractionOrder {
   routeId?: string
   routeSequence?: number
   orderType?: "T" | "L" | "D" // Transfer, Load, Delivery
+  productBreakdown?: ProductBreakdown[] // per-product volumes (optional — Route 6 doesn't use this)
 }
 
 // ShipTo - customer locations that may or may not have orders for a given day
@@ -2853,91 +2861,102 @@ const thresholdToLevel = (threshold: "red" | "yellow" | "green" | "blue"): numbe
 // Route 1 - Purple (Mark Ruffalo)
 // Stops: Hub -> T-In(1:Austin Fuel Island) -> L(2:Flint Hills) -> D(3-8: deliveries) -> T-Out(9:Austin Fuel Island) -> Hub
 // Planned Qty = sum of D orders only (stops 3-8) = 4,000 gal
+// Route 1 — Mark Ruffalo (Demo flow: no truck, no load initially. User adds them.)
+// 6 delivery orders, Planned Qty: 4,600 gal (Red + Clear + 87 Reg)
 const route1Orders: ExtractionOrder[] = [
-  // Stop 1: Transfer In - Austin Fuel Island (bulk plant) — fuel moves from bulk plant into truck
-  { id: "r1-1", customerId: "c-r1-1", customerName: "Austin Fuel Island", shipToAddress: "4500 S Congress Ave Austin TX 78745", latitude: 30.1894, longitude: -97.7544, status: "assigned", volume: 0, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78745", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Hub", routeId: "route-1", routeSequence: 1, orderType: "T" },
-  // Stop 2: Load - Flint Hills Johnny Morris (terminal) — driver loads 2,800 gal from terminal
-  { id: "r1-2", customerId: "c-r1-2", customerName: "Flint Hills - Johnny Morris", shipToAddress: "7501 Johnny Morris Road Austin TX 78724", latitude: 30.3271, longitude: -97.6198, status: "assigned", volume: 2800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78724", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-1", routeSequence: 2, orderType: "L" },
-  // Stop 3: Delivery - Mueller Construction (700 gal)
-  { id: "r1-3", customerId: "c-r1-3", customerName: "Mueller Construction", shipToAddress: "4500 Mueller Blvd Austin TX 78723", latitude: 30.2989, longitude: -97.7023, status: "assigned", volume: 700, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78723", tankSize: 5000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-20", zone: "Mueller", routeId: "route-1", routeSequence: 3, orderType: "D" },
-  // Stop 4: Delivery - Manor Equipment Rental (500 gal)
-  { id: "r1-4", customerId: "c-r1-4", customerName: "Manor Equipment Rental", shipToAddress: "12501 US-290 E Manor TX 78653", latitude: 30.3567, longitude: -97.5234, status: "assigned", volume: 500, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Manor", state: "TX", zip: "78653", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 7, priority: "Medium", lastDelivery: "2026-01-18", zone: "Manor", routeId: "route-1", routeSequence: 4, orderType: "D" },
-  // Stop 5: Delivery - Elgin Concrete (900 gal)
-  { id: "r1-5", customerId: "c-r1-5", customerName: "Elgin Concrete", shipToAddress: "1200 US-290 Elgin TX 78621", latitude: 30.3512, longitude: -97.3734, status: "assigned", volume: 900, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Elgin", state: "TX", zip: "78621", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 14, priority: "Low", lastDelivery: "2026-01-15", zone: "Elgin", routeId: "route-1", routeSequence: 5, orderType: "D" },
-  // Stop 6: Delivery - Bastrop Excavating (600 gal)
-  { id: "r1-6", customerId: "c-r1-6", customerName: "Bastrop Excavating", shipToAddress: "1501 Hwy 71 E Bastrop TX 78602", latitude: 30.1234, longitude: -97.3156, status: "assigned", volume: 600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Bastrop", state: "TX", zip: "78602", tankSize: 3500, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-22", zone: "Bastrop", routeId: "route-1", routeSequence: 6, orderType: "D" },
-  // Stop 7: Delivery - Del Valle ISD (350 gal)
-  { id: "r1-7", customerId: "c-r1-7", customerName: "Del Valle ISD", shipToAddress: "5301 Ross Rd Del Valle TX 78617", latitude: 30.1456, longitude: -97.6123, status: "assigned", volume: 350, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Del Valle", state: "TX", zip: "78617", tankSize: 3000, currentLevel: 85, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-19", zone: "Del Valle", routeId: "route-1", routeSequence: 7, orderType: "D" },
-  // Stop 8: Delivery - Austin Bergstrom Fleet (950 gal)
-  { id: "r1-8", customerId: "c-r1-8", customerName: "Austin Bergstrom Fleet", shipToAddress: "3600 Presidential Blvd Austin TX 78719", latitude: 30.1989, longitude: -97.6656, status: "assigned", volume: 950, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78719", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 8, priority: "Medium", lastDelivery: "2026-01-17", zone: "Airport", routeId: "route-1", routeSequence: 8, orderType: "D" },
-  // Stop 9: Transfer Out - Austin Fuel Island — excess fuel returns from truck to bulk plant
-  { id: "r1-9", customerId: "c-r1-9", customerName: "Austin Fuel Island", shipToAddress: "4500 S Congress Ave Austin TX 78745", latitude: 30.1894, longitude: -97.7544, status: "assigned", volume: 0, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78745", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Hub", routeId: "route-1", routeSequence: 9, orderType: "T" },
+  // TRANSFER: commented out for Phase 1
+  // { id: "r1-t1", customerId: "c-r1-t1", customerName: "Austin Fuel Island", shipToAddress: "4500 S Congress Ave Austin TX 78745", latitude: 30.1894, longitude: -97.7544, status: "assigned", volume: 0, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78745", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Hub", routeId: "route-1", routeSequence: 0, orderType: "T" },
+  // Stop 1: Mueller Construction — 1,000 gal (Red 100, Clear 700, 87 Reg 200)
+  { id: "r1-1", customerId: "c-r1-1", customerName: "Mueller Construction", shipToAddress: "4500 Mueller Blvd Austin TX 78723", latitude: 30.2989, longitude: -97.7023, status: "assigned", volume: 1000, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78723", tankSize: 5000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-20", zone: "Mueller", routeId: "route-1", routeSequence: 1, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 100 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 700 }, { product: "87 OCT W/ 10% ETH", volume: 200 }] },
+  // Stop 2: Manor Equipment Rental — 800 gal (Red 300, 87 Reg 500)
+  { id: "r1-2", customerId: "c-r1-2", customerName: "Manor Equipment Rental", shipToAddress: "12501 US-290 E Manor TX 78653", latitude: 30.3567, longitude: -97.5234, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Manor", state: "TX", zip: "78653", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 7, priority: "Medium", lastDelivery: "2026-01-18", zone: "Manor", routeId: "route-1", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 300 }, { product: "87 OCT W/ 10% ETH", volume: 500 }] },
+  // Stop 3: Elgin Concrete — 1,000 gal (Clear 400, 87 Reg 600)
+  { id: "r1-3", customerId: "c-r1-3", customerName: "Elgin Concrete", shipToAddress: "1200 US-290 Elgin TX 78621", latitude: 30.3512, longitude: -97.3734, status: "assigned", volume: 1000, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Elgin", state: "TX", zip: "78621", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 14, priority: "Low", lastDelivery: "2026-01-15", zone: "Elgin", routeId: "route-1", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 400 }, { product: "87 OCT W/ 10% ETH", volume: 600 }] },
+  // Stop 4: Bastrop Excavating — 600 gal (Red 200, Clear 400)
+  { id: "r1-4", customerId: "c-r1-4", customerName: "Bastrop Excavating", shipToAddress: "1501 Hwy 71 E Bastrop TX 78602", latitude: 30.1234, longitude: -97.3156, status: "assigned", volume: 600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Bastrop", state: "TX", zip: "78602", tankSize: 3500, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-22", zone: "Bastrop", routeId: "route-1", routeSequence: 4, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 200 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 400 }] },
+  // Stop 5: Del Valle ISD — 800 gal (Clear 300, 87 Reg 500)
+  { id: "r1-5", customerId: "c-r1-5", customerName: "Del Valle ISD", shipToAddress: "5301 Ross Rd Del Valle TX 78617", latitude: 30.1456, longitude: -97.6123, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Del Valle", state: "TX", zip: "78617", tankSize: 3000, currentLevel: 85, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-19", zone: "Del Valle", routeId: "route-1", routeSequence: 5, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 300 }, { product: "87 OCT W/ 10% ETH", volume: 500 }] },
+  // Stop 6: Austin Bergstrom Fleet — 400 gal (Red 100, Clear 200, 87 Reg 100)
+  { id: "r1-6", customerId: "c-r1-6", customerName: "Austin Bergstrom Fleet", shipToAddress: "3600 Presidential Blvd Austin TX 78719", latitude: 30.1989, longitude: -97.6656, status: "assigned", volume: 400, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78719", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 8, priority: "Medium", lastDelivery: "2026-01-17", zone: "Airport", routeId: "route-1", routeSequence: 6, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 100 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 200 }, { product: "87 OCT W/ 10% ETH", volume: 100 }] },
+  // TRANSFER: commented out for Phase 1
+  // { id: "r1-t2", customerId: "c-r1-t2", customerName: "Austin Fuel Island", shipToAddress: "4500 S Congress Ave Austin TX 78745", latitude: 30.1894, longitude: -97.7544, status: "assigned", volume: 0, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78745", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Hub", routeId: "route-1", routeSequence: 99, orderType: "T" },
 ]
 
-// Route 2 - Orange (Dwayne Johnson)
-// Stops: Hub -> Load(1) -> 7 Deliveries(2-8) -> Hub
-// Based on CSV: Austin Hub -> Valero Taylor -> Taylor Auto -> Hutto Farms -> Round Rock Express -> Georgetown Municipal -> Jarrell Trucking -> Schwertner Ag -> Rogers Feed Mill -> Hub
+// Route 2 — Dwayne Johnson (Simple exceeding. Single product ULSD. Truck + load pre-assigned.)
+// Load: Valero Taylor 4,200 gal ULSD | 5 deliveries, Planned Qty: 5,100 gal
 const route2Orders: ExtractionOrder[] = [
-  // Stop 2: Taylor Auto Group (first delivery, but stop 2 after Load)
-  { id: "r2-2", customerId: "c-r2-2", customerName: "Taylor Auto Group", shipToAddress: "3401 N Main St Taylor TX 76574", latitude: 30.5912, longitude: -97.4189, status: "assigned", volume: 450, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Taylor", state: "TX", zip: "76574", tankSize: 3500, currentLevel: 85, daysUntilEmpty: 2, priority: "High", lastDelivery: "2026-01-21", zone: "Taylor", routeId: "route-2", routeSequence: 2 },
-  // Stop 3: Hutto Farms Co-op
-  { id: "r2-3", customerId: "c-r2-3", customerName: "Hutto Farms Co-op", shipToAddress: "200 Ed Schmidt Blvd Hutto TX 78634", latitude: 30.5378, longitude: -97.5456, status: "assigned", volume: 1200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Hutto", state: "TX", zip: "78634", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Hutto", routeId: "route-2", routeSequence: 3 },
-  // Stop 4: Round Rock Express Stadium
-  { id: "r2-4", customerId: "c-r2-4", customerName: "Round Rock Express Stadium", shipToAddress: "3400 E Palm Valley Blvd Round Rock TX 78665", latitude: 30.5289, longitude: -97.6289, status: "assigned", volume: 300, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Round Rock", state: "TX", zip: "78665", tankSize: 2500, currentLevel: 55, daysUntilEmpty: 6, priority: "Medium", lastDelivery: "2026-01-18", zone: "Round Rock", routeId: "route-2", routeSequence: 4 },
-  // Stop 5: Georgetown Municipal
-  { id: "r2-5", customerId: "c-r2-5", customerName: "Georgetown Municipal", shipToAddress: "100 Industrial Ave Georgetown TX 78626", latitude: 30.6328, longitude: -97.6783, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Georgetown", state: "TX", zip: "78626", tankSize: 5000, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-20", zone: "Georgetown", routeId: "route-2", routeSequence: 5 },
-  // Stop 6: Jarrell Trucking
-  { id: "r2-6", customerId: "c-r2-6", customerName: "Jarrell Trucking", shipToAddress: "14200 N IH-35 Jarrell TX 76537", latitude: 30.8234, longitude: -97.6012, status: "assigned", volume: 1400, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Jarrell", state: "TX", zip: "76537", tankSize: 7000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-19", zone: "Jarrell", routeId: "route-2", routeSequence: 6 },
-  // Stop 7: Schwertner Ag Supply
-  { id: "r2-7", customerId: "c-r2-7", customerName: "Schwertner Ag Supply", shipToAddress: "6850 CR 439 Schwertner TX 76573", latitude: 30.8678, longitude: -97.4789, status: "assigned", volume: 950, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Schwertner", state: "TX", zip: "76573", tankSize: 5500, currentLevel: 25, daysUntilEmpty: 10, priority: "Low", lastDelivery: "2026-01-14", zone: "Schwertner", routeId: "route-2", routeSequence: 7 },
-  // Stop 8: Rogers Feed Mill
-  { id: "r2-8", customerId: "c-r2-8", customerName: "Rogers Feed Mill", shipToAddress: "12400 FM 973 Rogers TX 76569", latitude: 30.9312, longitude: -97.2256, status: "assigned", volume: 700, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Rogers", state: "TX", zip: "76569", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 7, priority: "Medium", lastDelivery: "2026-01-17", zone: "Rogers", routeId: "route-2", routeSequence: 8 },
+  // Load: Valero Taylor — 4,200 gal ULSD
+  { id: "r2-load", customerId: "c-r2-load", customerName: "Valero Taylor", shipToAddress: "3200 N Main St Taylor TX 76574", latitude: 30.5912, longitude: -97.4092, status: "assigned", volume: 4200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Taylor", state: "TX", zip: "76574", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-2", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 4200 }] },
+  // Stop 1: Georgetown Fuel Depot — 1,200 gal ULSD
+  { id: "r2-1", customerId: "c-r2-1", customerName: "Georgetown Fuel Depot", shipToAddress: "500 Industrial Ave Georgetown TX 78626", latitude: 30.6478, longitude: -97.6773, status: "assigned", volume: 1200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Georgetown", state: "TX", zip: "78626", tankSize: 5000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Georgetown", routeId: "route-2", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1200 }] },
+  // Stop 2: Round Rock Storage — 900 gal ULSD
+  { id: "r2-2", customerId: "c-r2-2", customerName: "Round Rock Storage", shipToAddress: "3400 E Palm Valley Blvd Round Rock TX 78665", latitude: 30.5289, longitude: -97.6645, status: "assigned", volume: 900, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Round Rock", state: "TX", zip: "78665", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 6, priority: "Medium", lastDelivery: "2026-01-18", zone: "Round Rock", routeId: "route-2", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 900 }] },
+  // Stop 3: Cedar Park Warehouse — 1,100 gal ULSD
+  { id: "r2-3", customerId: "c-r2-3", customerName: "Cedar Park Warehouse", shipToAddress: "1400 E Whitestone Blvd Cedar Park TX 78613", latitude: 30.5156, longitude: -97.7934, status: "assigned", volume: 1100, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Cedar Park", state: "TX", zip: "78613", tankSize: 5000, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-20", zone: "Cedar Park", routeId: "route-2", routeSequence: 4, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1100 }] },
+  // Stop 4: Pflugerville Fleet — 800 gal ULSD
+  { id: "r2-4", customerId: "c-r2-4", customerName: "Pflugerville Fleet", shipToAddress: "2301 FM 685 Pflugerville TX 78660", latitude: 30.4523, longitude: -97.5812, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Pflugerville", state: "TX", zip: "78660", tankSize: 3500, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-19", zone: "Pflugerville", routeId: "route-2", routeSequence: 5, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 800 }] },
+  // Stop 5: Hutto Farms Co-op — 1,100 gal ULSD
+  { id: "r2-5", customerId: "c-r2-5", customerName: "Hutto Farms Co-op", shipToAddress: "200 Ed Schmidt Blvd Hutto TX 78634", latitude: 30.5378, longitude: -97.5456, status: "assigned", volume: 1100, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Hutto", state: "TX", zip: "78634", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Hutto", routeId: "route-2", routeSequence: 6, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1100 }] },
 ]
 
-// Route 3 - Blue (Jessica Harper)
-// Stops: Hub -> Load(1) -> Transfer In(2) -> 2 Deliveries(3-4) -> Transfer Out(5) -> 2 Deliveries(6-7) -> Hub
-// Based on CSV: Austin Hub -> Magellan Round Rock -> Georgetown Fuel Depot (Transfer In) -> Georgetown Ready Mix -> Sun City HOA -> Georgetown Fuel Depot (Transfer Out) -> Florence Lumber -> Jarrell Equipment -> Hub
+// Route 3 — Jessica Harper (Product exceeding + retain. Two products Red/Clear. Truck + load pre-assigned.)
+// Retain from prev day: Red 300, Clear 500 | Load: Flint Hills 1,500 Red + 1,300 Clear
+// 6 deliveries, Planned Qty: 3,450 gal
 const route3Orders: ExtractionOrder[] = [
-  // Stop 3: Georgetown Ready Mix (first delivery after Load + Transfer In)
-  { id: "r3-3", customerId: "c-r3-3", customerName: "Georgetown Ready Mix", shipToAddress: "500 Rock St Georgetown TX 78626", latitude: 30.6412, longitude: -97.6789, status: "assigned", volume: 400, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Georgetown", state: "TX", zip: "78626", tankSize: 3000, currentLevel: 25, daysUntilEmpty: 11, priority: "Low", lastDelivery: "2026-01-15", zone: "Georgetown", routeId: "route-3", routeSequence: 3 },
-  // Stop 4: Sun City HOA
-  { id: "r3-4", customerId: "c-r3-4", customerName: "Sun City HOA", shipToAddress: "1501 Sun City Blvd Georgetown TX 78633", latitude: 30.6789, longitude: -97.7234, status: "assigned", volume: 250, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Georgetown", state: "TX", zip: "78633", tankSize: 2000, currentLevel: 55, daysUntilEmpty: 8, priority: "Medium", lastDelivery: "2026-01-18", zone: "Sun City", routeId: "route-3", routeSequence: 4 },
-  // Stop 6: Florence Lumber (after Transfer Out at stop 5)
-  { id: "r3-6", customerId: "c-r3-6", customerName: "Florence Lumber", shipToAddress: "301 N Patterson Ave Florence TX 76527", latitude: 30.8412, longitude: -97.7934, status: "assigned", volume: 600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Florence", state: "TX", zip: "76527", tankSize: 4000, currentLevel: 85, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-20", zone: "Florence", routeId: "route-3", routeSequence: 6 },
-  // Stop 7: Jarrell Equipment
-  { id: "r3-7", customerId: "c-r3-7", customerName: "Jarrell Equipment", shipToAddress: "800 CR 305 Jarrell TX 76537", latitude: 30.8123, longitude: -97.6234, status: "assigned", volume: 450, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Jarrell", state: "TX", zip: "76537", tankSize: 3500, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-22", zone: "Jarrell", routeId: "route-3", routeSequence: 7 },
+  // TRANSFER: commented out for Phase 1
+  // { id: "r3-tin", ... Transfer In Georgetown Fuel Depot ... orderType: "T" },
+  // Load: Flint Hills - Johnny Morris — Red 1,500, Clear 1,300 = 2,800 gal
+  { id: "r3-load", customerId: "c-r3-load", customerName: "Flint Hills - Johnny Morris", shipToAddress: "7501 Johnny Morris Road Austin TX 78724", latitude: 30.3271, longitude: -97.6198, status: "assigned", volume: 2800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78724", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-3", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 1500 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 1300 }] },
+  // Stop 1: Lakeway Fuel Stop — 550 gal (Red 200, Clear 350)
+  { id: "r3-1", customerId: "c-r3-1", customerName: "Lakeway Fuel Stop", shipToAddress: "1902 Ranch Rd 620, Lakeway, TX 78734", latitude: 30.3567, longitude: -97.9834, status: "assigned", volume: 550, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Lakeway", state: "TX", zip: "78734", tankSize: 4000, currentLevel: 72, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-22", zone: "Lakeway", routeId: "route-3", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 200 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 350 }] },
+  // Stop 2: Bee Cave Builders Supply — 700 gal (Red 300, Clear 400)
+  { id: "r3-2", customerId: "c-r3-2", customerName: "Bee Cave Builders Supply", shipToAddress: "12600 Bee Cave Pkwy, Bee Cave, TX 78738", latitude: 30.3089, longitude: -97.9523, status: "assigned", volume: 700, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Bee Cave", state: "TX", zip: "78738", tankSize: 5000, currentLevel: 38, daysUntilEmpty: 9, priority: "Medium", lastDelivery: "2026-01-19", zone: "Bee Cave", routeId: "route-3", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 300 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 400 }] },
+  // Stop 3: Westlake Hills Auto — 450 gal (Clear 450)
+  { id: "r3-3", customerId: "c-r3-3", customerName: "Westlake Hills Auto", shipToAddress: "920 Westbank Dr, Westlake Hills, TX 78746", latitude: 30.2934, longitude: -97.8112, status: "assigned", volume: 450, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Westlake Hills", state: "TX", zip: "78746", tankSize: 3500, currentLevel: 55, daysUntilEmpty: 6, priority: "Medium", lastDelivery: "2026-01-17", zone: "Westlake Hills", routeId: "route-3", routeSequence: 4, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 450 }] },
+  // Stop 4: Lost Creek Equipment — 600 gal (Red 400, Clear 200)
+  { id: "r3-4", customerId: "c-r3-4", customerName: "Lost Creek Equipment", shipToAddress: "3800 Lost Creek Blvd, Austin, TX 78735", latitude: 30.2789, longitude: -97.8334, status: "assigned", volume: 600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78735", tankSize: 4200, currentLevel: 18, daysUntilEmpty: 2, priority: "High", lastDelivery: "2026-01-20", zone: "West Austin", routeId: "route-3", routeSequence: 5, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 400 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 200 }] },
+  // Stop 5: Barton Creek Ranch — 350 gal (Red 350)
+  { id: "r3-5", customerId: "c-r3-5", customerName: "Barton Creek Ranch", shipToAddress: "4600 Barton Creek Blvd, Austin, TX 78735", latitude: 30.2456, longitude: -97.8534, status: "assigned", volume: 350, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78735", tankSize: 3000, currentLevel: 62, daysUntilEmpty: 11, priority: "Low", lastDelivery: "2026-01-15", zone: "Barton Creek", routeId: "route-3", routeSequence: 6, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 350 }] },
+  // Stop 6: Circle C Fuel Co — 800 gal (Red 200, Clear 600)
+  { id: "r3-6", customerId: "c-r3-6", customerName: "Circle C Fuel Co", shipToAddress: "7900 W Slaughter Ln, Austin, TX 78749", latitude: 30.2123, longitude: -97.8712, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78749", tankSize: 5500, currentLevel: 45, daysUntilEmpty: 7, priority: "Medium", lastDelivery: "2026-01-18", zone: "Circle C", routeId: "route-3", routeSequence: 7, orderType: "D", productBreakdown: [{ product: "200*DIESEL-OFFROAD RED", volume: 200 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 600 }] },
+  // TRANSFER: commented out for Phase 1
+  // { id: "r3-tout", ... Transfer Out Georgetown Fuel Depot ... orderType: "T" },
 ]
 
-// Route 4 - Pink (Kyle Reese)
-// Stops: Hub -> Transfer Out(1) -> 5 Deliveries(2-6) -> Transfer In(7) -> Hub
-// Based on CSV: Austin Hub -> Austin Fuel Island -> Lakeway Marina -> Bee Cave Auto -> Cedar Park Warehouse (Internal) -> Leander Equipment -> Liberty Hill Sand -> Austin Fuel Island -> Hub
+// Route 4 — Kyle Reese (L2 + L3 combined. Two products ULSD/87Reg. Truck + load pre-assigned.)
+// Load: Georgetown Fuel Depot 1,400 ULSD + 1,200 87 Reg | 5 deliveries, Planned Qty: 2,850 gal
 const route4Orders: ExtractionOrder[] = [
-  // Stop 2: Lakeway Marina (first delivery after Transfer Out)
-  { id: "r4-2", customerId: "c-r4-2", customerName: "Lakeway Marina", shipToAddress: "103 Lakeway Dr Lakeway TX 78734", latitude: 30.3656, longitude: -97.9789, status: "assigned", volume: 600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Lakeway", state: "TX", zip: "78734", tankSize: 4000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-21", zone: "Lakeway", routeId: "route-4", routeSequence: 2 },
-  // Stop 3: Bee Cave Auto
-  { id: "r4-3", customerId: "c-r4-3", customerName: "Bee Cave Auto", shipToAddress: "12101 Bee Cave Rd Bee Cave TX 78738", latitude: 30.3078, longitude: -97.9412, status: "assigned", volume: 350, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Bee Cave", state: "TX", zip: "78738", tankSize: 2500, currentLevel: 55, daysUntilEmpty: 6, priority: "Medium", lastDelivery: "2026-01-18", zone: "Bee Cave", routeId: "route-4", routeSequence: 3 },
-  // Stop 4: Cedar Park Warehouse (Internal delivery)
-  { id: "r4-4", customerId: "c-r4-4", customerName: "Cedar Park Warehouse", shipToAddress: "1400 E Whitestone Blvd Cedar Park TX 78613", latitude: 30.5156, longitude: -97.7934, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Cedar Park", state: "TX", zip: "78613", tankSize: 5000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Cedar Park", routeId: "route-4", routeSequence: 4 },
-  // Stop 5: Leander Equipment
-  { id: "r4-5", customerId: "c-r4-5", customerName: "Leander Equipment", shipToAddress: "901 Crystal Falls Pkwy Leander TX 78641", latitude: 30.5678, longitude: -97.8523, status: "assigned", volume: 550, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Leander", state: "TX", zip: "78641", tankSize: 3500, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-20", zone: "Leander", routeId: "route-4", routeSequence: 5 },
-  // Stop 6: Liberty Hill Sand & Gravel
-  { id: "r4-6", customerId: "c-r4-6", customerName: "Liberty Hill Sand & Gravel", shipToAddress: "14001 W Hwy 29 Liberty Hill TX 78642", latitude: 30.6645, longitude: -97.9234, status: "assigned", volume: 700, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Liberty Hill", state: "TX", zip: "78642", tankSize: 4500, currentLevel: 85, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-19", zone: "Liberty Hill", routeId: "route-4", routeSequence: 6 },
+  // TRANSFER: commented out for Phase 1
+  // { id: "r4-tout", ... Transfer Out Austin Fuel Island ... orderType: "T" },
+  // Load: Georgetown Fuel Depot — ULSD 1,400 + 87 Reg 1,200 = 2,600 gal
+  { id: "r4-load", customerId: "c-r4-load", customerName: "Georgetown Fuel Depot", shipToAddress: "500 Industrial Ave Georgetown TX 78626", latitude: 30.6478, longitude: -97.6773, status: "assigned", volume: 2600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Georgetown", state: "TX", zip: "78626", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-4", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1400 }, { product: "87 OCT W/ 10% ETH", volume: 1200 }] },
+  // Stop 1: Taylor Auto Group — 450 gal (ULSD 300, 87 Reg 150)
+  { id: "r4-1", customerId: "c-r4-1", customerName: "Taylor Auto Group", shipToAddress: "3401 N Main St Taylor TX 76574", latitude: 30.5912, longitude: -97.4189, status: "assigned", volume: 450, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Taylor", state: "TX", zip: "76574", tankSize: 3500, currentLevel: 85, daysUntilEmpty: 2, priority: "High", lastDelivery: "2026-01-21", zone: "Taylor", routeId: "route-4", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 300 }, { product: "87 OCT W/ 10% ETH", volume: 150 }] },
+  // Stop 2: Hutto Farms Co-op — 1,200 gal (ULSD 400, 87 Reg 800)
+  { id: "r4-2", customerId: "c-r4-2", customerName: "Hutto Farms Co-op", shipToAddress: "200 Ed Schmidt Blvd Hutto TX 78634", latitude: 30.5378, longitude: -97.5456, status: "assigned", volume: 1200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Hutto", state: "TX", zip: "78634", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Hutto", routeId: "route-4", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 400 }, { product: "87 OCT W/ 10% ETH", volume: 800 }] },
+  // Stop 3: Round Rock Express Stadium — 300 gal (ULSD 200, 87 Reg 100)
+  { id: "r4-3", customerId: "c-r4-3", customerName: "Round Rock Express Stadium", shipToAddress: "3400 E Palm Valley Blvd Round Rock TX 78665", latitude: 30.5289, longitude: -97.6289, status: "assigned", volume: 300, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Round Rock", state: "TX", zip: "78665", tankSize: 2500, currentLevel: 55, daysUntilEmpty: 6, priority: "Medium", lastDelivery: "2026-01-18", zone: "Round Rock", routeId: "route-4", routeSequence: 4, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 200 }, { product: "87 OCT W/ 10% ETH", volume: 100 }] },
+  // Stop 4: Georgetown Municipal — 350 gal (ULSD 350)
+  { id: "r4-4", customerId: "c-r4-4", customerName: "Georgetown Municipal", shipToAddress: "100 Industrial Ave Georgetown TX 78626", latitude: 30.6328, longitude: -97.6783, status: "assigned", volume: 350, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Georgetown", state: "TX", zip: "78626", tankSize: 5000, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-20", zone: "Georgetown", routeId: "route-4", routeSequence: 5, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 350 }] },
+  // Stop 5: Jarrell Equipment — 550 gal (ULSD 350, 87 Reg 200)
+  { id: "r4-5", customerId: "c-r4-5", customerName: "Jarrell Equipment", shipToAddress: "800 CR 305 Jarrell TX 76537", latitude: 30.8123, longitude: -97.6234, status: "assigned", volume: 550, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Jarrell", state: "TX", zip: "76537", tankSize: 3500, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-22", zone: "Jarrell", routeId: "route-4", routeSequence: 6, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 350 }, { product: "87 OCT W/ 10% ETH", volume: 200 }] },
+  // TRANSFER: commented out for Phase 1
+  // { id: "r4-tin", ... Transfer In Austin Fuel Island ... orderType: "T" },
 ]
 
-// Route 5 - Red (Forrest Gump)
-// Stops: Hub (pre-loaded) -> 5 Deliveries(1-5) -> Load(6) -> Hub
-// Based on CSV: Austin Hub (preloaded) -> Buda Ready Mix -> Kyle Cement -> San Marcos Equipment -> Wimberley General -> Dripping Springs ISD -> Flint Hills (preload for tomorrow) -> Hub
+// Route 5 — Forrest Gump (Clean state. Single product ULSD. Everything fits. Truck + load pre-assigned.)
+// Load: Flint Hills 3,500 gal ULSD | 4 deliveries, Planned Qty: 3,500 gal
 const route5Orders: ExtractionOrder[] = [
-  // Stop 1: Buda Ready Mix (first delivery, truck already pre-loaded)
-  { id: "r5-1", customerId: "c-r5-1", customerName: "Buda Ready Mix", shipToAddress: "1200 Main St Buda TX 78610", latitude: 30.0856, longitude: -97.8401, status: "assigned", volume: 500, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Buda", state: "TX", zip: "78610", tankSize: 3500, currentLevel: 85, daysUntilEmpty: 2, priority: "High", lastDelivery: "2026-01-21", zone: "Buda", routeId: "route-5", routeSequence: 1 },
-  // Stop 2: Kyle Cement
-  { id: "r5-2", customerId: "c-r5-2", customerName: "Kyle Cement", shipToAddress: "850 Center St Kyle TX 78640", latitude: 30.0012, longitude: -97.8623, status: "assigned", volume: 650, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Kyle", state: "TX", zip: "78640", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 7, priority: "Medium", lastDelivery: "2026-01-18", zone: "Kyle", routeId: "route-5", routeSequence: 2 },
-  // Stop 3: San Marcos Equipment
-  { id: "r5-3", customerId: "c-r5-3", customerName: "San Marcos Equipment", shipToAddress: "1601 S IH-35 San Marcos TX 78666", latitude: 29.8389, longitude: -97.9412, status: "assigned", volume: 400, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "San Marcos", state: "TX", zip: "78666", tankSize: 3000, currentLevel: 25, daysUntilEmpty: 14, priority: "Low", lastDelivery: "2026-01-14", zone: "San Marcos", routeId: "route-5", routeSequence: 3 },
-  // Stop 4: Wimberley General Store
-  { id: "r5-4", customerId: "c-r5-4", customerName: "Wimberley General Store", shipToAddress: "14500 Ranch Rd 12 Wimberley TX 78676", latitude: 29.9978, longitude: -98.0989, status: "assigned", volume: 200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Wimberley", state: "TX", zip: "78676", tankSize: 1500, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-20", zone: "Wimberley", routeId: "route-5", routeSequence: 4 },
-  // Stop 5: Dripping Springs ISD
-  { id: "r5-5", customerId: "c-r5-5", customerName: "Dripping Springs ISD", shipToAddress: "510 W Mercer St Dripping Springs TX 78620", latitude: 30.1901, longitude: -98.0867, status: "assigned", volume: 250, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Dripping Springs", state: "TX", zip: "78620", tankSize: 2000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-19", zone: "Dripping Springs", routeId: "route-5", routeSequence: 5 },
+  // Load: Flint Hills - Johnny Morris — 3,500 gal ULSD
+  { id: "r5-load", customerId: "c-r5-load", customerName: "Flint Hills - Johnny Morris", shipToAddress: "7501 Johnny Morris Road Austin TX 78724", latitude: 30.3271, longitude: -97.6198, status: "assigned", volume: 3500, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78724", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-5", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 3500 }] },
+  // Stop 1: Lockhart Propane — 800 gal ULSD
+  { id: "r5-1", customerId: "c-r5-1", customerName: "Lockhart Propane", shipToAddress: "800 S Colorado St, Lockhart, TX 78644", latitude: 29.8834, longitude: -97.6712, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Lockhart", state: "TX", zip: "78644", tankSize: 3500, currentLevel: 85, daysUntilEmpty: 2, priority: "High", lastDelivery: "2026-01-21", zone: "Lockhart", routeId: "route-5", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 800 }] },
+  // Stop 2: San Marcos Fleet Services — 1,000 gal ULSD
+  { id: "r5-2", customerId: "c-r5-2", customerName: "San Marcos Fleet Services", shipToAddress: "1601 S IH-35 San Marcos TX 78666", latitude: 29.8389, longitude: -97.9412, status: "assigned", volume: 1000, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "San Marcos", state: "TX", zip: "78666", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 7, priority: "Medium", lastDelivery: "2026-01-18", zone: "San Marcos", routeId: "route-5", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1000 }] },
+  // Stop 3: Kyle Industrial Supply — 900 gal ULSD
+  { id: "r5-3", customerId: "c-r5-3", customerName: "Kyle Industrial Supply", shipToAddress: "850 Center St Kyle TX 78640", latitude: 30.0012, longitude: -97.8623, status: "assigned", volume: 900, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Kyle", state: "TX", zip: "78640", tankSize: 3000, currentLevel: 25, daysUntilEmpty: 14, priority: "Low", lastDelivery: "2026-01-14", zone: "Kyle", routeId: "route-5", routeSequence: 4, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 900 }] },
+  // Stop 4: Buda Equipment Rental — 800 gal ULSD
+  { id: "r5-4", customerId: "c-r5-4", customerName: "Buda Equipment Rental", shipToAddress: "1200 Main St Buda TX 78610", latitude: 30.0856, longitude: -97.8401, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Buda", state: "TX", zip: "78610", tankSize: 2000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-19", zone: "Buda", routeId: "route-5", routeSequence: 5, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 800 }] },
 ]
 
 // Route 6 - Green (Tom Hanks) — west Austin / Lakeway / Bee Cave area, no truck
@@ -3027,6 +3046,7 @@ export const mockRoutes: any[] = [
     status: "active",
     createdAt: "2026-02-04",
     truckName: null,
+    truckId: null, // Demo flow — user selects H-118
   },
   {
     id: "route-2",
@@ -3037,7 +3057,8 @@ export const mockRoutes: any[] = [
     orders: route2Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
-    truckName: "H-109 · 2018 Lube Box Truck",
+    truckName: "H-205 · 2021 Peterbilt Tanker",
+    truckId: "H-205",
   },
   {
     id: "route-3",
@@ -3048,7 +3069,9 @@ export const mockRoutes: any[] = [
     orders: route3Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
-    truckName: "H-215 · 2022 Freightliner Cascadia",
+    truckName: "H-310 · 2020 Freightliner Tanker",
+    truckId: "H-310",
+    retainedFuel: [{ product: "200*DIESEL-OFFROAD RED", volume: 300 }, { product: "200*DIESEL-ONROAD CLEAR", volume: 500 }],
   },
   {
     id: "route-4",
@@ -3059,7 +3082,8 @@ export const mockRoutes: any[] = [
     orders: route4Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
-    truckName: "H-133 · 2016 International ProStar",
+    truckName: "H-442 · 2018 Mack Tanker",
+    truckId: "H-442",
   },
   {
     id: "route-5",
@@ -3070,7 +3094,8 @@ export const mockRoutes: any[] = [
     orders: route5Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
-    truckName: "H-301 · 2021 Peterbilt 389 Tanker",
+    truckName: "H-556 · 2022 International Tanker",
+    truckId: "H-556",
   },
   {
     id: "route-6",

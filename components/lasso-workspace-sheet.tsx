@@ -57,6 +57,10 @@ const TRUCKS: TruckItem[] = [
   { id: "H-177", name: "H-177 - 2015 Mack Pinnacle Tank Wagon",  badge: "Tank Wagon", capacity: "3,500 gal", compartments: "4 Compartments" },
   { id: "H-162", name: "H-162 - 2019 Peterbilt 389 Flatbed",    badge: "Truck",      capacity: "4,500 gal", compartments: "4 Compartments" },
   { id: "H-301", name: "H-301 - 2021 Peterbilt 389 Tanker",     badge: "Tank Wagon", capacity: "5,200 gal", compartments: "5 Compartments" },
+  { id: "H-205", name: "H-205 - 2021 Peterbilt Tanker",        badge: "Tank Wagon", capacity: "4,200 gal", compartments: "3 Compartments" },
+  { id: "H-310", name: "H-310 - 2020 Freightliner Tanker",     badge: "Truck",      capacity: "4,600 gal", compartments: "4 Compartments" },
+  { id: "H-442", name: "H-442 - 2018 Mack Tanker",             badge: "Tank Wagon", capacity: "2,600 gal", compartments: "4 Compartments" },
+  { id: "H-556", name: "H-556 - 2022 International Tanker",     badge: "Truck",      capacity: "5,000 gal", compartments: "3 Compartments" },
 ]
 
 const TRAILERS: TrailerItem[] = [
