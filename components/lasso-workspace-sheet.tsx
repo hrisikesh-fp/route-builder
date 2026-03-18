@@ -1,11 +1,13 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, TriangleAlert, Plus, ArrowUp, ArrowDown } from "lucide-react"
+import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
 import { base1Infrastructure } from "@/lib/infrastructure-data"
 import { AddLoadOrderModal } from "@/components/add-load-order-modal"
+import { validateRouteCapacity, type ValidationResult } from "@/lib/capacity-validation"
+import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -834,6 +836,7 @@ function ExpandedRouteCard({
   truckName,
   driverName,
   recentlyAddedOrderId,
+  validation,
   onOpenModal,
   onTruckChange,
 }: {
@@ -843,14 +846,64 @@ function ExpandedRouteCard({
   truckName: string | null
   driverName: string
   recentlyAddedOrderId?: string | null
+  validation: ValidationResult | null
   onOpenModal: () => void
   onTruckChange?: (truck: TruckItem) => void
 }) {
+  // Build a map of delivery stop index → warnings for inline display
+  const stopWarnings: Record<number, string[]> = {}
+  if (validation?.l3) {
+    for (const issue of validation.l3) {
+      if (!stopWarnings[issue.stopIndex]) stopWarnings[issue.stopIndex] = []
+      stopWarnings[issue.stopIndex].push(`⚠ ${issue.product} will run out before this stop`)
+    }
+  }
+
+  // Track delivery stop counter to match validation stop indices
+  let deliveryIdx = 0
+
   return (
     <div style={{ paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column" }}>
 
       {/* Starting hub: truck + hub combined, arm → down only */}
       <TruckHubStartRow truckName={truckName} hubName={hubName} onTruckChange={onTruckChange} />
+
+      {/* Truck validation message */}
+      {validation && (
+        <div style={{ paddingLeft: CARD_LEFT, paddingRight: 16, paddingTop: 4, paddingBottom: 4 }}>
+          <span style={{
+            fontSize: 13,
+            fontWeight: 400,
+            color: validation.truckMessageColor === "red" ? "#EF4444"
+              : validation.truckMessageColor === "amber" ? "#EAB308"
+              : "#4ADE80",
+          }}>
+            {validation.truckMessage}
+          </span>
+        </div>
+      )}
+
+      {/* Expanded validation banner — issues list */}
+      {validation && validation.expandedIssues.length > 0 && (
+        <div style={{
+          marginLeft: CARD_LEFT,
+          marginRight: 16,
+          marginTop: 4,
+          marginBottom: 4,
+          backgroundColor: "rgba(239, 68, 68, 0.08)",
+          borderRadius: 4,
+          padding: "10px 16px",
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "#EF4444", marginBottom: 6 }}>
+            ⚠ {validation.expandedIssues.length} {validation.expandedIssues.length === 1 ? "Item needs" : "Items need"} your attention
+          </div>
+          {validation.expandedIssues.map((issue, i) => (
+            <div key={i} style={{ fontSize: 13, color: "#EF4444", paddingLeft: 12, lineHeight: "20px" }}>
+              - {issue}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Bridge gap between starting hub and orders */}
       <SeqLineBridge />
@@ -874,20 +927,39 @@ function ExpandedRouteCard({
           <NoLoadOrderRow onOpenModal={onOpenModal} />
         )}
         {orders.map((order, idx) => {
+          // Track delivery index for validation matching
+          const isDelivery = !order.orderType || order.orderType === "D"
+          if (isDelivery) deliveryIdx++
+          const currentDeliveryIdx = deliveryIdx
+
+          // Check if we need a mid-route "Add Load Order" CTA before this stop
+          const showMidRouteCTA = isDelivery
+            && validation?.firstFailingStopIndex != null
+            && currentDeliveryIdx === validation.firstFailingStopIndex
+            && orders.some((o) => o.orderType === "L") // only if there's already a load (otherwise the top banner handles it)
+
           // Load orders carry their actual time in scheduledDate
           // Delivery orders use routeSequence to stay stable after insertions
           const stopTime =
             order.orderType === "L" && order.scheduledDate
               ? order.scheduledDate
               : MOCK_STOP_TIMES[(order.routeSequence ?? idx + 1) - 1] || MOCK_STOP_TIMES[idx] || "—"
+
+          const warnings = isDelivery ? stopWarnings[currentDeliveryIdx] : undefined
+
           return (
-            <OrderStopRow
-              key={order.id}
-              order={order}
-              idx={idx}
-              stopTime={stopTime}
-              isNew={order.id === recentlyAddedOrderId}
-            />
+            <div key={order.id}>
+              {showMidRouteCTA && (
+                <MidRouteAddLoadCTA onOpenModal={onOpenModal} />
+              )}
+              <OrderStopRow
+                order={order}
+                idx={idx}
+                stopTime={stopTime}
+                isNew={order.id === recentlyAddedOrderId}
+                warnings={warnings}
+              />
+            </div>
           )
         })}
       </div>
@@ -901,26 +973,84 @@ function ExpandedRouteCard({
   )
 }
 
-function OrderStopRow({
-  order,
-  idx,
-  stopTime,
-  isNew,
-}: {
-  order: ExtractionOrder
-  idx: number
-  stopTime: string
-  isNew?: boolean
-}) {
-  const seq = idx + 1
-  const type = order.orderType ?? "D"
-
+/** Mid-route "Add Load Order" CTA — inserted between stops when a runout is detected */
+function MidRouteAddLoadCTA({ onOpenModal }: { onOpenModal: () => void }) {
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "row",
         alignItems: "center",
+        gap: SEQ_TO_CARD_GAP,
+        position: "relative",
+        zIndex: 1,
+        marginBottom: ORDER_LIST_GAP,
+      }}
+    >
+      <div style={{ width: SEQ_COL_W, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#818CF8" }} />
+      </div>
+      <div
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(99, 102, 241, 0.1)",
+          borderRadius: 4,
+          padding: "8px 16px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 400, color: "#818CF8" }}>Add load orders</span>
+        <button
+          onClick={onOpenModal}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "4px 12px",
+            borderRadius: 4,
+            border: "1px solid rgba(255,255,255,0.08)",
+            backgroundColor: "rgba(255,255,255,0.05)",
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 400,
+            color: "#E5E5E5",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)" }}
+        >
+          <Plus size={14} color="#E5E5E5" />
+          Add Load Order
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function OrderStopRow({
+  order,
+  idx,
+  stopTime,
+  isNew,
+  warnings,
+}: {
+  order: ExtractionOrder
+  idx: number
+  stopTime: string
+  isNew?: boolean
+  warnings?: string[]
+}) {
+  const seq = idx + 1
+  const type = order.orderType ?? "D"
+  const hasWarnings = warnings && warnings.length > 0
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "flex-start",
         gap: SEQ_TO_CARD_GAP,
         position: "relative",
         zIndex: 1,
@@ -937,6 +1067,7 @@ function OrderStopRow({
           gap: 4,
           position: "relative",
           zIndex: 1,
+          paddingTop: 16,
         }}
       >
         {/* Sequence badge — 16×16 circle per Figma spec, #A3A3A3 bg, #171717 text */}
@@ -974,29 +1105,31 @@ function OrderStopRow({
         </span>
       </div>
 
-      {/* Order card */}
-      <div
-        style={{
-          flex: 1,
-          backgroundColor: "#1F1F1F",
-          borderRadius: 4,
-          padding: 16,
-          gap: 12,
-          display: "flex",
-          flexDirection: "row",
-          animation: isNew ? "rb-flicker 0.5s ease 8" : undefined,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = "#333333"
-          const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
-          if (btn) btn.style.opacity = "1"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = "#1F1F1F"
-          const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
-          if (btn) btn.style.opacity = "0"
-        }}
-      >
+      {/* Order card with optional warning strip */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div
+          style={{
+            flex: 1,
+            backgroundColor: "#1F1F1F",
+            borderRadius: hasWarnings ? "4px 4px 0 0" : 4,
+            borderLeft: hasWarnings ? "4px solid #EF4444" : "none",
+            padding: 16,
+            gap: 12,
+            display: "flex",
+            flexDirection: "row",
+            animation: isNew ? "rb-flicker 0.5s ease 8" : undefined,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#333333"
+            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
+            if (btn) btn.style.opacity = "1"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#1F1F1F"
+            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
+            if (btn) btn.style.opacity = "0"
+          }}
+        >
         {/* Left: checkbox + grip */}
         <div
           style={{
@@ -1105,6 +1238,24 @@ function OrderStopRow({
             Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
           </span>
         </div>
+      </div>
+        {/* Warning strips for products that run out at this stop */}
+        {hasWarnings && warnings.map((w, i) => (
+          <div
+            key={i}
+            style={{
+              backgroundColor: "rgba(239, 68, 68, 0.08)",
+              borderLeft: "4px solid #EF4444",
+              borderRadius: i === warnings.length - 1 ? "0 0 4px 4px" : 0,
+              padding: "6px 16px",
+              fontSize: 13,
+              fontWeight: 400,
+              color: "#EF4444",
+            }}
+          >
+            {w}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -1373,41 +1524,12 @@ export function LassoWorkspaceSheet({
                     // Use user-selected truck if available, else fall back to mock data truck
                     const userSelectedTruck = selectedTrucks[routeId] ?? null
                     const truckName = userSelectedTruck?.name ?? route?.truckName ?? null
-                    // Parse capacity like "4,500 gal" → 4500
-                    const truckCapacity = userSelectedTruck
-                      ? parseInt(userSelectedTruck.capacity.replace(/,/g, ""))
-                      : TRUCK_CAPACITY
-                    const diff = truckName ? plannedQty - truckCapacity : 0
+                    const truckId = userSelectedTruck?.id ?? route?.truckId ?? null
+                    const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
+                    const retainedFuel = route?.retainedFuel ?? undefined
 
-                    // Determine alert state (only when a truck is selected)
-                    type AlertState = "exceeding-truck" | "exceeding-product" | "below-truck" | null
-                    let alertState: AlertState = null
-                    let alertAmount = 0
-                    if (truckName && userSelectedTruck) {
-                      if (diff > 0) {
-                        alertState = "exceeding-truck"
-                        alertAmount = diff
-                      } else {
-                        // Check if any single delivery order exceeds per-compartment capacity
-                        const compartmentCount = parseInt(userSelectedTruck.compartments) || 1
-                        const perCompartment = truckCapacity / compartmentCount
-                        const deliveryOrders = sortedOrders.filter((o) => !o.orderType || o.orderType === "D")
-                        let maxProductOverflow = 0
-                        for (const o of deliveryOrders) {
-                          const vol = o.volume ?? 0
-                          if (vol > perCompartment) {
-                            maxProductOverflow = Math.max(maxProductOverflow, vol - perCompartment)
-                          }
-                        }
-                        if (maxProductOverflow > 0) {
-                          alertState = "exceeding-product"
-                          alertAmount = Math.round(maxProductOverflow)
-                        } else {
-                          alertState = "below-truck"
-                          alertAmount = Math.abs(diff)
-                        }
-                      }
-                    }
+                    // Run validation engine (returns null if no truck)
+                    const validation = validateRouteCapacity(sortedOrders, truckProfile, retainedFuel)
 
                     // Hub name
                     const hubId = orders[0]?.hubId
@@ -1489,11 +1611,13 @@ export function LassoWorkspaceSheet({
                         </div>
 
                         {/* Alert bar — indented to align with card left edge */}
-                        {alertState && (
+                        {validation && validation.collapsedBannerType !== "none" && (
                           <div style={{ paddingLeft: LEFT_INDENT }}>
                             <div
                               style={{
-                                backgroundColor: "rgba(234, 179, 8, 0.09)",
+                                backgroundColor: validation.collapsedBannerType === "red"
+                                  ? "rgba(239, 68, 68, 0.09)"
+                                  : "rgba(234, 179, 8, 0.09)",
                                 borderRadius: "0px 0px 4px 4px",
                                 padding: "6px 16px 6px 20px",
                                 display: "flex",
@@ -1503,19 +1627,29 @@ export function LassoWorkspaceSheet({
                                 gap: 12,
                               }}
                             >
-                              <span style={{ fontSize: 14, fontWeight: 400, color: "#EAB308", whiteSpace: "nowrap" }}>
-                                {alertState === "exceeding-truck" && "Exceeding Truck Capacity"}
-                                {alertState === "exceeding-product" && "Exceeding Product Capacity"}
-                                {alertState === "below-truck" && "Below Truck Capacity"}
+                              <span style={{
+                                fontSize: 14,
+                                fontWeight: 400,
+                                color: validation.collapsedBannerType === "red" ? "#EF4444" : "#EAB308",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}>
+                                {validation.l3.length > 0 && "⚠ "}{validation.collapsedBannerText}
                               </span>
-                              <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                                {alertState === "exceeding-truck" && <ArrowUp size={16} color="#EAB308" />}
-                                {alertState === "below-truck" && <ArrowDown size={16} color="#EAB308" />}
-                                <span style={{ fontSize: 14, fontWeight: 400, color: "#EAB308", whiteSpace: "nowrap" }}>
-                                  {alertAmount.toLocaleString()} gal
-                                </span>
-                                <Info size={16} color="#EAB308" />
-                              </div>
+                              {validation.collapsedBannerDelta && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                  <span style={{
+                                    fontSize: 14,
+                                    fontWeight: 400,
+                                    color: validation.collapsedBannerType === "red" ? "#EF4444" : "#EAB308",
+                                    whiteSpace: "nowrap",
+                                  }}>
+                                    {validation.collapsedBannerDelta}
+                                  </span>
+                                  <Info size={16} color={validation.collapsedBannerType === "red" ? "#EF4444" : "#EAB308"} />
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
@@ -1529,6 +1663,7 @@ export function LassoWorkspaceSheet({
                             truckName={userSelectedTruck?.name ?? truckName}
                             driverName={driverName}
                             recentlyAddedOrderId={recentlyAddedOrderId}
+                            validation={validation}
                             onTruckChange={(truck) => setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))}
                             onOpenModal={() => {
                               setActiveRouteIdForModal(routeId)
