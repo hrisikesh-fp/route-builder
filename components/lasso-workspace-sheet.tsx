@@ -1281,7 +1281,17 @@ export function LassoWorkspaceSheet({
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
   const [recentlyAddedOrderId, setRecentlyAddedOrderId] = useState<string | null>(null)
   // Selected trucks per route: { [routeId]: TruckItem }
-  const [selectedTrucks, setSelectedTrucks] = useState<Record<string, TruckItem>>({})
+  // Pre-populate from mockRoutes for routes that have truckId
+  const [selectedTrucks, setSelectedTrucks] = useState<Record<string, TruckItem>>(() => {
+    const initial: Record<string, TruckItem> = {}
+    for (const route of mockRoutes) {
+      if (route.truckId) {
+        const truck = TRUCKS.find((t) => t.id === route.truckId)
+        if (truck) initial[route.id] = truck
+      }
+    }
+    return initial
+  })
   // Add Load Order modal state
   const [isAddLoadModalOpen, setIsAddLoadModalOpen] = useState(false)
   const [activeRouteIdForModal, setActiveRouteIdForModal] = useState<string | null>(null)
