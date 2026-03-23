@@ -1662,11 +1662,10 @@ export function LassoWorkspaceSheet({
                               hasBanner={!!(validation && validation.collapsedBannerType !== "none")}
                             />
 
-                            {/* Banner placeholder — actual banner rendered outside card body below */}
                           </div>
                         </div>
 
-                        {/* Separated banner — outside card, bottom-rounded, with background fill */}
+                        {/* Separated banner — aligned with card body via same flex row layout */}
                         {validation && validation.collapsedBannerType !== "none" && (() => {
                           const isRed = validation.collapsedBannerType === "red"
                           const isAmber = validation.collapsedBannerType === "amber"
@@ -1677,46 +1676,53 @@ export function LassoWorkspaceSheet({
                             ? validation.expandedBannerText
                             : validation.collapsedBannerText
                           return (
-                          <div
-                            style={{
-                              backgroundColor: bannerBg,
-                              borderRadius: isExpanded ? 0 : "0px 0px 4px 4px",
-                              padding: "6px 16px 6px 20px",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: isExpanded && hasIssues ? 4 : 0,
-                            }}
-                          >
-                            {/* Summary line */}
-                            <div style={{
-                              display: "flex",
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 8,
-                            }}>
-                              {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
-                              <span style={{
-                                fontSize: 14,
-                                fontWeight: 400,
-                                color: bannerColor,
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
+                          <div style={{ display: "flex", flexDirection: "row", alignItems: "start", gap: 8 }}>
+                            {/* Spacer matching checkbox+chevron width */}
+                            <div style={{ width: 48, flexShrink: 0 }} />
+                            {/* Banner body — aligned with card */}
+                            <div
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                backgroundColor: bannerBg,
+                                borderRadius: isExpanded ? 0 : "0px 0px 4px 4px",
+                                padding: "6px 16px 6px 20px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: isExpanded && hasIssues ? 4 : 0,
+                              }}
+                            >
+                              {/* Summary line */}
+                              <div style={{
+                                display: "flex",
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 8,
                               }}>
-                                {bannerText}
-                              </span>
-                            </div>
-
-                            {/* Expanded bullet points */}
-                            {isExpanded && hasIssues && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                {validation.expandedIssues.map((issue, i) => (
-                                  <div key={i} style={{ fontSize: 13, color: bannerColor, paddingLeft: 24, lineHeight: "20px" }}>
-                                    • {issue}
-                                  </div>
-                                ))}
+                                {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
+                                <span style={{
+                                  fontSize: 14,
+                                  fontWeight: 400,
+                                  color: bannerColor,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}>
+                                  {bannerText}
+                                </span>
                               </div>
-                            )}
+
+                              {/* Expanded bullet points */}
+                              {isExpanded && hasIssues && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                  {validation.expandedIssues.map((issue, i) => (
+                                    <div key={i} style={{ fontSize: 13, color: bannerColor, paddingLeft: 24, lineHeight: "20px" }}>
+                                      • {issue}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           )
                         })()}
