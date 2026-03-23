@@ -1659,84 +1659,61 @@ export function LassoWorkspaceSheet({
                               isHovered={hoveredRouteId === routeId}
                             />
 
-                            {/* Unified banner — inside the card container */}
-                            {validation && validation.collapsedBannerType !== "none" && (() => {
-                              const isRed = validation.collapsedBannerType === "red"
-                              const isAmber = validation.collapsedBannerType === "amber"
-                              const bannerColor = isRed ? "#f87171" : "#eab308"
-                              const bannerBg = isRed ? "rgba(248, 113, 113, 0.2)" : "rgba(234, 179, 8, 0.09)"
-                              const hasIssues = validation.expandedIssues.length > 0
-                              // Use expanded header when route is expanded and there are issues to show as bullets
-                              const bannerText = isExpanded && hasIssues
-                                ? validation.expandedBannerText
-                                : validation.collapsedBannerText
-                              return (
-                              <div
-                                style={{
-                                  backgroundColor: bannerBg,
-                                  borderRadius: isExpanded ? 0 : "0px 0px 4px 4px",
-                                  padding: "6px 24px 6px 20px",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: isExpanded && hasIssues ? 6 : 0,
-                                }}
-                              >
-                                {/* Summary line */}
-                                <div style={{
-                                  display: "flex",
-                                  flexDirection: "row",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                  gap: 12,
-                                }}>
-                                  {/* Left: icon + text */}
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                                    {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
-                                    <span style={{
-                                      fontSize: 14,
-                                      fontWeight: 400,
-                                      color: bannerColor,
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                    }}>
-                                      {bannerText}
-                                    </span>
-                                  </div>
-                                  {/* Right: arrow + delta + info — only show arrow/delta for single-issue banners (no "+ N more") */}
-                                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                                    {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && isAmber && validation.l1.status === "below" && (
-                                      <ArrowDown size={16} color={bannerColor} />
-                                    )}
-                                    {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && validation.collapsedBannerDelta && (
-                                      <span style={{
-                                        fontSize: 14,
-                                        fontWeight: 400,
-                                        color: bannerColor,
-                                        whiteSpace: "nowrap",
-                                      }}>
-                                        {validation.collapsedBannerDelta}
-                                      </span>
-                                    )}
-                                    <Info size={16} color="#737373" />
-                                  </div>
-                                </div>
-
-                                {/* Expanded bullet points — shown when route is expanded and has issues */}
-                                {isExpanded && hasIssues && (
-                                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                    {validation.expandedIssues.map((issue, i) => (
-                                      <div key={i} style={{ fontSize: 13, color: bannerColor, paddingLeft: 24, lineHeight: "20px" }}>
-                                        • {issue}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                              )
-                            })()}
+                            {/* Banner placeholder — actual banner rendered outside card body below */}
                           </div>
                         </div>
+
+                        {/* Separated banner — sits outside the card, below it */}
+                        {validation && validation.collapsedBannerType !== "none" && (() => {
+                          const isRed = validation.collapsedBannerType === "red"
+                          const isAmber = validation.collapsedBannerType === "amber"
+                          const bannerColor = isRed ? "#f87171" : "#eab308"
+                          const hasIssues = validation.expandedIssues.length > 0
+                          const bannerText = isExpanded && hasIssues
+                            ? validation.expandedBannerText
+                            : validation.collapsedBannerText
+                          return (
+                          <div
+                            style={{
+                              padding: "4px 24px 4px 20px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: isExpanded && hasIssues ? 4 : 0,
+                            }}
+                          >
+                            {/* Summary line */}
+                            <div style={{
+                              display: "flex",
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 8,
+                            }}>
+                              {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
+                              <span style={{
+                                fontSize: 14,
+                                fontWeight: 400,
+                                color: bannerColor,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}>
+                                {bannerText}
+                              </span>
+                            </div>
+
+                            {/* Expanded bullet points */}
+                            {isExpanded && hasIssues && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                {validation.expandedIssues.map((issue, i) => (
+                                  <div key={i} style={{ fontSize: 13, color: bannerColor, paddingLeft: 24, lineHeight: "20px" }}>
+                                    • {issue}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          )
+                        })()}
 
                         {/* Expanded accordion — full width (no indent), CARD_LEFT handled internally */}
                         {isExpanded && (
