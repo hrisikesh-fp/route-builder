@@ -142,6 +142,7 @@ function RouteCardCollapsed({
   plannedQty,
   truckName,
   isHovered,
+  hasBanner = false,
 }: {
   color: string
   driverName: string
@@ -149,12 +150,13 @@ function RouteCardCollapsed({
   plannedQty: number
   truckName: string
   isHovered: boolean
+  hasBanner?: boolean
 }) {
   return (
     <div
       style={{
         backgroundColor: isHovered ? "#333333" : "#1F1F1F",
-        borderRadius: "4px 4px 0px 4px",
+        borderRadius: hasBanner ? "4px 4px 0px 0px" : "4px 4px 0px 4px",
         boxShadow:
           "0px 2px 4px -2px rgba(0,0,0,0.1), 0px 4px 6px -1px rgba(0,0,0,0.1)",
         padding: "16px 16px 12px 20px",
@@ -1657,17 +1659,19 @@ export function LassoWorkspaceSheet({
                               plannedQty={plannedQty}
                               truckName={truckName ?? "Not Selected"}
                               isHovered={hoveredRouteId === routeId}
+                              hasBanner={!!(validation && validation.collapsedBannerType !== "none")}
                             />
 
                             {/* Banner placeholder — actual banner rendered outside card body below */}
                           </div>
                         </div>
 
-                        {/* Separated banner — sits outside the card, below it */}
+                        {/* Separated banner — outside card, bottom-rounded, with background fill */}
                         {validation && validation.collapsedBannerType !== "none" && (() => {
                           const isRed = validation.collapsedBannerType === "red"
                           const isAmber = validation.collapsedBannerType === "amber"
                           const bannerColor = isRed ? "#f87171" : "#eab308"
+                          const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : "rgba(234, 179, 8, 0.09)"
                           const hasIssues = validation.expandedIssues.length > 0
                           const bannerText = isExpanded && hasIssues
                             ? validation.expandedBannerText
@@ -1675,7 +1679,9 @@ export function LassoWorkspaceSheet({
                           return (
                           <div
                             style={{
-                              padding: "4px 24px 4px 20px",
+                              backgroundColor: bannerBg,
+                              borderRadius: isExpanded ? 0 : "0px 0px 4px 4px",
+                              padding: "6px 16px 6px 20px",
                               display: "flex",
                               flexDirection: "column",
                               gap: isExpanded && hasIssues ? 4 : 0,
