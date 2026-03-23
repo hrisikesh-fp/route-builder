@@ -1685,7 +1685,7 @@ export function LassoWorkspaceSheet({
                                 flex: 1,
                                 minWidth: 0,
                                 backgroundColor: bannerBg,
-                                borderRadius: isExpanded ? 0 : "0px 0px 4px 4px",
+                                borderRadius: isExpanded ? 0 : "0px 0px 4px 0px",
                                 padding: "6px 16px 6px 20px",
                                 display: "flex",
                                 flexDirection: "column",
