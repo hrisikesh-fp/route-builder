@@ -31,6 +31,16 @@ export interface BalanceRow {
   balances: Partial<Record<FuelProduct, number>>
 }
 
+export interface ZoneA {
+  color: "accent" | "amber" | "none"
+  lines: string[] // bullet items shown under truck row
+}
+
+export interface ZoneB {
+  visible: boolean
+  // When visible, uses collapsedBannerType/text/expandedIssues for rendering
+}
+
 export interface ValidationResult {
   severity: "error" | "warning" | "ok"
 
@@ -39,15 +49,20 @@ export interface ValidationResult {
   l3: RunoutIssue[]
   runningBalance: BalanceRow[]
 
-  // Pre-computed UI strings
+  // Zone A (truck-level, under truck row)
+  zoneA: ZoneA
+  // Zone B (route-level banner, L3-only)
+  zoneB: ZoneB
+
+  // Pre-computed UI strings (kept for backward compat / Zone B rendering)
   collapsedBannerText: string
   expandedBannerText: string
   collapsedBannerType: "red" | "amber" | "none"
-  collapsedBannerDelta: string // e.g. "↑ 900 gal" or "↓ 1,500 gal" or "200 gal"
+  collapsedBannerDelta: string
   expandedIssues: string[]
   truckMessage: string
   truckMessageColor: "red" | "amber" | "green"
-  firstFailingStopIndex: number | null // for mid-route CTA placement (1-based index in sorted orders)
+  firstFailingStopIndex: number | null
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -84,10 +99,9 @@ export function validateRouteCapacity(
   const deliveries = sorted.filter((o) => !o.orderType || o.orderType === "D")
   const loads = sorted.filter((o) => o.orderType === "L")
 
-  // Change 1: No validation without BOTH truck AND load orders
-  if (loads.length === 0) return null
+  const hasLoads = loads.length > 0
 
-  // ── L1: Total capacity check ────────────────────────────────────────────
+  // ── L1: Total capacity check (G1 — fires with truck alone) ─────────────
   const totalPlanned = deliveries.reduce((sum, o) => sum + (o.volume ?? 0), 0)
   const diff = totalPlanned - truckProfile.totalCapacity
   const l1: L1Result = {
@@ -117,7 +131,12 @@ export function validateRouteCapacity(
   // Sort L2 by largest overflow first
   l2.sort((a, b) => b.overflow - a.overflow)
 
-  // ── L3: Running balance (stop-by-stop) ──────────────────────────────────
+  // ── L3: Running balance (stop-by-stop) — G2, requires truck + load order ─
+  let runningBalance: BalanceRow[] = []
+  let l3: RunoutIssue[] = []
+  let firstFailingStopIndex: number | null = null
+
+  if (hasLoads) {
   // Collect all products involved
   const allProducts = new Set<FuelProduct>()
   for (const order of sorted) {
@@ -135,10 +154,7 @@ export function validateRouteCapacity(
     }
   }
 
-  const runningBalance: BalanceRow[] = []
-  const l3: RunoutIssue[] = []
   const runoutProducts = new Set<FuelProduct>() // track which products already flagged
-  let firstFailingStopIndex: number | null = null
 
   // Start row (retained)
   runningBalance.push({
@@ -199,8 +215,47 @@ export function validateRouteCapacity(
       }
     }
   }
+  } // end if (hasLoads)
 
-  // ── Compute UI strings ──────────────────────────────────────────────────
+  // ── Compute Zone A + Zone B + UI strings ──────────────────────────────────
+  const multiLoad = loads.length >= 2
+  const l3Passes = l3.length === 0
+  const suppressL2 = multiLoad && l3Passes && hasLoads
+
+  // Zone A: truck-level info under truck row
+  let zoneAColor: ZoneA["color"] = "none"
+  let zoneALines: string[] = []
+
+  if (!hasLoads) {
+    // G1 only, no load → accent info (L2 only, not L1)
+    if (l2.length > 0) {
+      zoneAColor = "accent"
+      for (const issue of l2) {
+        zoneALines.push(`${getShortProductName(issue.product)} exceeds available truck capacity by ${issue.overflow.toLocaleString()} gal`)
+      }
+    }
+  } else if (suppressL2) {
+    // Multi-load + L3 passes → amber, L2 hidden
+    zoneAColor = "amber"
+    zoneALines.push(`Below Truck Capacity ↓ ${Math.abs(diff).toLocaleString()} gal`)
+  } else if (l3.length > 0 && l2.length > 0) {
+    // L3 fails + L2 as context → accent
+    zoneAColor = "accent"
+    for (const issue of l2) {
+      zoneALines.push(`${getShortProductName(issue.product)} exceeds available truck capacity by ${issue.overflow.toLocaleString()} gal`)
+    }
+  } else if (l2.length === 0 && l3.length === 0) {
+    // All pass → amber
+    zoneAColor = "amber"
+    zoneALines.push(`Below Truck Capacity ↓ ${Math.abs(diff).toLocaleString()} gal`)
+  }
+
+  const zoneA: ZoneA = { color: zoneAColor, lines: zoneALines }
+
+  // Zone B: route-level banner, L3-only
+  const zoneBVisible = hasLoads && l3.length > 0
+  const zoneB: ZoneB = { visible: zoneBVisible }
+
   const severity: ValidationResult["severity"] =
     l3.length > 0 || l2.length > 0
       ? "error"
@@ -214,89 +269,45 @@ export function validateRouteCapacity(
   let collapsedBannerType: ValidationResult["collapsedBannerType"] = "none"
   let collapsedBannerDelta = ""
 
-  const hasL3 = l3.length > 0
-  const hasIssues = hasL3 || l2.length > 0 || l1.status === "exceeding"
-
   let finalExpandedIssues: string[] = []
 
-  if (hasIssues) {
-    // L3 (runout) → red banner; L2-only or L1-exceeding → amber banner
-    collapsedBannerType = hasL3 ? "red" : "amber"
+  // Zone B banner: L3-only (run-outs at specific stops)
+  if (zoneBVisible) {
+    collapsedBannerType = "red"
 
-    // Change 5: Build expanded issues with same-stop products merged for L3
+    // Build expanded issues — L3 only, same-stop products merged
     const expandedIssues: string[] = []
-
-    // L3: group by stopIndex, merge same-stop products
-    if (l3.length > 0) {
-      const grouped: Record<number, { products: FuelProduct[]; stopName: string }> = {}
-      for (const issue of l3) {
-        if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = { products: [], stopName: issue.stopName }
-        grouped[issue.stopIndex].products.push(issue.product)
-      }
-      // Sort by stop index
-      const sortedStops = Object.entries(grouped).sort(([a], [b]) => Number(a) - Number(b))
-      for (const [stopIdx, g] of sortedStops) {
-        const names = g.products.map((p) => getShortProductName(p)).join(", ")
-        expandedIssues.push(
-          `${names} will run out before Stop ${stopIdx} (${g.stopName})`
-        )
-      }
+    const grouped: Record<number, { products: FuelProduct[]; stopName: string }> = {}
+    for (const issue of l3) {
+      if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = { products: [], stopName: issue.stopName }
+      grouped[issue.stopIndex].products.push(issue.product)
     }
-
-    // L2: one per product, sorted by largest overflow first (already sorted above)
-    for (const issue of l2) {
+    const sortedStops = Object.entries(grouped).sort(([a], [b]) => Number(a) - Number(b))
+    for (const [stopIdx, g] of sortedStops) {
+      const names = g.products.map((p) => getShortProductName(p)).join(", ")
       expandedIssues.push(
-        `${getShortProductName(issue.product)} exceeds available truck capacity by ${issue.overflow.toLocaleString()} gal`
+        `${names} will run out before Stop ${stopIdx} (${g.stopName})`
       )
     }
 
-    // Item count = bullet count (merged)
     const itemCount = expandedIssues.length
 
-    // Collapsed text: worst-problem-first
-    if (l3.length > 0) {
-      // L3 is worst — show first runout group
-      const firstGroup = Object.entries(
-        l3.reduce((acc, issue) => {
-          const key = issue.stopIndex
-          if (!acc[key]) acc[key] = []
-          acc[key].push(issue.product)
-          return acc
-        }, {} as Record<number, FuelProduct[]>)
-      ).sort(([a], [b]) => Number(a) - Number(b))[0]
+    // Collapsed text: worst-problem-first L3 runout
+    const firstGroup = sortedStops[0]
+    const [stopIdx, { products }] = firstGroup
+    const names = products.map((p) => getShortProductName(p)).join(", ")
+    const moreCount = itemCount - 1
+    collapsedBannerText = moreCount > 0
+      ? `${names} runs out at Stop ${stopIdx} + ${moreCount} more`
+      : `${names} runs out at Stop ${stopIdx}`
 
-      const [stopIdx, products] = firstGroup
-      const names = products.map((p) => getShortProductName(p)).join(", ")
-      const moreCount = itemCount - 1
-      collapsedBannerText = moreCount > 0
-        ? `${names} runs out at Stop ${stopIdx} + ${moreCount} more`
-        : `${names} runs out at Stop ${stopIdx}`
-    } else if (l2.length > 0) {
-      // L2 only
-      const moreCount = itemCount - 1
-      const delta = `${l2[0].overflow.toLocaleString()} gal`
-      collapsedBannerText = moreCount > 0
-        ? `Exceeding Product Capacity by ${delta} + ${moreCount} more`
-        : `Exceeding Product Capacity by ${delta}`
-    } else if (l1.status === "exceeding") {
-      // L1 exceeding only
-      collapsedBannerText = "Exceeding Truck Capacity"
-      collapsedBannerDelta = `${diff.toLocaleString()} gal`
-    }
-
-    // Expanded text: count header
     expandedBannerText = itemCount === 1
       ? "1 Item needs your attention"
       : `${itemCount} Items need your attention`
 
     finalExpandedIssues = expandedIssues
-  } else if (l1.status === "below") {
-    // AMBER banner — below capacity, healthy
-    collapsedBannerType = "amber"
-    collapsedBannerText = "Below Truck Capacity"
-    collapsedBannerDelta = `${Math.abs(diff).toLocaleString()} gal`
-    expandedBannerText = collapsedBannerText
   }
+  // No Zone B banner for L2-only or healthy states — those are in Zone A now
 
   // Change 7: Truck message — only for healthy state (no "no fuel loaded" here, that's UI layer)
   let truckMessage = ""
@@ -314,6 +325,8 @@ export function validateRouteCapacity(
     l2,
     l3,
     runningBalance,
+    zoneA,
+    zoneB,
     collapsedBannerText,
     expandedBannerText,
     collapsedBannerType,

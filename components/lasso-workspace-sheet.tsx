@@ -653,7 +653,26 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
               </div>
             )}
           </div>
-          {/* Inline message — inside truck section, 4px below dropdown */}
+          {/* Zone A: L2 info under truck row */}
+          {validation?.zoneA && validation.zoneA.color !== "none" && validation.zoneA.lines.length > 0 && (
+            <div style={{ paddingLeft: 28, paddingTop: 4, paddingBottom: 8 }}>
+              {validation.zoneA.lines.map((line, i) => (
+                <div key={i} style={{
+                  fontSize: 14,
+                  fontWeight: 400,
+                  color: validation.zoneA.color === "accent" ? "#818cf8" : "#eab308",
+                  lineHeight: "20px",
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 8,
+                }}>
+                  <span style={{ fontSize: 14 }}>•</span>
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* "No fuel loaded" — only when no validation AND no load orders */}
           {(selectedTruck || truckNameProp) && hasLoadOrders === false && !validation && (
             <div style={{ padding: "2px 12px 2px" }}>
               <span style={{ fontSize: 13, fontWeight: 400, color: "#eab308" }}>
@@ -661,7 +680,8 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
               </span>
             </div>
           )}
-          {validation && validation.truckMessage && (
+          {/* Truck message for healthy state */}
+          {validation && validation.truckMessage && validation.zoneA.color === "none" && (
             <div style={{ padding: "2px 12px 2px" }}>
               <span style={{ fontSize: 13, fontWeight: 400, color: "#eab308" }}>
                 {validation.truckMessage}
@@ -1659,14 +1679,14 @@ export function LassoWorkspaceSheet({
                               plannedQty={plannedQty}
                               truckName={truckName ?? "Not Selected"}
                               isHovered={hoveredRouteId === routeId}
-                              hasBanner={!!(validation && validation.collapsedBannerType !== "none")}
+                              hasBanner={!!(validation && validation.zoneB.visible)}
                             />
 
                           </div>
                         </div>
 
-                        {/* Separated banner — aligned with card body via same flex row layout */}
-                        {validation && validation.collapsedBannerType !== "none" && (() => {
+                        {/* Zone B: Separated banner — L3 only, aligned with card body */}
+                        {validation && validation.zoneB.visible && (() => {
                           const isRed = validation.collapsedBannerType === "red"
                           const isAmber = validation.collapsedBannerType === "amber"
                           const bannerColor = isRed ? "#f87171" : "#eab308"
