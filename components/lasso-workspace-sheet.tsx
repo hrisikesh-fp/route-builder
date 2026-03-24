@@ -133,6 +133,49 @@ function CheckboxInput({
   )
 }
 
+// ─── Stop Chip (for chip banner) ────────────────────────────────────────────────
+
+function StopChip({ stopIndex, onClick }: { stopIndex: number; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "2px 8px 2px 6px",
+        borderRadius: 9999,
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+      }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 400, color: "#f87171" }}>Stop</span>
+      <div
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          backgroundColor: hovered ? "rgba(220, 38, 38, 0.9)" : "rgba(220, 38, 38, 0.6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 10,
+          fontWeight: 500,
+          color: "#FFFFFF",
+          lineHeight: 1,
+          transition: "background-color 150ms ease",
+        }}
+      >
+        {stopIndex}
+      </div>
+    </button>
+  )
+}
+
 // ─── Collapsed Route Card ──────────────────────────────────────────────────────
 
 function RouteCardCollapsed({
@@ -861,6 +904,7 @@ function ExpandedRouteCard({
   onOpenModal,
   onTruckChange,
   onReorder,
+  routeId,
 }: {
   orders: ExtractionOrder[]
   color?: string
@@ -873,6 +917,7 @@ function ExpandedRouteCard({
   onOpenModal: () => void
   onTruckChange?: (truck: TruckItem) => void
   onReorder?: (fromIdx: number, toIdx: number) => void
+  routeId?: string
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
@@ -972,6 +1017,8 @@ function ExpandedRouteCard({
                   setDragIdx(null)
                   setDragOverIdx(null)
                 }}
+                stopIndex={currentStopIdx}
+                routeId={routeId}
               />
             </div>
           )
@@ -1054,6 +1101,8 @@ function OrderStopRow({
   onDragEnd,
   onDrop,
   isDragOver,
+  stopIndex,
+  routeId,
 }: {
   order: ExtractionOrder
   idx: number
@@ -1066,6 +1115,8 @@ function OrderStopRow({
   onDragEnd?: (e: React.DragEvent) => void
   onDrop?: (e: React.DragEvent) => void
   isDragOver?: boolean
+  stopIndex?: number
+  routeId?: string
 }) {
   const seq = idx + 1
   const type = order.orderType ?? "D"
@@ -1078,6 +1129,8 @@ function OrderStopRow({
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
       onDrop={onDrop}
+      data-stop-index={stopIndex}
+      data-route-id={routeId}
       style={{
         display: "flex",
         flexDirection: "row",
@@ -1105,6 +1158,7 @@ function OrderStopRow({
       >
         {/* Sequence badge — 16×16 circle per Figma spec, #A3A3A3 bg, #171717 text */}
         <div
+          className="order-seq-badge"
           style={{
             width: 16,
             height: 16,
@@ -1331,6 +1385,27 @@ export function LassoWorkspaceSheet({
   const [isAddLoadModalOpen, setIsAddLoadModalOpen] = useState(false)
   const [activeRouteIdForModal, setActiveRouteIdForModal] = useState<string | null>(null)
 
+  // Scroll container ref for chip scroll-to-stop
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  const scrollToStop = (routeId: string, stopIndex: number) => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const target = container.querySelector(
+      `[data-route-id="${routeId}"][data-stop-index="${stopIndex}"]`
+    ) as HTMLElement | null
+    if (!target) return
+
+    // Scroll with offset for sticky header
+    const headerHeight = 120
+    const targetTop = target.offsetTop - container.offsetTop - headerHeight - 12
+    container.scrollTo({ top: targetTop, behavior: "smooth" })
+
+    // Trigger highlight animation
+    target.classList.add("rb-stop-highlight")
+    setTimeout(() => target.classList.remove("rb-stop-highlight"), 3000)
+  }
+
   const toggleExpanded = (routeId: string) => {
     setExpandedRouteIds((prev) =>
       prev.includes(routeId) ? prev.filter((id) => id !== routeId) : [...prev, routeId]
@@ -1507,6 +1582,7 @@ export function LassoWorkspaceSheet({
 
           {/* ── SCROLLABLE CONTENT ── */}
           <div
+            ref={scrollContainerRef}
             className="flex-1 overflow-y-auto"
             style={{ padding: "0 24px" }}
           >
@@ -1599,6 +1675,13 @@ export function LassoWorkspaceSheet({
                         onMouseEnter={() => onHoveredRouteChange(routeId)}
                         onMouseLeave={() => onHoveredRouteChange(null)}
                       >
+                        {/* Sticky wrapper for card + banner when expanded */}
+                        <div style={{
+                          position: isExpanded ? "sticky" : "static",
+                          top: 0,
+                          zIndex: isExpanded ? 10 : "auto",
+                          backgroundColor: isExpanded ? "#111111" : "transparent",
+                        }}>
                         {/* Card row: checkbox+chevron centered with card body */}
                         <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}>
                           {/* Left col: checkbox + chevron */}
@@ -1672,9 +1755,13 @@ export function LassoWorkspaceSheet({
                           const bannerColor = isRed ? "#f87171" : "#eab308"
                           const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : "rgba(234, 179, 8, 0.09)"
                           const hasIssues = validation.expandedIssues.length > 0
-                          const bannerText = isExpanded && hasIssues
-                            ? validation.expandedBannerText
-                            : validation.collapsedBannerText
+                          const issueCount = validation.expandedIssues.length
+
+                          // Unique L3 stop indices for chips
+                          const uniqueStops = isRed && validation.l3.length > 0
+                            ? [...new Set(validation.l3.map(i => i.stopIndex))].sort((a, b) => a - b)
+                            : []
+
                           return (
                           <div style={{ display: "flex", flexDirection: "row", alignItems: "start", gap: 8 }}>
                             {/* Spacer matching checkbox+chevron width */}
@@ -1685,20 +1772,16 @@ export function LassoWorkspaceSheet({
                                 flex: 1,
                                 minWidth: 0,
                                 backgroundColor: bannerBg,
-                                borderRadius: isExpanded ? 0 : "0px 0px 4px 0px",
+                                borderRadius: isExpanded ? 0 : "0px 0px 4px 4px",
                                 padding: "6px 16px 6px 20px",
                                 display: "flex",
-                                flexDirection: "column",
-                                gap: isExpanded && hasIssues ? 4 : 0,
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                                alignItems: "center",
                               }}
                             >
-                              {/* Summary line */}
-                              <div style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 8,
-                              }}>
+                              {/* Left: icon + text */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                                 {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
                                 <span style={{
                                   fontSize: 14,
@@ -1708,27 +1791,53 @@ export function LassoWorkspaceSheet({
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                 }}>
-                                  {bannerText}
+                                  {isRed && uniqueStops.length > 0
+                                    ? `${issueCount} Issue${issueCount !== 1 ? "s" : ""}`
+                                    : (isExpanded && hasIssues
+                                        ? validation.expandedBannerText
+                                        : validation.collapsedBannerText)
+                                  }
                                 </span>
                               </div>
 
-                              {/* Expanded bullet points */}
-                              {isExpanded && hasIssues && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                  {validation.expandedIssues.map((issue, i) => (
-                                    <div key={i} style={{ fontSize: 13, color: bannerColor, paddingLeft: 24, lineHeight: "20px" }}>
-                                      • {issue}
-                                    </div>
+                              {/* Right: chips for red/L3, or arrow+delta for amber */}
+                              {isRed && uniqueStops.length > 0 ? (
+                                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                                  {uniqueStops.map(stopIdx => (
+                                    <StopChip
+                                      key={stopIdx}
+                                      stopIndex={stopIdx}
+                                      onClick={() => {
+                                        if (!isExpanded) toggleExpanded(routeId)
+                                        requestAnimationFrame(() => {
+                                          scrollToStop(routeId, stopIdx)
+                                        })
+                                      }}
+                                    />
                                   ))}
+                                </div>
+                              ) : (
+                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                  {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && isAmber && validation.l1.status === "below" && (
+                                    <ArrowDown size={16} color={bannerColor} />
+                                  )}
+                                  {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && validation.collapsedBannerDelta && (
+                                    <span style={{ fontSize: 14, fontWeight: 400, color: bannerColor, whiteSpace: "nowrap" }}>
+                                      {validation.collapsedBannerDelta}
+                                    </span>
+                                  )}
+                                  <Info size={16} color="#737373" />
                                 </div>
                               )}
                             </div>
                           </div>
                           )
                         })()}
+                        </div>{/* end sticky wrapper */}
 
                         {/* Expanded accordion — full width (no indent), CARD_LEFT handled internally */}
                         {isExpanded && (
+                          <div style={{ marginTop: 12 }}>
                           <ExpandedRouteCard
                             orders={sortedOrders}
                             color={color}
@@ -1738,6 +1847,7 @@ export function LassoWorkspaceSheet({
                             recentlyAddedOrderId={recentlyAddedOrderId}
                             validation={validation}
                             hasLoadOrders={sortedOrders.some((o) => o.orderType === "L")}
+                            routeId={routeId}
                             onTruckChange={(truck) => setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))}
                             onOpenModal={() => {
                               setActiveRouteIdForModal(routeId)
@@ -1750,6 +1860,7 @@ export function LassoWorkspaceSheet({
                               setReorderedRoutes((prev) => ({ ...prev, [routeId]: ids }))
                             }}
                           />
+                          </div>
                         )}
                       </div>
                     )
