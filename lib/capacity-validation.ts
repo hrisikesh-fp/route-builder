@@ -235,25 +235,22 @@ export function validateRouteCapacity(
       }
     }
   } else if (suppressL2) {
-    // Multi-load + L3 passes → amber, L2 hidden
-    zoneAColor = "amber"
-    zoneALines.push(`Below Truck Capacity ↓ ${Math.abs(diff).toLocaleString()} gal`)
+    // Multi-load + L3 passes → L2 hidden, Zone A empty (Zone B handles amber)
   } else if (l3.length > 0 && l2.length > 0) {
     // L3 fails + L2 as context → accent
     zoneAColor = "accent"
     for (const issue of l2) {
       zoneALines.push(`${getShortProductName(issue.product)} exceeds available truck capacity by ${issue.overflow.toLocaleString()} gal`)
     }
-  } else if (l2.length === 0 && l3.length === 0) {
-    // All pass → amber
-    zoneAColor = "amber"
-    zoneALines.push(`Below Truck Capacity ↓ ${Math.abs(diff).toLocaleString()} gal`)
   }
+  // Zone A does NOT show "Below Truck Capacity" — that goes in Zone B amber
 
   const zoneA: ZoneA = { color: zoneAColor, lines: zoneALines }
 
-  // Zone B: route-level banner, L3-only
-  const zoneBVisible = hasLoads && l3.length > 0
+  // Zone B: route-level banner — red for L3 failures, amber for healthy/below capacity
+  const zoneBVisible = hasLoads
+    ? true  // always visible when loads exist (red if L3 fails, amber if healthy)
+    : false // hidden when no loads (G1-only state)
   const zoneB: ZoneB = { visible: zoneBVisible }
 
   const severity: ValidationResult["severity"] =
@@ -271,8 +268,9 @@ export function validateRouteCapacity(
 
   let finalExpandedIssues: string[] = []
 
-  // Zone B banner: L3-only (run-outs at specific stops)
-  if (zoneBVisible) {
+  // Zone B banner content
+  if (zoneBVisible && l3.length > 0) {
+    // L3 failures → red banner
     collapsedBannerType = "red"
 
     // Build expanded issues — L3 only, same-stop products merged
@@ -306,8 +304,13 @@ export function validateRouteCapacity(
       : `${itemCount} Items need your attention`
 
     finalExpandedIssues = expandedIssues
+  } else if (zoneBVisible && l3.length === 0) {
+    // Healthy / below capacity → amber banner
+    collapsedBannerType = "amber"
+    collapsedBannerText = "Below Truck Capacity"
+    collapsedBannerDelta = `${Math.abs(diff).toLocaleString()} gal`
+    expandedBannerText = collapsedBannerText
   }
-  // No Zone B banner for L2-only or healthy states — those are in Zone A now
 
   // Change 7: Truck message — only for healthy state (no "no fuel loaded" here, that's UI layer)
   let truckMessage = ""
