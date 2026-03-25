@@ -146,26 +146,28 @@ function StopChip({ stopIndex, onClick }: { stopIndex: number; onClick: () => vo
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        padding: "2px 8px 2px 6px",
-        borderRadius: 9999,
-        background: "none",
+        padding: "2px 8px",
+        height: 28,
+        borderRadius: 4,
+        background: hovered ? "rgba(255,255,255,0.06)" : "none",
         border: "none",
         cursor: "pointer",
+        transition: "background-color 150ms ease",
       }}
     >
-      <span style={{ fontSize: 12, fontWeight: 400, color: "#f87171" }}>Stop</span>
+      <span style={{ fontSize: 14, fontWeight: 400, color: "#e5e5e5", lineHeight: "20px" }}>Stop</span>
       <div
         style={{
           width: 16,
           height: 16,
           borderRadius: "50%",
-          backgroundColor: hovered ? "rgba(220, 38, 38, 0.9)" : "rgba(220, 38, 38, 0.6)",
+          backgroundColor: hovered ? "#737373" : "#a3a3a3",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 10,
+          fontSize: 14,
           fontWeight: 500,
-          color: "#FFFFFF",
+          color: "#171717",
           lineHeight: 1,
           transition: "background-color 150ms ease",
         }}
@@ -1768,7 +1770,7 @@ export function LassoWorkspaceSheet({
                         {validation && validation.zoneB.visible && (() => {
                           const isRed = validation.collapsedBannerType === "red"
                           const isAmber = validation.collapsedBannerType === "amber"
-                          const bannerColor = isRed ? "#f87171" : "#eab308"
+                          const bannerColor = isRed ? "#dc2626" : "#eab308"
                           const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : "rgba(234, 179, 8, 0.09)"
                           const hasIssues = validation.expandedIssues.length > 0
                           const issueCount = validation.expandedIssues.length
