@@ -220,7 +220,7 @@ export function validateRouteCapacity(
   // ── Compute Zone A + Zone B + UI strings ──────────────────────────────────
   const multiLoad = loads.length >= 2
   const l3Passes = l3.length === 0
-  const suppressL2 = multiLoad && l3Passes && hasLoads
+  const suppressL1L2 = multiLoad && l3Passes && hasLoads
 
   // Zone A: truck-level info under truck row
   let zoneAColor: ZoneA["color"] = "none"
@@ -234,7 +234,7 @@ export function validateRouteCapacity(
         zoneALines.push(`${getShortProductName(issue.product)} exceeds available truck capacity by ${issue.overflow.toLocaleString()} gal`)
       }
     }
-  } else if (suppressL2) {
+  } else if (suppressL1L2) {
     // Multi-load + L3 passes → L2 hidden, Zone A empty (Zone B handles amber)
   } else if (l3.length > 0 && l2.length > 0) {
     // L3 fails + L2 as context → accent
@@ -305,10 +305,22 @@ export function validateRouteCapacity(
 
     finalExpandedIssues = expandedIssues
   } else if (zoneBVisible && l3.length === 0) {
-    // Healthy / below capacity → amber banner
-    collapsedBannerType = "amber"
-    collapsedBannerText = "Below Truck Capacity"
-    collapsedBannerDelta = `${Math.abs(diff).toLocaleString()} gal`
+    if (suppressL1L2) {
+      // Multi-load + L3 passes → suppress L1/L2, show amber
+      collapsedBannerType = "amber"
+      collapsedBannerText = "Below Truck Capacity"
+      collapsedBannerDelta = `↓ ${Math.abs(diff).toLocaleString()} gal`
+    } else if (l1.status === "exceeding") {
+      // L1 exceeds but L3 passes
+      collapsedBannerType = "amber"
+      collapsedBannerText = "Exceeding Truck Capacity"
+      collapsedBannerDelta = `↑ ${diff.toLocaleString()} gal`
+    } else {
+      // Genuinely below
+      collapsedBannerType = "amber"
+      collapsedBannerText = "Below Truck Capacity"
+      collapsedBannerDelta = `↓ ${Math.abs(diff).toLocaleString()} gal`
+    }
     expandedBannerText = collapsedBannerText
   }
 

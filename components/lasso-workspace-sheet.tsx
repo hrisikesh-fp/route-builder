@@ -949,7 +949,7 @@ function ExpandedRouteCard({
       grouped[issue.stopIndex].products.push(getShortProductName(issue.product))
     }
     for (const [idx, g] of Object.entries(grouped)) {
-      stopWarnings[Number(idx)] = `⚠ ${g.products.join(", ")} will run out before this stop`
+      stopWarnings[Number(idx)] = `${g.products.join(", ")} will run out before this stop`
     }
   }
 
@@ -1217,6 +1217,7 @@ function OrderStopRow({
             flex: 1,
             backgroundColor: "#1F1F1F",
             borderRadius: hasWarning ? "4px 4px 0 0" : 4,
+            border: hasWarning ? "1px solid rgba(248, 113, 113, 0.3)" : undefined,
             padding: 16,
             gap: 12,
             display: "flex",
@@ -1351,14 +1352,21 @@ function OrderStopRow({
         {hasWarning && (
           <div
             style={{
-              backgroundColor: "rgba(248, 113, 113, 0.2)",
+              backgroundColor: "rgba(220, 38, 38, 0.2)",
+              borderLeft: "1px solid rgba(248, 113, 113, 0.3)",
+              borderRight: "1px solid rgba(248, 113, 113, 0.3)",
+              borderBottom: "1px solid rgba(248, 113, 113, 0.3)",
               borderRadius: "0 0 4px 4px",
-              padding: "6px 16px",
-              fontSize: 13,
+              padding: "6px 16px 6px 20px",
+              fontSize: 14,
               fontWeight: 400,
               color: "#f87171",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
+            <TriangleAlert size={16} color="#f87171" style={{ flexShrink: 0 }} />
             {warning}
           </div>
         )}
