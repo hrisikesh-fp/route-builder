@@ -1414,10 +1414,12 @@ export function LassoWorkspaceSheet({
     ) as HTMLElement | null
     if (!target) return
 
-    // Scroll with offset for sticky header
-    const headerHeight = 120
-    const targetTop = target.offsetTop - container.offsetTop - headerHeight - 12
-    container.scrollTo({ top: targetTop, behavior: "smooth" })
+    // Use getBoundingClientRect for reliable positioning
+    const containerRect = container.getBoundingClientRect()
+    const targetRect = target.getBoundingClientRect()
+    const stickyHeaderHeight = 130 // card + banner height approx
+    const offsetFromTop = targetRect.top - containerRect.top - stickyHeaderHeight
+    container.scrollBy({ top: offsetFromTop, behavior: "smooth" })
 
     // Trigger highlight animation
     target.classList.add("rb-stop-highlight")
@@ -1770,7 +1772,7 @@ export function LassoWorkspaceSheet({
                         {validation && validation.zoneB.visible && (() => {
                           const isRed = validation.collapsedBannerType === "red"
                           const isAmber = validation.collapsedBannerType === "amber"
-                          const bannerColor = isRed ? "#dc2626" : "#eab308"
+                          const bannerColor = isRed ? "#f87171" : "#eab308"
                           const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : "rgba(234, 179, 8, 0.09)"
                           const hasIssues = validation.expandedIssues.length > 0
                           const issueCount = validation.expandedIssues.length
