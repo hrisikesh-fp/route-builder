@@ -1816,19 +1816,14 @@ export function LassoWorkspaceSheet({
                                 </span>
                               </div>
 
-                              {/* Right: chips for red/L3, or arrow+delta for amber */}
-                              {isRed && uniqueStops.length > 0 ? (
+                              {/* Right: chips for red/L3 (only when expanded — can't scroll when collapsed) */}
+                              {isRed && uniqueStops.length > 0 && isExpanded ? (
                                 <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                                   {uniqueStops.map(stopIdx => (
                                     <StopChip
                                       key={stopIdx}
                                       stopIndex={stopIdx}
-                                      onClick={() => {
-                                        if (!isExpanded) toggleExpanded(routeId)
-                                        requestAnimationFrame(() => {
-                                          scrollToStop(routeId, stopIdx)
-                                        })
-                                      }}
+                                      onClick={() => scrollToStop(routeId, stopIdx)}
                                     />
                                   ))}
                                 </div>
