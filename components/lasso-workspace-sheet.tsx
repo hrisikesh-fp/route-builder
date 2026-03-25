@@ -655,19 +655,15 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
           </div>
           {/* Zone A: L2 info under truck row */}
           {validation?.zoneA && validation.zoneA.color !== "none" && validation.zoneA.lines.length > 0 && (
-            <div style={{ paddingLeft: 28, paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ paddingLeft: 12, paddingTop: 4, paddingBottom: 8 }}>
               {validation.zoneA.lines.map((line, i) => (
                 <div key={i} style={{
                   fontSize: 14,
                   fontWeight: 400,
                   color: validation.zoneA.color === "accent" ? "#818cf8" : "#eab308",
                   lineHeight: "20px",
-                  display: "flex",
-                  alignItems: "baseline",
-                  gap: 8,
                 }}>
-                  <span style={{ fontSize: 14 }}>•</span>
-                  <span>{line}</span>
+                  {line}
                 </div>
               ))}
             </div>
