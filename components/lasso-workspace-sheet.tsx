@@ -1788,7 +1788,7 @@ export function LassoWorkspaceSheet({
                                 flex: 1,
                                 minWidth: 0,
                                 backgroundColor: bannerBg,
-                                borderRadius: isExpanded ? 0 : "0px 0px 4px 4px",
+                                borderRadius: "0px 0px 4px 4px",
                                 padding: "6px 16px 6px 20px",
                                 display: "flex",
                                 flexDirection: "row",
@@ -1837,7 +1837,7 @@ export function LassoWorkspaceSheet({
                                       {validation.collapsedBannerDelta}
                                     </span>
                                   )}
-                                  <Info size={16} color="#737373" />
+                                  {/* <Info size={16} color="#737373" /> */}
                                 </div>
                               )}
                             </div>
@@ -1848,7 +1848,7 @@ export function LassoWorkspaceSheet({
 
                         {/* Expanded accordion — full width (no indent), CARD_LEFT handled internally */}
                         {isExpanded && (
-                          <div style={{ marginTop: 12 }}>
+                          <div>
                           <ExpandedRouteCard
                             orders={sortedOrders}
                             color={color}
