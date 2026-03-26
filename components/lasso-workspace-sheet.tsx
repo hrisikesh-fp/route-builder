@@ -226,10 +226,14 @@ function RouteCardCollapsed({
   onDriverSelect?: (driver: DriverItem) => void
   currentDriverId?: string
 }) {
+  const [cardHover, setCardHover] = useState(false)
+  const showFab = cardHover || isMenuOpen
   return (
     <div
+      onMouseEnter={() => setCardHover(true)}
+      onMouseLeave={() => setCardHover(false)}
       style={{
-        backgroundColor: isHovered ? "#282828" : "#1F1F1F",
+        backgroundColor: cardHover ? "#282828" : "#1F1F1F",
         borderRadius: hasBanner ? "4px 4px 0px 0px" : "4px 4px 0px 4px",
         boxShadow:
           "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
@@ -365,11 +369,11 @@ function RouteCardCollapsed({
           display: "flex",
           gap: 4,
           padding: 6,
-          backgroundColor: "#1B1B1B",
-          border: "1px solid #282828",
+          backgroundColor: "#1A1A1A",
+          border: "1px solid #333",
           borderRadius: 4,
-          opacity: (isHovered || isMenuOpen) ? 1 : 0,
-          pointerEvents: (isHovered || isMenuOpen) ? "auto" : "none",
+          opacity: showFab ? 1 : 0,
+          pointerEvents: showFab ? "auto" : "none",
           transition: "opacity 150ms ease",
           zIndex: 5,
         }}
@@ -389,10 +393,10 @@ function RouteCardCollapsed({
             onClick={(e) => { e.stopPropagation() }}
             style={{
               width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#737373", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
+              color: "#E5E5E5", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#404040"; e.currentTarget.style.color = "#FFFFFF" }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#737373" }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#404040" }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
           >
             <X size={14} />
           </button>
@@ -421,10 +425,10 @@ function RouteCardCollapsed({
             onClick={(e) => { e.stopPropagation() }}
             style={{
               width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#737373", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
+              color: "#E5E5E5", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#404040"; e.currentTarget.style.color = "#FFFFFF" }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#737373" }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#404040" }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
           >
             <ExternalLink size={14} />
           </button>
@@ -455,11 +459,11 @@ function RouteCardCollapsed({
             onClick={(e) => { e.stopPropagation(); onMenuClick?.() }}
             style={{
               width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#737373", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
+              color: "#E5E5E5", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
               boxShadow: isMenuOpen ? "0px 0px 0px 3px rgba(115,115,115,0.5)" : "none",
             }}
-            onMouseEnter={(e) => { if (!isMenuOpen) { e.currentTarget.style.backgroundColor = "#404040"; e.currentTarget.style.color = "#FFFFFF" } }}
-            onMouseLeave={(e) => { if (!isMenuOpen) { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#737373" } }}
+            onMouseEnter={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "#404040" }}
+            onMouseLeave={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "transparent" }}
           >
             <MoreVertical size={14} />
           </button>
@@ -2047,6 +2051,7 @@ export function LassoWorkspaceSheet({
                                 backgroundColor: color,
                                 borderRadius: "4px 0 0 4px",
                                 pointerEvents: "none",
+                                zIndex: 2,
                               }}
                             />
                             <RouteCardCollapsed
@@ -2058,7 +2063,7 @@ export function LassoWorkspaceSheet({
                               truckCapacity={truckProfile ? `${truckProfile.totalCapacity.toLocaleString()} gal` : "—"}
                               compartmentCount={truckProfile?.compartments.length ?? 0}
                               productCount={truckProfile ? Object.keys(truckProfile.productCapacities).length : 0}
-                              isHovered={!isExpanded && hoveredRouteId === routeId}
+                              isHovered={hoveredRouteId === routeId}
                               hasBanner={!!(validation && validation.zoneB.visible)}
                               onDriverClick={() => {
                                 setDriverDropdownRouteId(driverDropdownRouteId === routeId ? null : routeId)
