@@ -309,17 +309,17 @@ export function validateRouteCapacity(
       // Multi-load + L3 passes → suppress L1/L2, show amber
       collapsedBannerType = "amber"
       collapsedBannerText = "Below Truck Capacity"
-      collapsedBannerDelta = `↓ ${Math.abs(diff).toLocaleString()} gal`
+      collapsedBannerDelta = `${Math.abs(diff).toLocaleString()} gal`
     } else if (l1.status === "exceeding") {
       // L1 exceeds but L3 passes
       collapsedBannerType = "amber"
       collapsedBannerText = "Exceeding Truck Capacity"
-      collapsedBannerDelta = `↑ ${diff.toLocaleString()} gal`
+      collapsedBannerDelta = `${diff.toLocaleString()} gal`
     } else {
       // Genuinely below
       collapsedBannerType = "amber"
       collapsedBannerText = "Below Truck Capacity"
-      collapsedBannerDelta = `↓ ${Math.abs(diff).toLocaleString()} gal`
+      collapsedBannerDelta = `${Math.abs(diff).toLocaleString()} gal`
     }
     expandedBannerText = collapsedBannerText
   }

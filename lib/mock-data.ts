@@ -3045,8 +3045,8 @@ export const mockRoutes: any[] = [
     orders: route1Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
-    truckName: null,
-    truckId: null, // Demo flow — user selects H-118
+    truckName: "H-118 · 2019 Kenworth Tank Wagon",
+    truckId: "H-118",
   },
   {
     id: "route-2",
