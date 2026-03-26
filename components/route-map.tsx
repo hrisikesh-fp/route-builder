@@ -12,6 +12,48 @@ import { type TankThreshold } from "@/lib/routes-data"
 import type { MapEntityVisibility } from "@/components/map-controls"
 import { useSettings } from "@/contexts/settings-context"
 
+// ─── OSRM route cache (localStorage) ────────────────────────────────────────
+
+const OSRM_CACHE_KEY = "rb-osrm-cache"
+const OSRM_CACHE_VERSION = 1
+
+function getOsrmCache(): Record<string, [number, number][]> {
+  try {
+    const raw = localStorage.getItem(OSRM_CACHE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    if (parsed._v !== OSRM_CACHE_VERSION) return {}
+    return parsed.data ?? {}
+  } catch { return {} }
+}
+
+function setOsrmCache(cache: Record<string, [number, number][]>) {
+  try {
+    localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify({ _v: OSRM_CACHE_VERSION, data: cache }))
+  } catch { /* storage full — ignore */ }
+}
+
+async function fetchOsrmRoute(coordParam: string): Promise<[number, number][] | null> {
+  // Check cache first
+  const cache = getOsrmCache()
+  if (cache[coordParam]) return cache[coordParam]
+
+  // Fetch from OSRM
+  const url = `https://router.project-osrm.org/route/v1/driving/${coordParam}?overview=full&geometries=geojson`
+  try {
+    const res = await fetch(url)
+    const data = await res.json()
+    if (data.code !== "Ok" || !data.routes?.[0]) return null
+    const coords: [number, number][] = data.routes[0].geometry.coordinates
+    // Save to cache
+    cache[coordParam] = coords
+    setOsrmCache(cache)
+    return coords
+  } catch {
+    return null
+  }
+}
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function lightenColor(hex: string, percent = 40): string {
@@ -652,18 +694,14 @@ export function RouteMap({
         ]
 
         const coordParam = waypoints.map((w) => `${w.lng},${w.lat}`).join(";")
-        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordParam}?overview=full&geometries=geojson`
 
         try {
-          const res = await fetch(osrmUrl)
-          const data = await res.json()
-          if (data.code !== "Ok" || !data.routes?.[0]) {
-            console.warn(`[RouteMap] OSRM failed for ${routeId}:`, data.message)
+          const coords = await fetchOsrmRoute(coordParam)
+          if (!coords) {
+            console.warn(`[RouteMap] OSRM failed for ${routeId}`)
             colorIndex++
             continue
           }
-
-          const coords: [number, number][] = data.routes[0].geometry.coordinates
           const originalColor = getRouteColor(routeId, colorIndex)
 
           let initialColor = DEFAULT_GREY
@@ -804,14 +842,10 @@ export function RouteMap({
         ]
 
         const coordParam = waypoints.map((w) => `${w.lng},${w.lat}`).join(";")
-        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordParam}?overview=full&geometries=geojson`
 
         try {
-          const res = await fetch(osrmUrl)
-          const data = await res.json()
-          if (data.code !== "Ok" || !data.routes?.[0]) continue
-
-          const coords: [number, number][] = data.routes[0].geometry.coordinates
+          const coords = await fetchOsrmRoute(coordParam)
+          if (!coords) continue
           const source = map.getSource(layerId) as any
           source.setData({
             type: "Feature",
