@@ -1678,7 +1678,6 @@ export function LassoWorkspaceSheet({
         setMenuRouteId(null)
         document.querySelectorAll<HTMLElement>("[data-route-menu] button").forEach((el) => {
           el.style.backgroundColor = "transparent"
-          el.style.color = "#737373"
         })
       }
     }
