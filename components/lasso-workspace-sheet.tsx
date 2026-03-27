@@ -1,9 +1,10 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check } from "lucide-react"
+import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
+import { useSettings } from "@/contexts/settings-context"
 import { base1Infrastructure } from "@/lib/infrastructure-data"
 import { AddLoadOrderModal } from "@/components/add-load-order-modal"
 import { validateRouteCapacity, getShortProductName, type ValidationResult } from "@/lib/capacity-validation"
@@ -237,7 +238,6 @@ function RouteCardCollapsed({
         transition: "background-color 150ms ease",
         display: "flex",
         flexDirection: "row",
-        gap: 12,
         alignItems: "flex-start",
       }}
     >
@@ -259,28 +259,27 @@ function RouteCardCollapsed({
           >
             {truckName}
           </span>
-          {/* Subtitle + Capacity */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              {compartmentCount > 0 && (
-                <>
-                  <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-                    {compartmentCount} Compartments
-                  </span>
-                  {productCount > 0 && (
-                    <>
-                      <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-                        {productCount} Products
-                      </span>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-            <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5", lineHeight: "20px", flexShrink: 0 }}>
+          {/* Subtitle: capacity · compartments · products */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
               {truckCapacity}
             </span>
+            {compartmentCount > 0 && (
+              <>
+                <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+                  {compartmentCount} Compartments
+                </span>
+              </>
+            )}
+            {productCount > 0 && (
+              <>
+                <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+                  {productCount} Products
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -358,8 +357,8 @@ function RouteCardCollapsed({
         </span>
       </div>
       </div>
-      {/* 3-dot menu — sibling of Inner */}
-      <div style={{ position: "relative", flexShrink: 0 }} data-route-menu>
+      {/* 3-dot menu — absolute top-right, hidden by default, visible on card hover */}
+      <div style={{ position: "absolute", top: 16, right: 16, opacity: (isHovered || isMenuOpen) ? 1 : 0, transition: "opacity 150ms ease" }} data-route-menu>
         <button
           onClick={(e) => { e.stopPropagation(); onMenuClick?.() }}
           style={{
@@ -368,16 +367,17 @@ function RouteCardCollapsed({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#737373",
-            backgroundColor: "transparent",
+            color: "#A3A3A3",
+            backgroundColor: isMenuOpen ? "#404040" : "transparent",
             border: "none",
             cursor: "pointer",
             borderRadius: 4,
             padding: 0,
             boxShadow: isMenuOpen ? "0px 0px 0px 3px rgba(115,115,115,0.5)" : "none",
+            transition: "background-color 150ms ease",
           }}
           onMouseEnter={(e) => { if (!isMenuOpen) { e.currentTarget.style.backgroundColor = "#404040"; e.currentTarget.style.color = "#FFFFFF" } }}
-          onMouseLeave={(e) => { if (!isMenuOpen) { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#737373" } }}
+          onMouseLeave={(e) => { if (!isMenuOpen) { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#A3A3A3" } }}
         >
           <MoreVertical size={14} />
         </button>
@@ -1045,7 +1045,7 @@ function NoLoadOrderRow({ onOpenModal }: { onOpenModal: () => void }) {
   const DOT_SIZE = 8
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
       {/* Banner row */}
       <div style={{ display: "flex", flexDirection: "row", gap: SEQ_TO_CARD_GAP, alignItems: "center" }}>
         {/* Seq col: small dot */}
@@ -1124,6 +1124,8 @@ function ExpandedRouteCard({
   onTruckChange,
   onReorder,
   routeId,
+  onPlannedQtyClick,
+  detailsOpenOrderId,
 }: {
   orders: ExtractionOrder[]
   color?: string
@@ -1137,7 +1139,10 @@ function ExpandedRouteCard({
   onTruckChange?: (truck: TruckItem) => void
   onReorder?: (fromIdx: number, toIdx: number) => void
   routeId?: string
+  onPlannedQtyClick?: (order: ExtractionOrder, anchorY: number, anchorX: number) => void
+  detailsOpenOrderId?: string | null
 }) {
+  const { orderCardView } = useSettings()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
 
@@ -1207,38 +1212,28 @@ function ExpandedRouteCard({
               {showMidRouteCTA && (
                 <MidRouteAddLoadCTA onOpenModal={onOpenModal} />
               )}
-              <OrderStopRow
-                order={order}
-                idx={idx}
-                stopTime={stopTime}
-                isNew={order.id === recentlyAddedOrderId}
-                warning={warning}
-                draggable
-                isDragOver={dragOverIdx === idx}
-                onDragStart={(e) => {
-                  setDragIdx(idx)
-                  e.dataTransfer.effectAllowed = "move"
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.dataTransfer.dropEffect = "move"
-                  setDragOverIdx(idx)
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  if (dragIdx !== null && dragIdx !== idx) {
-                    onReorder?.(dragIdx, idx)
-                  }
-                  setDragIdx(null)
-                  setDragOverIdx(null)
-                }}
-                onDragEnd={() => {
-                  setDragIdx(null)
-                  setDragOverIdx(null)
-                }}
-                stopIndex={currentStopIdx}
-                routeId={routeId}
-              />
+              {(() => {
+                const sharedProps = {
+                  order,
+                  idx,
+                  stopTime,
+                  isNew: order.id === recentlyAddedOrderId,
+                  warning,
+                  draggable: true as const,
+                  isDragOver: dragOverIdx === idx,
+                  onDragStart: (e: React.DragEvent) => { setDragIdx(idx); e.dataTransfer.effectAllowed = "move" },
+                  onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverIdx(idx) },
+                  onDrop: (e: React.DragEvent) => { e.preventDefault(); if (dragIdx !== null && dragIdx !== idx) { onReorder?.(dragIdx, idx) }; setDragIdx(null); setDragOverIdx(null) },
+                  onDragEnd: () => { setDragIdx(null); setDragOverIdx(null) },
+                  stopIndex: currentStopIdx,
+                  routeId,
+                  onPlannedQtyClick,
+                  isDetailsOpen: detailsOpenOrderId === order.id,
+                }
+                return orderCardView === "detailed"
+                  ? <OrderStopRowDetailed {...sharedProps} />
+                  : <OrderStopRow {...sharedProps} />
+              })()}
             </div>
           )
         })}
@@ -1322,6 +1317,8 @@ function OrderStopRow({
   isDragOver,
   stopIndex,
   routeId,
+  onPlannedQtyClick,
+  isDetailsOpen,
 }: {
   order: ExtractionOrder
   idx: number
@@ -1336,6 +1333,8 @@ function OrderStopRow({
   isDragOver?: boolean
   stopIndex?: number
   routeId?: string
+  onPlannedQtyClick?: (order: ExtractionOrder, anchorY: number, anchorX: number) => void
+  isDetailsOpen?: boolean
 }) {
   const seq = idx + 1
   const type = order.orderType ?? "D"
@@ -1412,14 +1411,14 @@ function OrderStopRow({
       </div>
 
       {/* Order card with optional warning strip */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div data-order-card style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
           style={{
             flex: 1,
             backgroundColor: "#1F1F1F",
             borderRadius: hasWarning ? "4px 4px 0 0" : 4,
             border: hasWarning ? "1px solid rgba(248, 113, 113, 0.3)" : undefined,
-            padding: 16,
+            padding: "16px 16px 12px 16px",
             gap: 12,
             display: "flex",
             flexDirection: "row",
@@ -1452,7 +1451,9 @@ function OrderStopRow({
             flexShrink: 0,
           }}
         >
-          <CheckboxInput checked={false} onChange={() => {}} />
+          <div style={{ paddingTop: 4 }}>
+            <CheckboxInput checked={false} onChange={() => {}} />
+          </div>
           {/* Grip icon — visible on hover, cursor grab */}
           <svg className="order-grip-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0, transition: "opacity 0.15s", cursor: "grab" }}>
             <circle cx="7" cy="6" r="1.5" fill="#A3A3A3" />
@@ -1535,18 +1536,41 @@ function OrderStopRow({
             </button>
           </div>
 
-          {/* Planned qty */}
-          <span
+          {/* Planned qty — ghost button, self-hover like driver dropdown */}
+          <button
+            className="planned-qty-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              const rect = e.currentTarget.getBoundingClientRect()
+              const card = e.currentTarget.closest<HTMLElement>("[data-order-card]")
+              const cardLeft = card ? card.getBoundingClientRect().left : rect.left
+              // Toggle: click again to close
+              onPlannedQtyClick?.(order, rect.top + rect.height / 2, cardLeft)
+            }}
             style={{
               fontSize: 14,
               fontWeight: 500,
               color: "#FAFAFA",
               opacity: 0.6,
-              lineHeight: "1.429em",
+              lineHeight: "20px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              height: 28,
+              padding: "0 10px",
+              marginLeft: -10,
+              borderRadius: 4,
+              textAlign: "left",
+              transition: "opacity 0.15s, background-color 0.15s, box-shadow 0.15s",
+              alignSelf: "flex-start",
+              boxShadow: isDetailsOpen ? "0px 0px 0px 3px rgba(163,163,163,0.5)" : "none",
+              ...(isDetailsOpen ? { opacity: 1 } : {}),
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.backgroundColor = "#404040" }}
+            onMouseLeave={(e) => { if (!isDetailsOpen) { e.currentTarget.style.opacity = "0.6" }; e.currentTarget.style.backgroundColor = "transparent" }}
           >
             Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
-          </span>
+          </button>
         </div>
       </div>
         {/* Warning strip for products that run out at this stop — one per stop, comma-separated */}
@@ -1571,6 +1595,531 @@ function OrderStopRow({
             {warning}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Detailed Order Stop Row ────────────────────────────────────────────────
+
+const URGENCY_COLORS = [
+  { key: "red" as const, color: "#EF4444" },
+  { key: "yellow" as const, color: "#EAB308" },
+  { key: "green" as const, color: "#22C55E" },
+  { key: "blue" as const, color: "#3B82F6" },
+]
+
+function OrderStopRowDetailed({
+  order,
+  idx,
+  stopTime,
+  isNew,
+  warning,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
+  isDragOver,
+  stopIndex,
+  routeId,
+  onPlannedQtyClick,
+  isDetailsOpen,
+}: {
+  order: ExtractionOrder
+  idx: number
+  stopTime: string
+  isNew?: boolean
+  warning?: string
+  draggable?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDragEnd?: (e: React.DragEvent) => void
+  onDrop?: (e: React.DragEvent) => void
+  isDragOver?: boolean
+  stopIndex?: number
+  routeId?: string
+  onPlannedQtyClick?: (order: ExtractionOrder, anchorY: number, anchorX: number) => void
+  isDetailsOpen?: boolean
+}) {
+  const seq = idx + 1
+  const type = order.orderType ?? "D"
+  const isLoad = type === "L"
+  const hasWarning = !!warning
+
+  const totalAssets = order.totalAssets ?? 0
+  const totalTopOffs = order.totalTopOffs ?? 0
+  const urgency = order.urgency ?? { red: 0, yellow: 0, green: 0, blue: 0 }
+  const productCount = order.productBreakdown?.length ?? 0
+
+  return (
+    <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      onDrop={onDrop}
+      data-stop-index={stopIndex}
+      data-route-id={routeId}
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: SEQ_TO_CARD_GAP,
+        position: "relative",
+        zIndex: 1,
+        borderTop: isDragOver ? "2px solid #6366f1" : "2px solid transparent",
+        transition: "border-color 0.1s",
+      }}
+    >
+      {/* Seq column — center-aligned with card */}
+      <div
+        style={{
+          width: SEQ_COL_W,
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 4,
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <div
+          className="order-seq-badge"
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            backgroundColor: "#A3A3A3",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 10,
+            fontWeight: 500,
+            color: "#171717",
+            lineHeight: 1,
+            flexShrink: 0,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          {seq}
+        </div>
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 400,
+            color: "#A3A3A3",
+            textAlign: "center",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {stopTime}
+        </span>
+      </div>
+
+      {/* Order card */}
+      <div data-order-card style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div
+          style={{
+            flex: 1,
+            backgroundColor: "#1F1F1F",
+            borderRadius: hasWarning ? "4px 4px 0 0" : 4,
+            border: hasWarning ? "1px solid rgba(248, 113, 113, 0.3)" : undefined,
+            padding: 16,
+            gap: 12,
+            display: "flex",
+            flexDirection: "row",
+            animation: isNew ? "rb-flicker 0.5s ease 8" : undefined,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#282828"
+            const grip = e.currentTarget.querySelector<SVGElement>(".order-grip-icon")
+            if (grip) grip.style.opacity = "1"
+            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
+            if (btn) btn.style.opacity = "1"
+            const sec = e.currentTarget.querySelector<HTMLDivElement>(".detailed-secondary")
+            if (sec) sec.style.backgroundColor = "#333"
+            const card = e.currentTarget.closest<HTMLElement>("[data-order-card]")
+            const chevBtn = card?.querySelector<HTMLButtonElement>(".chevrons-left-btn")
+            if (chevBtn) chevBtn.style.opacity = "1"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#1F1F1F"
+            const grip = e.currentTarget.querySelector<SVGElement>(".order-grip-icon")
+            if (grip) grip.style.opacity = "0"
+            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
+            if (btn) btn.style.opacity = "0"
+            const sec = e.currentTarget.querySelector<HTMLDivElement>(".detailed-secondary")
+            if (sec) sec.style.backgroundColor = "#282828"
+            const card = e.currentTarget.closest<HTMLElement>("[data-order-card]")
+            const chevBtn = card?.querySelector<HTMLButtonElement>(".chevrons-left-btn")
+            if (chevBtn) chevBtn.style.opacity = "0"
+          }}
+        >
+          {/* Left: checkbox + grip (top-aligned) */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ paddingTop: 4 }}>
+              <CheckboxInput checked={false} onChange={() => {}} />
+            </div>
+            <svg className="order-grip-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0, transition: "opacity 0.15s", cursor: "grab" }}>
+              <circle cx="7" cy="6" r="1.5" fill="#A3A3A3" />
+              <circle cx="7" cy="10" r="1.5" fill="#A3A3A3" />
+              <circle cx="7" cy="14" r="1.5" fill="#A3A3A3" />
+              <circle cx="13" cy="6" r="1.5" fill="#A3A3A3" />
+              <circle cx="13" cy="10" r="1.5" fill="#A3A3A3" />
+              <circle cx="13" cy="14" r="1.5" fill="#A3A3A3" />
+            </svg>
+          </div>
+
+          {/* Right: content */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, minWidth: 0 }}>
+            {/* Primary row — type badge + name + kebab */}
+            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <div
+                style={{
+                  width: 20, height: 20, flexShrink: 0,
+                  backgroundColor: "#E5E5E5", border: "1px solid #737373", borderRadius: 4,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, fontWeight: 500, color: "#171717", lineHeight: 1,
+                }}
+              >
+                {type}
+              </div>
+              <span
+                style={{
+                  flex: 1, fontSize: 16, fontWeight: 500, color: "#FFFFFF",
+                  lineHeight: "24px", minWidth: 0, overflow: "hidden",
+                  textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}
+              >
+                {order.customerName}
+              </span>
+              <button
+                className="order-menu-btn"
+                style={{
+                  width: 24, height: 24, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "transparent", border: "none", cursor: "pointer",
+                  borderRadius: 4, opacity: 0, transition: "opacity 0.15s",
+                  color: "#A3A3A3", padding: 0,
+                }}
+              >
+                <MoreVertical size={14} />
+              </button>
+            </div>
+
+            {/* Secondary section wrapper — « button + stats card */}
+            <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-end", marginLeft: -44 }}>
+              {/* « button */}
+              <button
+                className="chevrons-left-btn"
+                title="View more details"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const card = e.currentTarget.closest<HTMLElement>("[data-order-card]")
+                  const cardLeft = card ? card.getBoundingClientRect().left : 0
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  onPlannedQtyClick?.(order, rect.top + rect.height / 2, cardLeft)
+                }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: "#333",
+                  borderRadius: "4px 0 0 4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "none",
+                  cursor: "pointer",
+                  opacity: 0,
+                  transition: "opacity 0.15s",
+                  boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                  color: "#A3A3A3",
+                  padding: 0,
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#404040" }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+              >
+                <ChevronsLeft size={16} />
+              </button>
+              {/* Stats card */}
+              <div
+                className="detailed-secondary"
+                style={{
+                  flex: 1,
+                  backgroundColor: "#282828",
+                  borderRadius: 4,
+                  padding: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  transition: "background-color 0.15s",
+                }}
+              >
+              {/* Stats */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {/* Assets / Products */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontSize: 18, fontWeight: 600, color: "#FFFFFF", lineHeight: "28px" }}>
+                    {isLoad ? productCount : totalAssets}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>
+                    {isLoad ? "Products" : "Assets"}
+                  </span>
+                </div>
+
+                {/* Planned Qty */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontSize: 18, fontWeight: 600, color: "#FFFFFF", lineHeight: "28px" }}>
+                    {order.volume > 0 ? order.volume.toLocaleString() : "—"}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>
+                    Planned Qty
+                  </span>
+                </div>
+
+                {/* Divider + Top Off (delivery only) */}
+                {!isLoad && (
+                  <>
+                    <div style={{ width: 1, alignSelf: "stretch", backgroundColor: "#333" }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: "#E5E5E5", lineHeight: "28px" }}>
+                        {totalTopOffs}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>
+                        Top Off
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Urgency dots — 2x2 grid */}
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                  maxWidth: 88,
+                  width: 88,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: isLoad ? 0 : 1,
+                }}
+              >
+                {URGENCY_COLORS.map(({ key, color }) => (
+                  <div
+                    key={key}
+                    style={{
+                      width: 40,
+                      backgroundColor: "#333",
+                      borderRadius: 4,
+                      padding: "4px 6px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, fontWeight: 400, color: "#E5E5E5", lineHeight: "16px" }}>
+                      {urgency[key]}
+                    </span>
+                  </div>
+                ))}
+              </div>{/* end urgency dots */}
+            </div>{/* end stats card (detailed-secondary) */}
+          </div>{/* end wrapper: « + stats */}
+          </div>{/* end Right: content */}
+        </div>{/* end inner card bg div with hover */}
+
+        {/* Warning strip */}
+        {hasWarning && (
+          <div
+            style={{
+              backgroundColor: "rgba(220, 38, 38, 0.2)",
+              borderLeft: "1px solid rgba(248, 113, 113, 0.3)",
+              borderRight: "1px solid rgba(248, 113, 113, 0.3)",
+              borderBottom: "1px solid rgba(248, 113, 113, 0.3)",
+              borderRadius: "0 0 4px 4px",
+              padding: "6px 16px 6px 20px",
+              fontSize: 14, fontWeight: 400, color: "#f87171",
+              display: "flex", alignItems: "center", gap: 6,
+            }}
+          >
+            <TriangleAlert size={16} color="#f87171" style={{ flexShrink: 0 }} />
+            {warning}
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+// ─── Order Details Popover ──────────────────────────────────────────────────
+
+function OrderDetailsPopover({
+  order,
+  anchorY,
+  anchorX,
+  onClose,
+}: {
+  order: ExtractionOrder
+  anchorY: number
+  anchorX: number
+  onClose: () => void
+}) {
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  // Close on click outside (ignore clicks on planned-qty buttons to let toggle work)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        if ((e.target as HTMLElement).closest?.(".planned-qty-btn")) return
+        onClose()
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [onClose])
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("keydown", handler)
+    return () => document.removeEventListener("keydown", handler)
+  }, [onClose])
+
+  const breakdown = order.productBreakdown ?? []
+  const totalVolume = breakdown.reduce((sum, pb) => sum + pb.volume, 0) || order.volume
+
+  // Mock assets data — random number per product row
+  const mockAssets = breakdown.map((_, i) => {
+    const assets = [3, 5, 2, 4, 7, 1][i % 6]
+    const topOffs = i % 3 === 0 ? [2, 3, 1][Math.floor(i / 3) % 3] : null
+    return { assets, topOffs }
+  })
+  const totalAssets = mockAssets.reduce((sum, m) => sum + m.assets, 0)
+  const totalTopOffs = mockAssets.reduce((sum, m) => sum + (m.topOffs ?? 0), 0)
+
+  // Position: 4px gap to the left of the order card, centered vertically near the clicked button
+  const popoverWidth = 520
+  const popoverHeight = 300 // approximate
+  const top = Math.max(80, Math.min(anchorY - popoverHeight / 2, window.innerHeight - popoverHeight - 20))
+  const left = Math.max(0, anchorX - popoverWidth - 4)
+
+  return (
+    <div
+      ref={popoverRef}
+      style={{
+        position: "fixed",
+        top,
+        left,
+        zIndex: 10000,
+        backgroundColor: "#1F1F1F",
+        borderRadius: 8,
+        padding: 16,
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        boxShadow: "0px 8px 24px rgba(0,0,0,0.4), 0px 2px 8px rgba(0,0,0,0.3)",
+        width: popoverWidth,
+      }}
+    >
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5" }}>Order Details</span>
+        <button
+          onClick={onClose}
+          style={{
+            width: 24,
+            height: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            borderRadius: 4,
+            color: "#A3A3A3",
+            padding: 0,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "#FFFFFF" }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "#A3A3A3" }}
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Table */}
+      <div style={{ border: "1px solid #282828", borderRadius: 4, overflow: "clip" }}>
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: 14,
+          lineHeight: "20px",
+        }}
+      >
+        <colgroup>
+          <col style={{ width: 228 }} />
+          <col />
+          <col />
+        </colgroup>
+        <thead>
+          <tr style={{ backgroundColor: "#333", height: 40 }}>
+            <th style={{ padding: "0 12px", fontWeight: 500, color: "#A3A3A3", textAlign: "left" }}>Product</th>
+            <th style={{ padding: "0 12px", fontWeight: 500, color: "#A3A3A3", textAlign: "left" }}>Planned Qty</th>
+            <th style={{ padding: "0 12px", fontWeight: 500, color: "#A3A3A3", textAlign: "left" }}>Assets</th>
+          </tr>
+        </thead>
+        <tbody>
+          {breakdown.length > 0 ? breakdown.map((pb, i) => (
+            <tr key={i} style={{ borderBottom: "1px solid #282828" }}>
+              <td style={{ padding: 12, fontWeight: 400, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 228 }}>{pb.product}</td>
+              <td style={{ padding: 12, fontWeight: 500, color: "#E5E5E5" }}>{pb.volume.toLocaleString()} gal</td>
+              <td style={{ padding: 12, color: "#E5E5E5" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontWeight: 500 }}>{mockAssets[i].assets}</span>
+                  {mockAssets[i].topOffs && (
+                    <>
+                      <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0 }} />
+                      <span style={{ fontWeight: 400, color: "#A3A3A3" }}>{mockAssets[i].topOffs} Top-Offs</span>
+                    </>
+                  )}
+                </span>
+              </td>
+            </tr>
+          )) : (
+            <tr style={{ borderBottom: "1px solid #282828" }}>
+              <td style={{ padding: 12, fontWeight: 400, color: "#E5E5E5" }}>—</td>
+              <td style={{ padding: 12, fontWeight: 500, color: "#E5E5E5" }}>{order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}</td>
+              <td style={{ padding: 12, fontWeight: 500, color: "#E5E5E5" }}>—</td>
+            </tr>
+          )}
+        </tbody>
+        <tfoot>
+          <tr style={{ backgroundColor: "#1B1B1B" }}>
+            <td style={{ padding: "10px 12px", fontWeight: 500, color: "#E5E5E5" }}>Total</td>
+            <td style={{ padding: "10px 12px", fontWeight: 500, color: "#E5E5E5" }}>{totalVolume.toLocaleString()} gal</td>
+            <td style={{ padding: "10px 12px", fontWeight: 500, color: "#E5E5E5" }}>{totalAssets}</td>
+          </tr>
+        </tfoot>
+      </table>
       </div>
     </div>
   )
@@ -1611,6 +2160,11 @@ export function LassoWorkspaceSheet({
   // Add Load Order modal state
   const [isAddLoadModalOpen, setIsAddLoadModalOpen] = useState(false)
   const [activeRouteIdForModal, setActiveRouteIdForModal] = useState<string | null>(null)
+
+  // Order Details popover state
+  const [orderDetailsOrder, setOrderDetailsOrder] = useState<ExtractionOrder | null>(null)
+  const [orderDetailsAnchorY, setOrderDetailsAnchorY] = useState<number>(0)
+  const [orderDetailsAnchorX, setOrderDetailsAnchorX] = useState<number>(0)
 
   // Route 3-dot menu state
   const [menuRouteId, setMenuRouteId] = useState<string | null>(null)
@@ -1737,7 +2291,7 @@ export function LassoWorkspaceSheet({
 
   return (
     <div
-      className="fixed right-0 top-[68px] bottom-0 z-[10000] flex flex-col"
+      className="fixed right-0 top-[68px] bottom-0 z-[1100] flex flex-col"
       style={{
         width: 560,
         backgroundColor: "#111111",
@@ -2003,20 +2557,24 @@ export function LassoWorkspaceSheet({
                             </button>
                           </div>
 
-                          {/* Card body — position relative for color bar */}
-                          <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
-                            <div
-                              style={{
-                                position: "absolute",
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: 6,
-                                backgroundColor: color,
-                                borderRadius: "4px 0 0 4px",
-                                pointerEvents: "none",
-                              }}
-                            />
+                          {/* Card wrapper — contains card body + banner */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {/* Card body — position relative for wedge */}
+                            <div style={{ position: "relative" }}>
+                              {/* Color wedge — covers card body only, top-left radius only */}
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  left: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: 6,
+                                  backgroundColor: color,
+                                  borderRadius: "4px 0 0 0",
+                                  pointerEvents: "none",
+                                  zIndex: 1,
+                                }}
+                              />
                             <RouteCardCollapsed
                               color={color}
                               driverName={selectedDrivers[routeId]?.name ?? driverName}
@@ -2140,90 +2698,70 @@ export function LassoWorkspaceSheet({
                                 </div>
                               </div>
                             )}
+                            </div>{/* end card body (wedge scope) */}
 
-                          </div>
-                        </div>
+                            {/* Zone B: Banner — inside card wrapper, below wedge */}
+                            {validation && validation.zoneB.visible && (() => {
+                              const isRed = validation.collapsedBannerType === "red"
+                              const isAmber = validation.collapsedBannerType === "amber"
+                              const bannerColor = isRed ? "#f87171" : "#eab308"
+                              const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : "rgba(234, 179, 8, 0.09)"
+                              const hasIssues = validation.expandedIssues.length > 0
+                              const issueCount = validation.expandedIssues.length
+                              const uniqueStops = isRed && validation.l3.length > 0
+                                ? [...new Set(validation.l3.map(i => i.stopIndex))].sort((a, b) => a - b)
+                                : []
 
-                        {/* Zone B: Separated banner — L3 only, aligned with card body */}
-                        {validation && validation.zoneB.visible && (() => {
-                          const isRed = validation.collapsedBannerType === "red"
-                          const isAmber = validation.collapsedBannerType === "amber"
-                          const bannerColor = isRed ? "#f87171" : "#eab308"
-                          const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : "rgba(234, 179, 8, 0.09)"
-                          const hasIssues = validation.expandedIssues.length > 0
-                          const issueCount = validation.expandedIssues.length
-
-                          // Unique L3 stop indices for chips
-                          const uniqueStops = isRed && validation.l3.length > 0
-                            ? [...new Set(validation.l3.map(i => i.stopIndex))].sort((a, b) => a - b)
-                            : []
-
-                          return (
-                          <div style={{ display: "flex", flexDirection: "row", alignItems: "start", gap: 8 }}>
-                            {/* Spacer matching checkbox+chevron width */}
-                            <div style={{ width: 48, flexShrink: 0 }} />
-                            {/* Banner body — aligned with card */}
-                            <div
-                              style={{
-                                flex: 1,
-                                minWidth: 0,
-                                backgroundColor: bannerBg,
-                                borderRadius: "0px 0px 4px 4px",
-                                padding: "6px 16px 6px 20px",
-                                display: "flex",
-                                flexDirection: "row",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                              }}
-                            >
-                              {/* Left: icon + text */}
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                                {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
-                                <span style={{
-                                  fontSize: 14,
-                                  fontWeight: 400,
-                                  color: bannerColor,
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}>
-                                  {isRed && uniqueStops.length > 0
-                                    ? `${issueCount} Issue${issueCount !== 1 ? "s" : ""}`
-                                    : (isExpanded && hasIssues
-                                        ? validation.expandedBannerText
-                                        : validation.collapsedBannerText)
-                                  }
-                                </span>
-                              </div>
-
-                              {/* Right: chips for red/L3 (only when expanded — can't scroll when collapsed) */}
-                              {isRed && uniqueStops.length > 0 && isExpanded ? (
-                                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                                  {uniqueStops.map(stopIdx => (
-                                    <StopChip
-                                      key={stopIdx}
-                                      stopIndex={stopIdx}
-                                      onClick={() => scrollToStop(routeId, stopIdx)}
-                                    />
-                                  ))}
-                                </div>
-                              ) : (
-                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                                  {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && isAmber && validation.l1.status === "below" && (
-                                    <ArrowDown size={16} color={bannerColor} />
-                                  )}
-                                  {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && validation.collapsedBannerDelta && (
-                                    <span style={{ fontSize: 14, fontWeight: 400, color: bannerColor, whiteSpace: "nowrap" }}>
-                                      {validation.collapsedBannerDelta}
+                              return (
+                                <div
+                                  style={{
+                                    backgroundColor: bannerBg,
+                                    borderRadius: "0px 0px 4px 4px",
+                                    padding: "6px 16px 6px 20px",
+                                    display: "flex",
+                                    flexDirection: "row",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                                    {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
+                                    <span style={{
+                                      fontSize: 14, fontWeight: 400, color: bannerColor,
+                                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                                    }}>
+                                      {isRed && uniqueStops.length > 0
+                                        ? `${issueCount} Issue${issueCount !== 1 ? "s" : ""}`
+                                        : (isExpanded && hasIssues
+                                            ? validation.expandedBannerText
+                                            : validation.collapsedBannerText)
+                                      }
                                     </span>
+                                  </div>
+                                  {isRed && uniqueStops.length > 0 && isExpanded ? (
+                                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                                      {uniqueStops.map(stopIdx => (
+                                        <StopChip key={stopIdx} stopIndex={stopIdx} onClick={() => scrollToStop(routeId, stopIdx)} />
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                      {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && isAmber && validation.l1.status === "below" && (
+                                        <ArrowDown size={16} color={bannerColor} />
+                                      )}
+                                      {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && validation.collapsedBannerDelta && (
+                                        <span style={{ fontSize: 14, fontWeight: 400, color: bannerColor, whiteSpace: "nowrap" }}>
+                                          {validation.collapsedBannerDelta}
+                                        </span>
+                                      )}
+                                    </div>
                                   )}
-                                  {/* <Info size={16} color="#737373" /> */}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                          )
-                        })()}
+                              )
+                            })()}
+
+                          </div>{/* end card wrapper */}
+                        </div>{/* end flex-row: checkbox + card */}
                         </div>{/* end sticky wrapper */}
 
                         {/* Expanded accordion — full width (no indent), CARD_LEFT handled internally */}
@@ -2250,6 +2788,16 @@ export function LassoWorkspaceSheet({
                               ids.splice(toIdx, 0, moved)
                               setReorderedRoutes((prev) => ({ ...prev, [routeId]: ids }))
                             }}
+                            onPlannedQtyClick={(order, anchorY, anchorX) => {
+                              if (orderDetailsOrder?.id === order.id) {
+                                setOrderDetailsOrder(null)
+                              } else {
+                                setOrderDetailsOrder(order)
+                                setOrderDetailsAnchorY(anchorY)
+                                setOrderDetailsAnchorX(anchorX)
+                              }
+                            }}
+                            detailsOpenOrderId={orderDetailsOrder?.id ?? null}
                           />
                           </div>
                         )}
@@ -2500,6 +3048,16 @@ export function LassoWorkspaceSheet({
             setIsAddLoadModalOpen(false)
             setActiveRouteIdForModal(null)
           }}
+        />
+      )}
+
+      {/* Order Details Popover */}
+      {orderDetailsOrder && (
+        <OrderDetailsPopover
+          order={orderDetailsOrder}
+          anchorY={orderDetailsAnchorY}
+          anchorX={orderDetailsAnchorX}
+          onClose={() => setOrderDetailsOrder(null)}
         />
       )}
     </div>

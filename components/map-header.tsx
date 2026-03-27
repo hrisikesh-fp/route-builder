@@ -34,7 +34,7 @@ export function MapHeader({ onFilterClick, onSettingsClick }: MapHeaderProps) {
 
   return (
     <header
-      className="absolute top-0 left-0 right-0 w-full z-[1001] flex justify-between items-center self-stretch"
+      className="absolute top-0 left-0 right-0 w-full z-[1200] flex justify-between items-center self-stretch"
       style={{
         height: "68px",
         padding: "8px 24px 8px 16px",
@@ -105,7 +105,7 @@ export function MapHeader({ onFilterClick, onSettingsClick }: MapHeaderProps) {
           {/* Dropdown Menu */}
           {isProfileOpen && (
             <div
-              className="absolute right-0 mt-2 w-64 rounded-lg overflow-hidden"
+              className="absolute right-0 mt-2 w-64 rounded-lg overflow-hidden z-[1100]"
               style={{
                 backgroundColor: "#1A1A1A",
                 border: "1px solid #282828",
