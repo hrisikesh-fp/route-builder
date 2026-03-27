@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check } from "lucide-react"
+import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ExternalLink } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -226,19 +226,20 @@ function RouteCardCollapsed({
   onDriverSelect?: (driver: DriverItem) => void
   currentDriverId?: string
 }) {
+  const [cardHover, setCardHover] = useState(false)
+  const showFab = cardHover || isMenuOpen
   return (
     <div
+      onMouseEnter={() => setCardHover(true)}
+      onMouseLeave={() => setCardHover(false)}
       style={{
-        backgroundColor: isHovered ? "#282828" : "#1F1F1F",
+        backgroundColor: cardHover ? "#282828" : "#1F1F1F",
         borderRadius: hasBanner ? "4px 4px 0px 0px" : "4px 4px 0px 4px",
         boxShadow:
           "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
         padding: "16px 16px 12px 20px",
         transition: "background-color 150ms ease",
-        display: "flex",
-        flexDirection: "row",
-        gap: 12,
-        alignItems: "flex-start",
+        position: "relative",
       }}
     >
       {/* Inner — all card content */}
@@ -358,172 +359,207 @@ function RouteCardCollapsed({
         </span>
       </div>
       </div>
-      {/* 3-dot menu — sibling of Inner */}
-      <div style={{ position: "relative", flexShrink: 0 }} data-route-menu>
-        <button
-          onClick={(e) => { e.stopPropagation(); onMenuClick?.() }}
-          style={{
-            width: 24,
-            height: 24,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#737373",
-            backgroundColor: "transparent",
-            border: "none",
-            cursor: "pointer",
-            borderRadius: 4,
-            padding: 0,
-            boxShadow: isMenuOpen ? "0px 0px 0px 3px rgba(115,115,115,0.5)" : "none",
+      {/* FAB — floating action bar, shown on hover */}
+      <div
+        data-route-menu
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          display: "flex",
+          gap: 4,
+          padding: 6,
+          backgroundColor: "#1A1A1A",
+          border: "1px solid #333",
+          borderRadius: 4,
+          opacity: showFab ? 1 : 0,
+          pointerEvents: showFab ? "auto" : "none",
+          transition: "opacity 150ms ease",
+          zIndex: 5,
+        }}
+      >
+        {/* X — Remove from workspace */}
+        <div style={{ position: "relative" }} className="fab-btn-wrap"
+          onMouseEnter={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-tooltip]")
+            if (tip) tip.style.opacity = "1"
           }}
-          onMouseEnter={(e) => { if (!isMenuOpen) { e.currentTarget.style.backgroundColor = "#404040"; e.currentTarget.style.color = "#FFFFFF" } }}
-          onMouseLeave={(e) => { if (!isMenuOpen) { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#737373" } }}
+          onMouseLeave={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-tooltip]")
+            if (tip) tip.style.opacity = "0"
+          }}
         >
-          <MoreVertical size={14} />
-        </button>
-        {isMenuOpen && (
-          <div
-            data-route-menu
+          <button
+            onClick={(e) => { e.stopPropagation() }}
             style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              right: 0,
-              width: 200,
-              zIndex: 999,
-              backgroundColor: "#1A1A1A",
-              border: "1px solid #333",
-              borderRadius: 4,
-              boxShadow: "0px 4px 6px 0px rgba(0,0,0,0.1), 0px 2px 4px 0px rgba(0,0,0,0.1)",
-              padding: 4,
-              display: "flex",
-              flexDirection: "column",
+              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#E5E5E5", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#404040" }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
           >
-            {/* View Route */}
-            <div
-              style={{
-                padding: "6px 8px",
-                borderRadius: 4,
-                fontSize: 14,
-                fontWeight: 400,
-                color: "#E5E5E5",
-                lineHeight: "20px",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
-            >
-              View Route
-            </div>
-            {/* Separator */}
-            <div style={{ height: 1, backgroundColor: "#333", margin: "0 -4px" }} />
-            {/* Driver — sub-trigger with submenu */}
-            <div
-              style={{ position: "relative" }}
-              onMouseEnter={(e) => {
-                const item = e.currentTarget.querySelector<HTMLElement>("[data-driver-subtrigger]")
-                if (item) { item.style.backgroundColor = "#333"; item.style.borderRadius = "2px" }
-                const sub = e.currentTarget.querySelector<HTMLElement>("[data-driver-submenu]")
-                if (sub) sub.style.display = "flex"
-              }}
-              onMouseLeave={(e) => {
-                const item = e.currentTarget.querySelector<HTMLElement>("[data-driver-subtrigger]")
-                if (item) { item.style.backgroundColor = "transparent"; item.style.borderRadius = "4px" }
-                const sub = e.currentTarget.querySelector<HTMLElement>("[data-driver-submenu]")
-                if (sub) sub.style.display = "none"
-              }}
-            >
-              <div
-                data-driver-subtrigger
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "6px 8px",
-                  borderRadius: 4,
-                  fontSize: 14,
-                  fontWeight: 400,
-                  color: "#E5E5E5",
-                  lineHeight: "20px",
-                  cursor: "pointer",
-                }}
-              >
-                <span style={{ flex: 1 }}>Driver</span>
-                <ChevronRight size={16} color="#E5E5E5" />
-              </div>
-              {/* Driver submenu — positioned to the left */}
-              <div
-                data-driver-submenu
-                data-route-menu
-                style={{
-                  display: "none",
-                  position: "absolute",
-                  top: -5,
-                  right: "calc(100% + 4px)",
-                  width: 260,
-                  flexDirection: "column",
-                  backgroundColor: "#1A1A1A",
-                  border: "1px solid #333",
-                  borderRadius: 4,
-                  boxShadow: "0px 4px 6px 0px rgba(0,0,0,0.1), 0px 2px 4px 0px rgba(0,0,0,0.1)",
-                  overflow: "hidden",
-                  zIndex: 1000,
-                }}
-              >
-                {/* Search */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
-                  <Search size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>Search Drivers</span>
-                </div>
-                {/* Driver list */}
-                <div style={{ padding: 4 }}>
-                  {DRIVERS.map((driver) => {
-                    const isSelected = driver.id === currentDriverId
-                    return (
-                      <div
-                        key={driver.id}
-                        onClick={(e) => { e.stopPropagation(); onDriverSelect?.(driver) }}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "6px 8px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          fontSize: 14,
-                          fontWeight: 400,
-                          color: "#E5E5E5",
-                          lineHeight: "20px",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
-                      >
-                        <span style={{ flex: 1 }}>{driver.name} ({driver.orderCount})</span>
-                        {isSelected && <Check size={16} color="#E5E5E5" style={{ flexShrink: 0 }} />}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-            {/* Unassign Route */}
-            <div
-              style={{
-                padding: "6px 8px",
-                borderRadius: 4,
-                fontSize: 14,
-                fontWeight: 400,
-                color: "#E5E5E5",
-                lineHeight: "20px",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
-            >
-              Unassign Route
-            </div>
+            <X size={14} />
+          </button>
+          <div data-tooltip style={{
+            position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+            backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, fontWeight: 400, lineHeight: "16px",
+            padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", opacity: 0, transition: "opacity 150ms ease", pointerEvents: "none",
+          }}>
+            Remove Route from Workspace
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%) rotate(45deg)", marginTop: -4, width: 8, height: 8, backgroundColor: "#E5E5E5" }} />
           </div>
-        )}
+        </div>
+
+        {/* ExternalLink — View Route */}
+        <div style={{ position: "relative" }} className="fab-btn-wrap"
+          onMouseEnter={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-tooltip]")
+            if (tip) tip.style.opacity = "1"
+          }}
+          onMouseLeave={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-tooltip]")
+            if (tip) tip.style.opacity = "0"
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation() }}
+            style={{
+              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#E5E5E5", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#404040" }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+          >
+            <ExternalLink size={14} />
+          </button>
+          <div data-tooltip style={{
+            position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+            backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, fontWeight: 400, lineHeight: "16px",
+            padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", opacity: 0, transition: "opacity 150ms ease", pointerEvents: "none",
+          }}>
+            View Route
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%) rotate(45deg)", marginTop: -4, width: 8, height: 8, backgroundColor: "#E5E5E5" }} />
+          </div>
+        </div>
+
+        {/* MoreVertical — More Actions (3-dot menu) */}
+        <div style={{ position: "relative" }} className="fab-btn-wrap" data-route-menu
+          onMouseEnter={(e) => {
+            if (!isMenuOpen) {
+              const tip = e.currentTarget.querySelector<HTMLElement>("[data-tooltip]")
+              if (tip) tip.style.opacity = "1"
+            }
+          }}
+          onMouseLeave={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-tooltip]")
+            if (tip) tip.style.opacity = "0"
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); onMenuClick?.() }}
+            style={{
+              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#E5E5E5", backgroundColor: "transparent", border: "none", cursor: "pointer", borderRadius: 4, padding: 0,
+              boxShadow: isMenuOpen ? "0px 0px 0px 3px rgba(115,115,115,0.5)" : "none",
+            }}
+            onMouseEnter={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "#404040" }}
+            onMouseLeave={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "transparent" }}
+          >
+            <MoreVertical size={14} />
+          </button>
+          <div data-tooltip style={{
+            position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+            backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, fontWeight: 400, lineHeight: "16px",
+            padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", opacity: 0, transition: "opacity 150ms ease", pointerEvents: "none",
+          }}>
+            More Actions
+            <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%) rotate(45deg)", marginTop: -4, width: 8, height: 8, backgroundColor: "#E5E5E5" }} />
+          </div>
+          {isMenuOpen && (
+            <div
+              data-route-menu
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                right: 0,
+                width: 200,
+                zIndex: 999,
+                backgroundColor: "#1A1A1A",
+                border: "1px solid #333",
+                borderRadius: 4,
+                boxShadow: "0px 4px 6px 0px rgba(0,0,0,0.1), 0px 2px 4px 0px rgba(0,0,0,0.1)",
+                padding: 4,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {/* View Route */}
+              <div
+                style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
+              >
+                View Route
+              </div>
+              {/* Separator */}
+              <div style={{ height: 1, backgroundColor: "#333", margin: "0 -4px" }} />
+              {/* Driver — sub-trigger with submenu */}
+              <div
+                style={{ position: "relative" }}
+                onMouseEnter={(e) => {
+                  const item = e.currentTarget.querySelector<HTMLElement>("[data-driver-subtrigger]")
+                  if (item) { item.style.backgroundColor = "#333"; item.style.borderRadius = "2px" }
+                  const sub = e.currentTarget.querySelector<HTMLElement>("[data-driver-submenu]")
+                  if (sub) sub.style.display = "flex"
+                }}
+                onMouseLeave={(e) => {
+                  const item = e.currentTarget.querySelector<HTMLElement>("[data-driver-subtrigger]")
+                  if (item) { item.style.backgroundColor = "transparent"; item.style.borderRadius = "4px" }
+                  const sub = e.currentTarget.querySelector<HTMLElement>("[data-driver-submenu]")
+                  if (sub) sub.style.display = "none"
+                }}
+              >
+                <div data-driver-subtrigger style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}>
+                  <span style={{ flex: 1 }}>Driver</span>
+                  <ChevronRight size={16} color="#E5E5E5" />
+                </div>
+                <div data-driver-submenu data-route-menu style={{
+                  display: "none", position: "absolute", top: -5, right: "calc(100% + 4px)", width: 260, flexDirection: "column",
+                  backgroundColor: "#1A1A1A", border: "1px solid #333", borderRadius: 4,
+                  boxShadow: "0px 4px 6px 0px rgba(0,0,0,0.1), 0px 2px 4px 0px rgba(0,0,0,0.1)", overflow: "hidden", zIndex: 1000,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
+                    <Search size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>Search Drivers</span>
+                  </div>
+                  <div style={{ padding: 4 }}>
+                    {DRIVERS.map((driver) => {
+                      const isSelected = driver.id === currentDriverId
+                      return (
+                        <div key={driver.id} onClick={(e) => { e.stopPropagation(); onDriverSelect?.(driver) }}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4, cursor: "pointer", fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
+                        >
+                          <span style={{ flex: 1 }}>{driver.name} ({driver.orderCount})</span>
+                          {isSelected && <Check size={16} color="#E5E5E5" style={{ flexShrink: 0 }} />}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+              {/* Unassign Route */}
+              <div
+                style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
+              >
+                Unassign Route
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -1642,7 +1678,6 @@ export function LassoWorkspaceSheet({
         setMenuRouteId(null)
         document.querySelectorAll<HTMLElement>("[data-route-menu] button").forEach((el) => {
           el.style.backgroundColor = "transparent"
-          el.style.color = "#737373"
         })
       }
     }
@@ -2015,6 +2050,7 @@ export function LassoWorkspaceSheet({
                                 backgroundColor: color,
                                 borderRadius: "4px 0 0 4px",
                                 pointerEvents: "none",
+                                zIndex: 2,
                               }}
                             />
                             <RouteCardCollapsed
@@ -2026,7 +2062,7 @@ export function LassoWorkspaceSheet({
                               truckCapacity={truckProfile ? `${truckProfile.totalCapacity.toLocaleString()} gal` : "—"}
                               compartmentCount={truckProfile?.compartments.length ?? 0}
                               productCount={truckProfile ? Object.keys(truckProfile.productCapacities).length : 0}
-                              isHovered={!isExpanded && hoveredRouteId === routeId}
+                              isHovered={hoveredRouteId === routeId}
                               hasBanner={!!(validation && validation.zoneB.visible)}
                               onDriverClick={() => {
                                 setDriverDropdownRouteId(driverDropdownRouteId === routeId ? null : routeId)
