@@ -137,6 +137,7 @@ export interface RouteMapProps {
   isLassoActive?: boolean
   onRouteClick?: (routeId: string) => void
   onTerminalClick?: (terminalId: string) => void
+  onOrderPinClick?: (order: ExtractionOrder) => void
   selectedRouteIds?: string[]
   checkedRouteIds?: string[]
   hoveredWorkspaceRouteId?: string | null
@@ -172,6 +173,7 @@ export function RouteMap({
   isLassoActive = false,
   onRouteClick,
   onTerminalClick,
+  onOrderPinClick,
   selectedRouteIds = [],
   checkedRouteIds = [],
   hoveredWorkspaceRouteId = null,
@@ -204,6 +206,7 @@ export function RouteMap({
 
   const selectedRouteIdsRef = useRef<string[]>(selectedRouteIds)
   const onRouteClickRef = useRef(onRouteClick)
+  const onOrderPinClickRef = useRef(onOrderPinClick)
 
   const [currentZoom, setCurrentZoom] = useState(9)
   const [mapReady, setMapReady] = useState(false)
@@ -216,6 +219,7 @@ export function RouteMap({
   // ── keep refs in sync ────────────────────────────────────────────────────
   useEffect(() => { selectedRouteIdsRef.current = selectedRouteIds }, [selectedRouteIds])
   useEffect(() => { onRouteClickRef.current = onRouteClick }, [onRouteClick])
+  useEffect(() => { onOrderPinClickRef.current = onOrderPinClick }, [onOrderPinClick])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -439,11 +443,9 @@ export function RouteMap({
         activePopupRef.current = null
       })
 
-      // Click → open route workspace
+      // Click → open workspace with route or unassigned order
       el.addEventListener("click", () => {
-        if (order.driverId && onRouteClickRef.current) {
-          onRouteClickRef.current(order.driverId)
-        }
+        onOrderPinClickRef.current?.(order)
       })
 
       const marker = new mbRef.current.Marker({ element: el, anchor: "bottom" })

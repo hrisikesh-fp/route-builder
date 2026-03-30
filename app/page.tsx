@@ -212,6 +212,19 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     }, 100)
   }
 
+  const handleOrderPinClick = (order: ExtractionOrder) => {
+    if (order.routeId) {
+      // Scheduled order → add the whole route
+      handleRouteClick(order.routeId)
+    } else {
+      // Unassigned order → add just this order
+      if (selectedOrders.some((o) => o.id === order.id)) return
+      setSelectedOrders((prev) => [...prev, order])
+      setIsWorkspaceOpen(true)
+      setIsFilterOpen(false)
+    }
+  }
+
   const handleTerminalClick = (terminalId: string) => {
     // Find all routes that have at least one load order (they load from a terminal)
     const loadRouteIds = [...new Set(
@@ -280,6 +293,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   isLassoActive={isLassoDrawing}
   onRouteClick={handleRouteClick}
           onTerminalClick={handleTerminalClick}
+          onOrderPinClick={handleOrderPinClick}
   selectedRouteIds={selectedRouteIds}
   checkedRouteIds={checkedRouteIds}
   hoveredWorkspaceRouteId={hoveredWorkspaceRouteId}

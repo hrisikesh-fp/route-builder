@@ -203,6 +203,7 @@ function RouteCardCollapsed({
   productCount,
   isHovered,
   hasBanner = false,
+  hasTruck = true,
   onDriverClick,
   isDriverDropdownOpen = false,
   onMenuClick,
@@ -220,6 +221,7 @@ function RouteCardCollapsed({
   productCount: number
   isHovered: boolean
   hasBanner?: boolean
+  hasTruck?: boolean
   onDriverClick?: () => void
   isDriverDropdownOpen?: boolean
   onMenuClick?: () => void
@@ -242,49 +244,61 @@ function RouteCardCollapsed({
       }}
     >
       {/* Inner — all card content */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* Section A — Truck info (above divider) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {/* Truck name — full width of Inner */}
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 500,
-              color: "#FFFFFF",
-              lineHeight: "24px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {truckName}
-          </span>
-          {/* Subtitle: capacity · compartments · products */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-              {truckCapacity}
-            </span>
-            {compartmentCount > 0 && (
-              <>
-                <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: hasTruck ? 12 : 6 }}>
+        {hasTruck ? (
+          <>
+            {/* Section A — Truck info (above divider) */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {/* Truck name — full width of Inner */}
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 500,
+                  color: "#FFFFFF",
+                  lineHeight: "24px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {truckName}
+              </span>
+              {/* Subtitle: capacity · compartments · products */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-                  {compartmentCount} Compartments
+                  {truckCapacity}
                 </span>
-              </>
-            )}
-            {productCount > 0 && (
-              <>
-                <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0 }} />
-                <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-                  {productCount} Products
-                </span>
-              </>
-            )}
-          </div>
-        </div>
+                {compartmentCount > 0 && (
+                  <>
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+                      {compartmentCount} Compartments
+                    </span>
+                  </>
+                )}
+                {productCount > 0 && (
+                  <>
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+                      {productCount} Products
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
 
-        {/* Divider */}
-        <div style={{ borderBottom: "1px solid #282828" }} />
+            {/* Divider */}
+            <div style={{ borderBottom: "1px solid #282828" }} />
+          </>
+        ) : (
+          /* No truck: "Not Selected" title + dash subtitle */
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px" }}>
+              Not Selected
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>—</span>
+          </div>
+        )}
 
         {/* Section B — Driver button + Orders badge */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -356,6 +370,15 @@ function RouteCardCollapsed({
           {orderCount} Orders
         </span>
       </div>
+        {/* No truck info row */}
+        {!hasTruck && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Info size={12} color="#737373" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+              No Truck selected yet.
+            </span>
+          </div>
+        )}
       </div>
       {/* 3-dot menu — absolute top-right, hidden by default, visible on card hover */}
       <div style={{ position: "absolute", top: 16, right: 16, opacity: (isHovered || isMenuOpen) ? 1 : 0, transition: "opacity 150ms ease" }} data-route-menu>
@@ -2561,7 +2584,7 @@ export function LassoWorkspaceSheet({
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Card body — position relative for wedge */}
                             <div style={{ position: "relative" }}>
-                              {/* Color wedge — covers card body only, top-left radius only */}
+                              {/* Color wedge — covers card body only, top-left radius only (bottom-left rounded when no banner) */}
                               <div
                                 style={{
                                   position: "absolute",
@@ -2570,7 +2593,7 @@ export function LassoWorkspaceSheet({
                                   bottom: 0,
                                   width: 6,
                                   backgroundColor: color,
-                                  borderRadius: "4px 0 0 0",
+                                  borderRadius: validation && validation.zoneB.visible ? "4px 0 0 0" : "4px 0 0 4px",
                                   pointerEvents: "none",
                                   zIndex: 1,
                                 }}
@@ -2586,6 +2609,7 @@ export function LassoWorkspaceSheet({
                               productCount={truckProfile ? Object.keys(truckProfile.productCapacities).length : 0}
                               isHovered={!isExpanded && hoveredRouteId === routeId}
                               hasBanner={!!(validation && validation.zoneB.visible)}
+                              hasTruck={!!truckProfile}
                               onDriverClick={() => {
                                 setDriverDropdownRouteId(driverDropdownRouteId === routeId ? null : routeId)
                                 setDriverSearch("")
@@ -2830,88 +2854,94 @@ export function LassoWorkspaceSheet({
                     No unassigned orders selected.
                   </p>
                 ) : (
-                  unassignedOrders.map((order) => (
+                  unassignedOrders.map((order) => {
+                    const type = order.orderType ?? "D"
+                    const totalAssets = order.totalAssets ?? 0
+                    const totalTopOffs = order.totalTopOffs ?? 0
+                    const urgency = order.urgency ?? { red: 0, yellow: 0, green: 0, blue: 0 }
+                    return (
                     <div
                       key={order.id}
                       style={{
                         backgroundColor: "#1F1F1F",
-                        border: "1px solid #282828",
                         borderRadius: 4,
-                        padding: 12,
+                        padding: 16,
                         display: "flex",
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        flexDirection: "column",
+                        gap: 12,
                       }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#282828" }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#1F1F1F" }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 12,
-                        }}
-                      >
-                        <CheckboxInput checked={false} onChange={() => {}} />
-                        <div>
-                          <p
-                            style={{
-                              fontSize: 16,
-                              fontWeight: 500,
-                              color: "#FAFAFA",
-                              margin: 0,
-                            }}
-                          >
-                            {order.customerName}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 400,
-                              color: "#737373",
-                              margin: 0,
-                            }}
-                          >
+                      {/* Header: name + address */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px" }}>
+                          {order.customerName}
+                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#737373" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                            <circle cx="12" cy="10" r="3" />
+                          </svg>
+                          <span style={{ fontSize: 14, fontWeight: 400, color: "#737373", lineHeight: "20px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {order.shipToAddress}
-                          </p>
+                          </span>
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <div
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              backgroundColor: getTankLevelColor(order.currentLevel),
-                            }}
-                          />
-                          <span style={{ fontSize: 12, color: "#A3A3A3" }}>
-                            {order.currentLevel}%
-                          </span>
+                      {/* Inner card: time + badge + stats */}
+                      <div style={{ backgroundColor: "#282828", borderRadius: 4, padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                        {/* Planned at + type badge */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                              <circle cx="12" cy="12" r="10" />
+                              <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            <span style={{ fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px" }}>
+                              Planned at: <strong>05:30 AM</strong>
+                            </span>
+                          </div>
+                          <div style={{
+                            width: 20, height: 20, backgroundColor: "#E5E5E5", border: "1px solid #737373",
+                            borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 11, fontWeight: 500, color: "#171717", lineHeight: 1,
+                          }}>
+                            {type}
+                          </div>
                         </div>
-                        <button
-                          style={{
-                            width: 24,
-                            height: 24,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "#737373",
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            borderRadius: 4,
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFFFFF")}
-                          onMouseLeave={(e) => (e.currentTarget.style.color = "#737373")}
-                        >
-                          <MoreVertical size={14} />
-                        </button>
+
+                        {/* Stats row */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                              <span style={{ fontSize: 18, fontWeight: 600, color: "#FFFFFF", lineHeight: "28px" }}>{totalAssets}</span>
+                              <span style={{ fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>Assets</span>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                              <span style={{ fontSize: 18, fontWeight: 600, color: "#FFFFFF", lineHeight: "28px" }}>{order.volume > 0 ? order.volume.toLocaleString() : "—"}</span>
+                              <span style={{ fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>Ordered Gals</span>
+                            </div>
+                            <div style={{ width: 1, alignSelf: "stretch", backgroundColor: "#333" }} />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                              <span style={{ fontSize: 18, fontWeight: 700, color: "#E5E5E5", lineHeight: "28px" }}>{totalTopOffs}</span>
+                              <span style={{ fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>Top Off Assets</span>
+                            </div>
+                          </div>
+                          {/* Urgency dots */}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxWidth: 88, width: 88, alignItems: "center", justifyContent: "center" }}>
+                            {URGENCY_COLORS.map(({ key, color }) => (
+                              <div key={key} style={{ width: 40, backgroundColor: "#333", borderRadius: 4, padding: "4px 6px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, fontWeight: 400, color: "#E5E5E5", lineHeight: "16px" }}>{urgency[key]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             )}
