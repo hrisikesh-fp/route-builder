@@ -141,6 +141,7 @@ export interface RouteMapProps {
   selectedRouteIds?: string[]
   checkedRouteIds?: string[]
   hoveredWorkspaceRouteId?: string | null
+  hoveredWorkspaceOrderId?: string | null
   isWorkspaceOpen?: boolean
   addedLoadOrders?: Record<string, ExtractionOrder[]>
 }
@@ -177,6 +178,7 @@ export function RouteMap({
   selectedRouteIds = [],
   checkedRouteIds = [],
   hoveredWorkspaceRouteId = null,
+  hoveredWorkspaceOrderId = null,
   isWorkspaceOpen = false,
   addedLoadOrders = {},
 }: RouteMapProps) {
@@ -889,6 +891,41 @@ export function RouteMap({
       })
     })
   }, [selectedRouteIds, checkedRouteIds, hoveredWorkspaceRouteId, routeLineDisplay, reducedOpacity, isWorkspaceOpen, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── order pin hover from workspace ────────────────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return
+    const container = mapContainer.current
+    if (!container) return
+
+    // Remove previous hover highlight — target the inner div (first child of .custom-map-pin)
+    container.querySelectorAll<HTMLElement>(".workspace-pin-hovered").forEach((el) => {
+      el.classList.remove("workspace-pin-hovered")
+      const inner = el.querySelector<HTMLElement>(":scope > div")
+      if (inner) {
+        inner.style.transform = ""
+        inner.style.filter = ""
+      }
+      const svgPath = el.querySelector<SVGPathElement>(".pin-wrapper svg path:first-child")
+      if (svgPath) svgPath.style.fill = ""
+    })
+
+    if (!hoveredWorkspaceOrderId) return
+
+    // Find the pin element by data-order-id
+    const pinEl = container.querySelector<HTMLElement>(`[data-order-id="${hoveredWorkspaceOrderId}"]`)
+    if (!pinEl) return
+
+    pinEl.classList.add("workspace-pin-hovered")
+    const inner = pinEl.querySelector<HTMLElement>(":scope > div")
+    if (inner) {
+      inner.style.transform = "translateY(-3px) scale(1.1)"
+      inner.style.filter = "drop-shadow(0 2px 8px rgba(0,0,0,0.4))"
+    }
+    // Change pin color — same as CSS :hover fill
+    const svgPath = pinEl.querySelector<SVGPathElement>(".pin-wrapper svg path:first-child")
+    if (svgPath) svgPath.style.fill = "#A1A1AA"
+  }, [hoveredWorkspaceOrderId, mapReady])
 
   // ── direction arrows when routes selected ────────────────────────────────
   useEffect(() => {

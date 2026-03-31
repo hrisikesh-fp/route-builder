@@ -32,6 +32,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([])
   const [checkedRouteIds, setCheckedRouteIds] = useState<string[]>([])
   const [hoveredWorkspaceRouteId, setHoveredWorkspaceRouteId] = useState<string | null>(null)
+  const [hoveredWorkspaceOrderId, setHoveredWorkspaceOrderId] = useState<string | null>(null)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
   const [entityVisibility, setEntityVisibility] = useState<MapEntityVisibility>({
     shipTosWithOrders: true,
@@ -297,6 +298,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   selectedRouteIds={selectedRouteIds}
   checkedRouteIds={checkedRouteIds}
   hoveredWorkspaceRouteId={hoveredWorkspaceRouteId}
+  hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
   isWorkspaceOpen={isWorkspaceOpen}
   addedLoadOrders={addedLoadOrders}
   />
@@ -329,6 +331,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onCheckedRoutesChange={setCheckedRouteIds}
         hoveredRouteId={hoveredWorkspaceRouteId}
         onHoveredRouteChange={setHoveredWorkspaceRouteId}
+        onHoveredOrderChange={setHoveredWorkspaceOrderId}
         onAddedLoadOrdersChange={setAddedLoadOrders}
         initialExpandedRouteIds={[]}
         onShowToast={(driverName) => {
