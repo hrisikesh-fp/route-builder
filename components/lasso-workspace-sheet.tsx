@@ -259,7 +259,7 @@ function RouteCardCollapsed({
   hasFuelCapacity?: boolean
   trailer1?: TrailerItem | null
   trailer2?: TrailerItem | null
-  onTruckClick?: () => void
+  onTruckClick?: (rect: DOMRect) => void
   isTruckDropdownOpen?: boolean
   onAddTrailer?: () => void
   isTrailerDropdownOpen?: boolean
@@ -311,7 +311,7 @@ function RouteCardCollapsed({
             /* Config E — No truck: dimmed "Select Truck" pill */
             <button
               data-truck-dropdown
-              onClick={(e) => { e.stopPropagation(); onTruckClick?.() }}
+              onClick={(e) => { e.stopPropagation(); onTruckClick?.(e.currentTarget.getBoundingClientRect()) }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8, height: 28,
                 paddingLeft: 8, paddingRight: 10,
@@ -330,7 +330,7 @@ function RouteCardCollapsed({
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button
                 data-truck-dropdown
-                onClick={(e) => { e.stopPropagation(); onTruckClick?.() }}
+                onClick={(e) => { e.stopPropagation(); onTruckClick?.(e.currentTarget.getBoundingClientRect()) }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8, height: 28,
                   paddingLeft: 8, paddingRight: 10,
@@ -364,7 +364,7 @@ function RouteCardCollapsed({
             /* Config B/C — Unified pill: truck | trailer(s) */
             <div
               data-truck-dropdown
-              onClick={(e) => { e.stopPropagation(); onTruckClick?.() }}
+              onClick={(e) => { e.stopPropagation(); onTruckClick?.(e.currentTarget.getBoundingClientRect()) }}
               style={{
                 display: "flex", alignItems: "center", height: 28,
                 border: pillBorder(isTruckDropdownOpen || isTrailerDropdownOpen), borderRadius: 4, background: "none",
@@ -403,7 +403,7 @@ function RouteCardCollapsed({
             /* Config A — Truck only pill */
             <button
               data-truck-dropdown
-              onClick={(e) => { e.stopPropagation(); onTruckClick?.() }}
+              onClick={(e) => { e.stopPropagation(); onTruckClick?.(e.currentTarget.getBoundingClientRect()) }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8, height: 28,
                 paddingLeft: 8, paddingRight: 10,
@@ -529,7 +529,7 @@ function RouteCardCollapsed({
         data-route-menu
         style={{
           position: "absolute", top: 16, right: 16,
-          opacity: (isHovered || isMenuOpen) ? 1 : 0,
+          opacity: (isHovered || isMenuOpen || isTruckDropdownOpen || isTrailerDropdownOpen || isDriverDropdownOpen) ? 1 : 0,
           transition: "opacity 150ms ease",
           display: "flex", alignItems: "center",
           backgroundColor: "#1B1B1B",
@@ -2329,6 +2329,7 @@ export function LassoWorkspaceSheet({
   const [trailerDropdownRouteId, setTrailerDropdownRouteId] = useState<string | null>(null)
   const [cardTrailerSearch, setCardTrailerSearch] = useState("")
   const [cardTrailerSlot, setCardTrailerSlot] = useState<0 | 1 | 2>(0)
+  const [truckDropupEnabled, setTruckDropupEnabled] = useState(false)
 
   // Driver dropdown state
   const [driverDropdownRouteId, setDriverDropdownRouteId] = useState<string | null>(null)
@@ -2355,10 +2356,6 @@ export function LassoWorkspaceSheet({
       const target = e.target as HTMLElement
       if (!target.closest("[data-route-menu]")) {
         setMenuRouteId(null)
-        document.querySelectorAll<HTMLElement>("[data-route-menu] button").forEach((el) => {
-          el.style.backgroundColor = "transparent"
-          el.style.color = "#737373"
-        })
       }
     }
     document.addEventListener("mousedown", handler)
@@ -2785,7 +2782,8 @@ export function LassoWorkspaceSheet({
                               hasFuelCapacity={userSelectedTruck ? !!userSelectedTruck.capacity : (truckProfile ? truckProfile.totalCapacity > 0 : false)}
                               trailer1={selectedTrailers[routeId]?.t1 ?? null}
                               trailer2={selectedTrailers[routeId]?.t2 ?? null}
-                              onTruckClick={() => {
+                              onTruckClick={(rect) => {
+                                setTruckDropupEnabled(window.innerHeight - rect.bottom < 350)
                                 setTruckDropdownRouteId(truckDropdownRouteId === routeId ? null : routeId)
                                 setCardTruckSearch("")
                                 setTruckSearchExpanded(false)
@@ -2927,7 +2925,11 @@ export function LassoWorkspaceSheet({
                               <div
                                 data-truck-dropdown
                                 style={{
-                                  position: "absolute", top: 44, left: 20, right: 16, zIndex: 999,
+                                  position: "absolute",
+                                  ...(truckDropupEnabled
+                                    ? { bottom: "calc(100% - 44px)", top: "auto" }
+                                    : { top: 44, bottom: "auto" }),
+                                  left: 20, right: 16, zIndex: 999,
                                   backgroundColor: truckSearchExpanded ? "#111" : "#1B1B1B",
                                   border: "1px solid #333", borderRadius: 4,
                                   boxShadow: "0 8px 24px rgba(0,0,0,0.6)", overflow: "hidden",

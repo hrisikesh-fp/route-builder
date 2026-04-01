@@ -131,7 +131,7 @@ export function renderMapPinToHTML(
   const scale = isHovered ? 1.1 : isSelected ? 1.15 : 1
 
   const badgeHTML = showBadge
-    ? `<div style="position: absolute; top: ${isOnRoute ? "2px" : "4px"}; right: ${isOnRoute ? "-4px" : "-2px"}; width: ${isOnRoute ? "16px" : "10px"}; height: ${isOnRoute ? "16px" : "10px"}; border-radius: 50%; background-color: ${badgeColor}; display: flex; align-items: center; justify-content: center; z-index: 10;">
+    ? `<div style="position: absolute; top: ${isOnRoute ? "2px" : "4px"}; right: ${isOnRoute ? "-4px" : "-2px"}; width: ${isOnRoute ? "16px" : "8px"}; height: ${isOnRoute ? "16px" : "8px"}; border-radius: 50%; background-color: ${badgeColor}; display: flex; align-items: center; justify-content: center; z-index: 10;">
         ${isOnRoute ? `<span style="color: ${badgeTextColor}; font-size: 9px; font-weight: 700; line-height: 1;">${routeSequence}</span>` : ""}
        </div>`
     : ""

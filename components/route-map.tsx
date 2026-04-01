@@ -144,6 +144,7 @@ export interface RouteMapProps {
   hoveredWorkspaceOrderId?: string | null
   isWorkspaceOpen?: boolean
   addedLoadOrders?: Record<string, ExtractionOrder[]>
+  selectedUnassignedOrderIds?: string[]
 }
 
 // Fallback route colors if route not found in mockRoutes
@@ -181,6 +182,7 @@ export function RouteMap({
   hoveredWorkspaceOrderId = null,
   isWorkspaceOpen = false,
   addedLoadOrders = {},
+  selectedUnassignedOrderIds = [],
 }: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null) // mapboxgl.Map
@@ -372,7 +374,7 @@ export function RouteMap({
     // Skip load (L) and transfer (T) orders — they're co-located with infrastructure markers
     orders.filter((order) => order.orderType !== "L" && order.orderType !== "T").forEach((order) => {
       const threshold = getTankThreshold(order.currentLevel)
-      const isActive = order.routeId ? selectedRouteIds.includes(order.routeId) : false
+      const isActive = order.routeId ? selectedRouteIds.includes(order.routeId) : selectedUnassignedOrderIds.includes(order.id)
       const showBadges = isActive || showBadgesValue
       const showSeq = showBadges && entityVisibility.routeSequence
 
@@ -457,7 +459,7 @@ export function RouteMap({
       orderMarkerMapRef.current.set(order.id, marker)
       orderDataMapRef.current.set(order.id, { order, tankThreshold: threshold })
     })
-  }, [orders, mapReady, selectedRouteIds, entityVisibility.shipTosWithOrders, entityVisibility.routeSequence, showBadgesValue]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [orders, mapReady, selectedRouteIds, selectedUnassignedOrderIds, entityVisibility.shipTosWithOrders, entityVisibility.routeSequence, showBadgesValue]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── update pin icons when route selection changes (no re-cluster) ─────────
   useEffect(() => {
@@ -466,7 +468,7 @@ export function RouteMap({
       const marker = orderMarkerMapRef.current.get(orderId)
       if (!marker) return
       const el = marker.getElement()
-      const isActive = order.routeId ? selectedRouteIds.includes(order.routeId) : false
+      const isActive = order.routeId ? selectedRouteIds.includes(order.routeId) : selectedUnassignedOrderIds.includes(order.id)
       const showBadges = isActive || showBadgesValue
       const showSeq = showBadges && entityVisibility.routeSequence
       el.innerHTML = renderMapPinToHTML(
@@ -476,7 +478,7 @@ export function RouteMap({
         false, false, false, isActive,
       )
     })
-  }, [selectedRouteIds, showBadgesValue, entityVisibility.routeSequence, mapReady])
+  }, [selectedRouteIds, selectedUnassignedOrderIds, showBadgesValue, entityVisibility.routeSequence, mapReady])
 
   // ── infrastructure markers ───────────────────────────────────────────────
   useEffect(() => {

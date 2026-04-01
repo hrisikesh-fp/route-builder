@@ -48,6 +48,11 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     return mockExtractionOrders
   }, [])
 
+  const selectedUnassignedIds = useMemo(
+    () => selectedOrders.filter(o => !o.routeId).map(o => o.id),
+    [selectedOrders]
+  )
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -301,6 +306,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
   isWorkspaceOpen={isWorkspaceOpen}
   addedLoadOrders={addedLoadOrders}
+  selectedUnassignedOrderIds={selectedUnassignedIds}
   />
 
 <MapControls
