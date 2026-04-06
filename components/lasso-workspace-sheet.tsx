@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink } from "lucide-react"
+import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -549,19 +549,78 @@ function RouteCardCollapsed({
       >
         {/* View Route icon button — only for published routes */}
         {isPublished && (
+          <div
+            style={{ position: "relative" }}
+            onMouseEnter={(e) => {
+              const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+              if (tip) tip.style.display = "flex"
+              const btn = e.currentTarget.querySelector<HTMLElement>("button")
+              if (btn) btn.style.backgroundColor = "#333"
+            }}
+            onMouseLeave={(e) => {
+              const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+              if (tip) tip.style.display = "none"
+              const btn = e.currentTarget.querySelector<HTMLElement>("button")
+              if (btn) btn.style.backgroundColor = "transparent"
+            }}
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewRoute?.() }}
+              style={{
+                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: 4, border: "none", background: "transparent", cursor: "pointer",
+                color: "#FAFAFA", padding: 0,
+              }}
+            >
+              <ExternalLink size={16} />
+            </button>
+            <div data-fab-tooltip style={{
+              display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+              flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
+            }}>
+              <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+                View Route
+              </div>
+              <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+            </div>
+          </div>
+        )}
+        {/* Optimise Route icon button */}
+        <div
+          style={{ position: "relative" }}
+          onMouseEnter={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+            if (tip) tip.style.display = "flex"
+            const btn = e.currentTarget.querySelector<HTMLElement>("button")
+            if (btn) btn.style.backgroundColor = "#333"
+          }}
+          onMouseLeave={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+            if (tip) tip.style.display = "none"
+            const btn = e.currentTarget.querySelector<HTMLElement>("button")
+            if (btn) btn.style.backgroundColor = "transparent"
+          }}
+        >
           <button
-            onClick={(e) => { e.stopPropagation(); onViewRoute?.() }}
+            onClick={(e) => { e.stopPropagation() }}
             style={{
               width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
               borderRadius: 4, border: "none", background: "transparent", cursor: "pointer",
               color: "#FAFAFA", padding: 0,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
           >
-            <ExternalLink size={16} />
+            <Sparkles size={16} />
           </button>
-        )}
+          <div data-fab-tooltip style={{
+            display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+            flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
+          }}>
+            <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+              Optimise Route
+            </div>
+            <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+          </div>
+        </div>
         {/* 3-dot icon button */}
         <div style={{ position: "relative" }}>
           <button
@@ -594,6 +653,15 @@ function RouteCardCollapsed({
                 flexDirection: "column",
               }}
             >
+              {/* Optimise Route */}
+              <div
+                onClick={(e) => { e.stopPropagation() }}
+                style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
+              >
+                Optimise Route
+              </div>
               {/* View Route — only for published routes */}
               {isPublished && (
                 <div
