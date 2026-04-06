@@ -344,6 +344,10 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           setToastMessage(`Load Order added to ${driverName}'s Route successfully`)
           setTimeout(() => setToastMessage(null), 5000)
         }}
+        onShowMessage={(message) => {
+          setToastMessage(message)
+          setTimeout(() => setToastMessage(null), 5000)
+        }}
       />
 
       {/* Success toast — fixed over map */}
