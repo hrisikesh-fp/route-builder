@@ -3475,12 +3475,19 @@ export function LassoWorkspaceSheet({
                         borderRadius: 4,
                         padding: 16,
                         display: "flex",
-                        flexDirection: "column",
+                        flexDirection: "row",
+                        alignItems: "flex-start",
                         gap: 12,
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#282828" }}
                       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#1F1F1F" }}
                     >
+                      {/* Left: checkbox */}
+                      <div style={{ paddingTop: 4, flexShrink: 0 }}>
+                        <CheckboxInput checked={false} onChange={() => {}} />
+                      </div>
+                      {/* Right: content */}
+                      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
                       {/* Header: name + address */}
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px" }}>
@@ -3548,6 +3555,7 @@ export function LassoWorkspaceSheet({
                         </div>
                       </div>
                     </div>
+                    </div>
                     )
                   })
                 )}
@@ -3600,7 +3608,7 @@ export function LassoWorkspaceSheet({
                 >
                   Unassign
                 </button>
-                {/* Merge — only when 2+ routes checked */}
+                {/* Optimise — only when 2+ routes checked */}
                 {checkedRouteIds.length > 1 && (
                   <>
                     <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
