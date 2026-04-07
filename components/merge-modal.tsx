@@ -112,19 +112,22 @@ const TypeBadge = ({ label, query }: { label: string; query?: string }) => (
 // ─── Main Component ─────────────────────────────────────────────────────────
 export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, onComplete }: MergeModalProps) {
   const [screen, setScreen] = useState<"main" | "loading">("main")
+  const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [selectedTruckIds, setSelectedTruckIds] = useState<string[]>([])
   const [truckSearch, setTruckSearch] = useState("")
   const [activeHub, setActiveHub] = useState("All Hubs")
-  const [loadingProgress, setLoadingProgress] = useState(0)
   const [loadingPhase, setLoadingPhase] = useState("")
+  const [canCancel, setCanCancel] = useState(true)
 
   if (!isOpen) return null
 
   const handleClose = () => {
     setScreen("main")
+    setMode("auto")
     setSelectedTruckIds([])
     setTruckSearch("")
     setActiveHub("All Hubs")
+    setCanCancel(true)
     onClose()
   }
 
@@ -186,32 +189,34 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
 
   const handleOptimise = () => {
     setScreen("loading")
-    setLoadingProgress(0)
-    setLoadingPhase("Evaluating orders across trucks")
+    setLoadingPhase("Evaluating orders across truck selection...")
+    setCanCancel(true)
 
     const phases = [
-      { at: 15, text: "Evaluating orders across trucks" },
-      { at: 35, text: "Applying compartment constraints" },
-      { at: 55, text: "Computing travel times" },
-      { at: 75, text: "Optimising stop sequences" },
-      { at: 90, text: "Finalising routes" },
+      { delay: 2500, text: "Evaluating orders across truck selection...", canCancel: true },
+      { delay: 2200, text: "Applying compartment constraints...", canCancel: true },
+      { delay: 2000, text: "Checking product compatibility...", canCancel: true },
+      { delay: 2500, text: "Optimising stop sequences...", canCancel: false },
+      { delay: 2000, text: "Finalising routes...", canCancel: false },
     ]
-    let progress = 0
-    const interval = setInterval(() => {
-      progress += Math.random() * 8 + 2
-      if (progress >= 100) {
-        progress = 100
-        clearInterval(interval)
+
+    let i = 0
+    const runPhase = () => {
+      if (i >= phases.length) {
         setTimeout(() => {
           const orderCount = orderRows.length
           onComplete?.(selectedTruckIds.length, orderCount)
           handleClose()
-        }, 600)
+        }, 800)
+        return
       }
-      setLoadingProgress(Math.min(progress, 100))
-      const phase = [...phases].reverse().find(p => progress >= p.at)
-      if (phase) setLoadingPhase(phase.text)
-    }, 200)
+      const phase = phases[i]
+      setLoadingPhase(phase.text)
+      setCanCancel(phase.canCancel)
+      i++
+      setTimeout(runPhase, phase.delay)
+    }
+    runPhase()
   }
 
   return (
@@ -227,7 +232,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
     >
       <div
         style={{
-          width: screen === "loading" ? 640 : 1040,
+          width: screen === "loading" ? 480 : 1040,
           backgroundColor: "#1B1B1B",
           borderRadius: 8,
           padding: 24,
@@ -236,7 +241,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
           gap: 20,
           boxShadow: "0px 4px 6px -4px rgba(0,0,0,0.1), 0px 10px 15px -3px rgba(0,0,0,0.1)",
           transition: "width 200ms ease",
-          height: 640,
+          height: screen === "loading" ? "auto" : 640,
           maxHeight: "85vh",
           overflow: "hidden",
         }}
@@ -248,14 +253,50 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
             {/* Header */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>Optimise Routes</span>
-                <span style={{ fontSize: 12, fontWeight: 500, color: "#A3A3A3", backgroundColor: "#262626", borderRadius: 9999, padding: "2px 8px", lineHeight: "16px" }}>Auto</span>
+                <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>Create Routes</span>
+                {/* Divider */}
+                <div style={{ width: 1, height: 20, backgroundColor: "#333", flexShrink: 0 }} />
+                {/* Auto / Manual toggle — inline with title */}
+                <div style={{
+                  display: "inline-flex", alignItems: "center",
+                  height: 28, padding: 2, borderRadius: 4,
+                  backgroundColor: "#1B1B1B", border: "1px solid #282828",
+                  boxSizing: "border-box" as const,
+                }}>
+                  {(["auto", "manual"] as const).map(m => {
+                    const isActive = mode === m
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => setMode(m)}
+                        style={{
+                          padding: "0 16px", fontSize: 14, lineHeight: "20px",
+                          height: "100%",
+                          fontWeight: isActive ? 500 : 400,
+                          color: isActive ? "#E5E5E5" : "#A3A3A3",
+                          backgroundColor: isActive ? "#282828" : "transparent",
+                          border: isActive ? "1px solid #333" : "1px solid transparent",
+                          borderRadius: 2, cursor: "pointer",
+                          fontFamily: "Geist, sans-serif",
+                          boxShadow: isActive ? "0px 1px 3px 0px rgba(0,0,0,0.1), 0px 1px 2px 0px rgba(0,0,0,0.1)" : "none",
+                          transition: "background-color 150ms, color 150ms",
+                        }}
+                      >
+                        {m === "auto" ? "Auto" : "Manual"}
+                      </button>
+                    )
+                  })}
+                </div>
                 <div style={{ flex: 1 }} />
                 <button onClick={handleClose} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#E5E5E5", padding: 0 }}>
                   <X size={24} strokeWidth={2} />
                 </button>
               </div>
-              <span style={{ fontSize: 14, color: "#A3A3A3", lineHeight: "20px" }}>Select atleast one truck to create optimised routes automatically.</span>
+              <span style={{ fontSize: 14, color: "#A3A3A3", lineHeight: "20px" }}>
+                {mode === "auto"
+                  ? "Select atleast one truck to create optimised routes automatically."
+                  : "Select atleast one truck or a driver to create route manually."}
+              </span>
             </div>
 
             {/* Two-panel layout */}
@@ -276,10 +317,10 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                     </colgroup>
                     <thead>
                       <tr style={{ backgroundColor: "#282828", borderBottom: "1px solid #333" }}>
-                        <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "#737373", lineHeight: "16px" }}>Stops</th>
-                        <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "#737373", lineHeight: "16px" }}>Planned Qty</th>
-                        <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "#737373", lineHeight: "16px" }}>Planned Time</th>
-                        <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "#737373", lineHeight: "16px" }}>Order Type</th>
+                        <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>Stops</th>
+                        <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>Planned Qty</th>
+                        <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>Planned Time</th>
+                        <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 500, color: "#A3A3A3", lineHeight: "16px" }}>Order Type</th>
                       </tr>
                     </thead>
                   </table>
@@ -334,7 +375,8 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                 </div>
               </div>
 
-              {/* ─── Right: Truck (& Trailer) selector ─── */}
+              {/* ─── Right panel: Auto or Manual ─── */}
+              {mode === "auto" ? (
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12, overflow: "hidden" }}>
                 <span style={{ fontSize: 14, color: "#A3A3A3", lineHeight: "20px", flexShrink: 0 }}>Truck (& Trailer)</span>
 
@@ -419,7 +461,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                             {renderProductsMeta(truck, matchTypes)}
                           </div>
                           {truck.matchLabel === "best" && (
-                            <span style={{ fontSize: 13, fontWeight: 500, color: "#10B981", marginTop: 2 }}>Best match</span>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: "#10B981", marginTop: 2 }}>Good match</span>
                           )}
                           {truck.matchLabel === "incompatible" && (
                             <span style={{ fontSize: 13, fontWeight: 500, color: "#FBBF24", marginTop: 2 }}>
@@ -438,6 +480,78 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                   )}
                 </div>
               </div>
+              ) : (
+              /* ─── Manual: Enter Details form ─── */
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16, overflow: "hidden" }}>
+                <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3", lineHeight: "24px", flexShrink: 0 }}>Enter Details</span>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Truck (& Trailer) */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>Truck (& Trailer)</span>
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
+                      border: "1px solid #333", borderRadius: 4, cursor: "pointer",
+                      boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M10 17h4V5H2v12h3" /><circle cx="7.5" cy="17.5" r="2.5" /><path d="M14 17h1" /><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5" /><circle cx="17.5" cy="17.5" r="2.5" />
+                      </svg>
+                      <span style={{ flex: 1, fontSize: 16, color: "#A3A3A3", lineHeight: "24px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Select Truck</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                    </div>
+                  </div>
+
+                  {/* Driver */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>Driver</span>
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
+                      border: "1px solid #333", borderRadius: 4, cursor: "pointer",
+                      boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="16 11 18 13 22 9" />
+                      </svg>
+                      <span style={{ flex: 1, fontSize: 16, color: "#A3A3A3", lineHeight: "24px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Assign Driver</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                    </div>
+                  </div>
+
+                  {/* Starting Hub */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>Starting Hub</span>
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
+                      border: "1px solid #333", borderRadius: 4, cursor: "pointer",
+                      boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+                      </svg>
+                      <span style={{ flex: 1, fontSize: 16, color: "#A3A3A3", lineHeight: "24px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Select</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                    </div>
+                  </div>
+
+                  {/* Ending Hub */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>Ending Hub</span>
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
+                      border: "1px solid #333", borderRadius: 4, cursor: "pointer",
+                      boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+                      </svg>
+                      <span style={{ flex: 1, fontSize: 16, color: "#A3A3A3", lineHeight: "24px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Select</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -453,6 +567,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
               >
                 Cancel
               </button>
+              {mode === "auto" ? (
               <button
                 disabled={selectedTruckIds.length === 0}
                 onClick={handleOptimise}
@@ -467,56 +582,52 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
               >
                 Optimise and Create Routes
               </button>
+              ) : (
+              <button
+                style={{
+                  height: 36, padding: "8px 16px", borderRadius: 4, fontSize: 14, fontWeight: 500,
+                  color: "#171717", backgroundColor: "#E5E5E5", border: "none",
+                  cursor: "default", opacity: 0.5,
+                  fontFamily: "Geist, sans-serif",
+                }}
+              >
+                Create Routes
+              </button>
+              )}
             </div>
           </>
         )}
 
         {/* ── LOADING SCREEN ── */}
         {screen === "loading" && (
-          <>
-            {/* Header */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ flex: 1, fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>Optimising Routes...</span>
-                <button onClick={handleClose} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#E5E5E5", padding: 0 }}>
-                  <X size={24} strokeWidth={2} />
-                </button>
-              </div>
-              <span style={{ fontSize: 14, color: "#A3A3A3", lineHeight: "20px" }}>Please wait while we calculate the optimal routes.</span>
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, padding: "40px 0" }}>
+            {/* Spinner */}
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}>
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
-            {/* Progress area */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "40px 0" }}>
-              <div style={{ position: "relative", width: 120, height: 120 }}>
-                <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: "rotate(-90deg)" }}>
-                  <circle cx="60" cy="60" r="52" fill="none" stroke="#282828" strokeWidth="8" />
-                  <circle
-                    cx="60" cy="60" r="52" fill="none" stroke="#4D55F8" strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${2 * Math.PI * 52}`}
-                    strokeDashoffset={`${2 * Math.PI * 52 * (1 - loadingProgress / 100)}`}
-                    style={{ transition: "stroke-dashoffset 200ms ease" }}
-                  />
-                </svg>
-                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 24, fontWeight: 600, color: "#E5E5E5" }}>{Math.round(loadingProgress)}%</span>
-                </div>
-              </div>
+            {/* Title */}
+            <span style={{ fontSize: 16, fontWeight: 500, color: "#E5E5E5", lineHeight: "24px" }}>Optimising Routes...</span>
 
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                <span style={{ fontSize: 16, fontWeight: 500, color: "#E5E5E5" }}>Optimising routes...</span>
-                <span style={{ fontSize: 14, color: "#A3A3A3", textAlign: "center" }}>{loadingPhase}</span>
-              </div>
+            {/* Phase text */}
+            <span style={{ fontSize: 14, color: "#A3A3A3", lineHeight: "20px", textAlign: "center", minHeight: 20 }}>{loadingPhase}</span>
 
-              <div style={{ width: "60%", height: 4, backgroundColor: "#282828", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ height: "100%", backgroundColor: "#4D55F8", borderRadius: 2, width: `${loadingProgress}%`, transition: "width 200ms ease" }} />
-              </div>
-
-              <span style={{ fontSize: 13, color: "#737373" }}>
-                Evaluating {orderRows.length} orders across {selectedTruckIds.length} trucks
-              </span>
-            </div>
-          </>
+            {/* Cancel button — hidden after "Optimising stop sequences" */}
+            {canCancel && (
+              <button
+                onClick={handleClose}
+                style={{
+                  marginTop: 4, height: 36, padding: "8px 16px", borderRadius: 4, fontSize: 14, fontWeight: 500,
+                  color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid #333",
+                  cursor: "pointer", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                  fontFamily: "Geist, sans-serif",
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
