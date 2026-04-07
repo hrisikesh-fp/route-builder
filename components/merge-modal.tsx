@@ -6,30 +6,49 @@ import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes } from "@/lib/mock-data"
 
 // ─── Truck mock data (subset for merge modal) ────────────────────────────────
-type TruckItem = { id: string; name: string; badge: string; capacity: string; compartments: string; products: string }
+type TruckItem = { id: string; name: string; badge: string; capacity: string; compartments: string; products: string; goodMatch?: boolean }
+type TruckGroup = { hub: string; trucks: TruckItem[] }
 
-const AVAILABLE_TRUCKS: TruckItem[] = [
-  { id: "H-401", name: "H-401 - 2023 Volvo VNL 860 Tanker",       badge: "Tank Wagon", capacity: "6,200 gal", compartments: "6 Compartments", products: "3 Products" },
-  { id: "H-415", name: "H-415 - 2022 Kenworth W990 Flatbed",      badge: "Truck",      capacity: "5,800 gal", compartments: "5 Compartments", products: "2 Products" },
-  { id: "H-428", name: "H-428 - 2021 Peterbilt 579 Box Truck",    badge: "Box Truck",  capacity: "4,800 gal", compartments: "4 Compartments", products: "3 Products" },
-  { id: "H-433", name: "H-433 - 2020 Mack Anthem Tanker",         badge: "Tank Wagon", capacity: "5,400 gal", compartments: "5 Compartments", products: "2 Products" },
-  { id: "H-450", name: "H-450 - 2023 International LT Tanker",    badge: "Truck",      capacity: "5,000 gal", compartments: "4 Compartments", products: "3 Products" },
-  { id: "H-467", name: "H-467 - 2019 Western Star 4900 Tank",     badge: "Tank Wagon", capacity: "4,500 gal", compartments: "4 Compartments", products: "2 Products" },
-  { id: "H-480", name: "H-480 - 2022 Freightliner M2 Box",        badge: "Box Truck",  capacity: "3,800 gal", compartments: "3 Compartments", products: "2 Products" },
-  { id: "H-495", name: "H-495 - 2021 Kenworth T680 Tanker",       badge: "Truck",      capacity: "5,200 gal", compartments: "5 Compartments", products: "3 Products" },
-  { id: "H-502", name: "H-502 - 2020 Volvo VNR 400 Tank Wagon",   badge: "Tank Wagon", capacity: "4,000 gal", compartments: "3 Compartments", products: "2 Products" },
-  { id: "H-517", name: "H-517 - 2023 Peterbilt 389 Tanker",       badge: "Tank Wagon", capacity: "5,600 gal", compartments: "5 Compartments", products: "3 Products" },
-  { id: "H-523", name: "H-523 - 2021 Mack Granite Box Truck",     badge: "Box Truck",  capacity: "4,200 gal", compartments: "4 Compartments", products: "2 Products" },
-  { id: "H-538", name: "H-538 - 2022 International HV Tanker",    badge: "Truck",      capacity: "5,100 gal", compartments: "4 Compartments", products: "3 Products" },
-  { id: "H-544", name: "H-544 - 2019 Freightliner Cascadia Tank", badge: "Tank Wagon", capacity: "4,700 gal", compartments: "4 Compartments", products: "2 Products" },
-  { id: "H-561", name: "H-561 - 2023 Kenworth T880 Box Truck",    badge: "Box Truck",  capacity: "3,600 gal", compartments: "3 Compartments", products: "2 Products" },
-  { id: "H-575", name: "H-575 - 2020 Western Star 5700XE Tank",   badge: "Tank Wagon", capacity: "5,300 gal", compartments: "5 Compartments", products: "3 Products" },
-  { id: "H-589", name: "H-589 - 2021 Volvo FH16 Tanker",          badge: "Truck",      capacity: "6,000 gal", compartments: "6 Compartments", products: "3 Products" },
-  { id: "H-602", name: "H-602 - 2022 Peterbilt 567 Flatbed",      badge: "Truck",      capacity: "4,400 gal", compartments: "4 Compartments", products: "2 Products" },
-  { id: "H-618", name: "H-618 - 2023 Mack Pinnacle Tank Wagon",   badge: "Tank Wagon", capacity: "5,500 gal", compartments: "5 Compartments", products: "3 Products" },
-  { id: "H-625", name: "H-625 - 2020 International LoneStar",     badge: "Truck",      capacity: "4,900 gal", compartments: "4 Compartments", products: "2 Products" },
-  { id: "H-640", name: "H-640 - 2021 Kenworth W900 Tanker",       badge: "Tank Wagon", capacity: "5,700 gal", compartments: "5 Compartments", products: "3 Products" },
+const TRUCK_GROUPS: TruckGroup[] = [
+  {
+    hub: "Austin Hub",
+    trucks: [
+      { id: "H-401", name: "H-401 - 2023 Volvo VNL 860 Tanker",       badge: "Tank Wagon", capacity: "6,200 gal", compartments: "6 Compartments", products: "3 Products" },
+      { id: "H-415", name: "H-415 - 2022 Kenworth W990 Flatbed",      badge: "Truck",      capacity: "5,800 gal", compartments: "5 Compartments", products: "2 Products", goodMatch: true },
+      { id: "H-428", name: "H-428 - 2021 Peterbilt 579 Box Truck",    badge: "Box Truck",  capacity: "4,800 gal", compartments: "4 Compartments", products: "3 Products" },
+      { id: "H-433", name: "H-433 - 2020 Mack Anthem Tanker",         badge: "Tank Wagon", capacity: "5,400 gal", compartments: "5 Compartments", products: "2 Products" },
+      { id: "H-450", name: "H-450 - 2023 International LT Tanker",    badge: "Truck",      capacity: "5,000 gal", compartments: "4 Compartments", products: "3 Products" },
+      { id: "H-467", name: "H-467 - 2019 Western Star 4900 Tank",     badge: "Tank Wagon", capacity: "4,500 gal", compartments: "4 Compartments", products: "2 Products" },
+      { id: "H-480", name: "H-480 - 2022 Freightliner M2 Box",        badge: "Box Truck",  capacity: "3,800 gal", compartments: "3 Compartments", products: "2 Products" },
+    ],
+  },
+  {
+    hub: "Corpus Christi Hub",
+    trucks: [
+      { id: "H-495", name: "H-495 - 2021 Kenworth T680 Tanker",       badge: "Truck",      capacity: "5,200 gal", compartments: "5 Compartments", products: "3 Products" },
+      { id: "H-502", name: "H-502 - 2020 Volvo VNR 400 Tank Wagon",   badge: "Tank Wagon", capacity: "4,000 gal", compartments: "3 Compartments", products: "2 Products", goodMatch: true },
+      { id: "H-517", name: "H-517 - 2023 Peterbilt 389 Tanker",       badge: "Tank Wagon", capacity: "5,600 gal", compartments: "5 Compartments", products: "3 Products" },
+      { id: "H-523", name: "H-523 - 2021 Mack Granite Box Truck",     badge: "Box Truck",  capacity: "4,200 gal", compartments: "4 Compartments", products: "2 Products" },
+      { id: "H-538", name: "H-538 - 2022 International HV Tanker",    badge: "Truck",      capacity: "5,100 gal", compartments: "4 Compartments", products: "3 Products" },
+    ],
+  },
+  {
+    hub: "San Antonio Hub",
+    trucks: [
+      { id: "H-544", name: "H-544 - 2019 Freightliner Cascadia Tank", badge: "Tank Wagon", capacity: "4,700 gal", compartments: "4 Compartments", products: "2 Products" },
+      { id: "H-561", name: "H-561 - 2023 Kenworth T880 Box Truck",    badge: "Box Truck",  capacity: "3,600 gal", compartments: "3 Compartments", products: "2 Products" },
+      { id: "H-575", name: "H-575 - 2020 Western Star 5700XE Tank",   badge: "Tank Wagon", capacity: "5,300 gal", compartments: "5 Compartments", products: "3 Products" },
+      { id: "H-589", name: "H-589 - 2021 Volvo FH16 Tanker",          badge: "Truck",      capacity: "6,000 gal", compartments: "6 Compartments", products: "3 Products", goodMatch: true },
+      { id: "H-602", name: "H-602 - 2022 Peterbilt 567 Flatbed",      badge: "Truck",      capacity: "4,400 gal", compartments: "4 Compartments", products: "2 Products" },
+      { id: "H-618", name: "H-618 - 2023 Mack Pinnacle Tank Wagon",   badge: "Tank Wagon", capacity: "5,500 gal", compartments: "5 Compartments", products: "3 Products" },
+      { id: "H-625", name: "H-625 - 2020 International LoneStar",     badge: "Truck",      capacity: "4,900 gal", compartments: "4 Compartments", products: "2 Products" },
+      { id: "H-640", name: "H-640 - 2021 Kenworth W900 Tanker",       badge: "Tank Wagon", capacity: "5,700 gal", compartments: "5 Compartments", products: "3 Products" },
+    ],
+  },
 ]
+
+// Flat list for search/count
+const AVAILABLE_TRUCKS: TruckItem[] = TRUCK_GROUPS.flatMap(g => g.trucks)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MergeModalProps {
@@ -48,7 +67,7 @@ const TypeBadge = ({ label }: { label: string }) => (
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, onComplete }: MergeModalProps) {
-  const [screen, setScreen] = useState<1 | 2 | 3>(1)
+  const [screen, setScreen] = useState<1 | 2 | 3>(2)
   const [selectedMode, setSelectedMode] = useState<"auto" | "manual" | null>(null)
   const [selectedTruckIds, setSelectedTruckIds] = useState<string[]>([])
   const [truckSearch, setTruckSearch] = useState("")
@@ -59,7 +78,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
   if (!isOpen) return null
 
   const handleClose = () => {
-    setScreen(1)
+    setScreen(2)
     setSelectedMode(null)
     setSelectedTruckIds([])
     setTruckSearch("")
@@ -72,9 +91,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
   }
 
   const handleBack = () => {
-    setScreen(1)
-    setSelectedTruckIds([])
-    setTruckSearch("")
+    handleClose()
   }
 
   const handleMerge = () => {
@@ -279,12 +296,12 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                   </button>
                 </div>
                 {/* Table — column-based like Figma */}
-                <div style={{ flex: 1, overflowY: "auto", border: "1px solid #333", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ flex: 1, overflowY: "auto", border: "1px solid #333", borderRadius: 4 }}>
                   {summaryTab === "routes" && (
                     <div style={{ display: "flex", minHeight: "100%" }}>
                       {/* Column 1: Truck (& Trailer) */}
                       <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                        <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#282828", borderBottom: "1px solid #333" }}>
+                        <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#282828", borderBottom: "1px solid #333", position: "sticky" as const, top: 0, zIndex: 1 }}>
                           <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3", lineHeight: "20px" }}>Truck (& Trailer)</span>
                         </div>
                         {checkedRoutes.map((r, i) => (
@@ -296,7 +313,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                       </div>
                       {/* Column 2: Driver */}
                       <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                        <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#282828", borderBottom: "1px solid #333" }}>
+                        <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#282828", borderBottom: "1px solid #333", position: "sticky" as const, top: 0, zIndex: 1 }}>
                           <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3", lineHeight: "20px" }}>Driver</span>
                         </div>
                         {checkedRoutes.map((r, i) => (
@@ -307,7 +324,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                       </div>
                       {/* Column 3: Planned Qty & Orders */}
                       <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                        <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#282828", borderBottom: "1px solid #333" }}>
+                        <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#282828", borderBottom: "1px solid #333", position: "sticky" as const, top: 0, zIndex: 1 }}>
                           <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3", lineHeight: "20px" }}>Planned Qty & Orders</span>
                         </div>
                         {checkedRoutes.map((r, i) => (
@@ -319,76 +336,158 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                       </div>
                     </div>
                   )}
-                  {summaryTab === "orders" && (
-                    <div style={{ padding: "40px 20px", color: "#737373", fontSize: 14, textAlign: "center" }}>
-                      Order details view coming soon
-                    </div>
-                  )}
+                  {summaryTab === "orders" && (() => {
+                    const orderRows = selectedOrders
+                      .filter(o => checkedRouteIds.includes(o.routeId ?? ""))
+                      .sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
+                    if (orderRows.length === 0) {
+                      return (
+                        <div style={{ padding: "40px 20px", color: "#737373", fontSize: 14, textAlign: "center" }}>
+                          No orders in selected routes
+                        </div>
+                      )
+                    }
+                    return (
+                      <div style={{ display: "flex", minHeight: "100%" }}>
+                        {/* Column 1: Stops — fixed 150px */}
+                        <div style={{ width: 150, flexShrink: 0, overflow: "hidden" }}>
+                          <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#1F1F1F", borderBottom: "1px solid #282828", position: "sticky" as const, top: 0, zIndex: 1 }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3", lineHeight: "20px" }}>Stops</span>
+                          </div>
+                          {orderRows.map((o, i) => (
+                            <div key={o.id} style={{ display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 72, padding: 12, borderBottom: i < orderRows.length - 1 ? "1px solid #282828" : "none" }}>
+                              <span style={{ fontSize: 16, color: "#E5E5E5", lineHeight: "24px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {o.shipToAddress?.split(",")[0] || o.customerName}
+                              </span>
+                              <span style={{ fontSize: 16, color: "#A3A3A3", lineHeight: "24px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {o.customerName}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Column 2: Planned Qty */}
+                        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                          <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#1F1F1F", borderBottom: "1px solid #282828", position: "sticky" as const, top: 0, zIndex: 1 }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3", lineHeight: "20px" }}>Planned Qty</span>
+                          </div>
+                          {orderRows.map((o, i) => (
+                            <div key={o.id} style={{ display: "flex", alignItems: "center", minHeight: 72, padding: "8px 12px", borderBottom: i < orderRows.length - 1 ? "1px solid #282828" : "none" }}>
+                              <span style={{ fontSize: 16, color: "#E5E5E5", lineHeight: "24px", whiteSpace: "nowrap" }}>
+                                {o.volume ? `${o.volume.toLocaleString()} gal` : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Column 3: Planned Time */}
+                        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                          <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#1F1F1F", borderBottom: "1px solid #282828", position: "sticky" as const, top: 0, zIndex: 1 }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3", lineHeight: "20px" }}>Planned Time</span>
+                          </div>
+                          {orderRows.map((o, i) => (
+                            <div key={o.id} style={{ display: "flex", alignItems: "center", minHeight: 72, padding: "8px 12px", borderBottom: i < orderRows.length - 1 ? "1px solid #282828" : "none" }}>
+                              <span style={{ fontSize: 16, color: "#E5E5E5", lineHeight: "24px", whiteSpace: "nowrap" }}>
+                                {o.scheduledDate || "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Column 4: Order Type */}
+                        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                          <div style={{ height: 40, display: "flex", alignItems: "center", padding: "0 12px", backgroundColor: "#1F1F1F", borderBottom: "1px solid #282828", position: "sticky" as const, top: 0, zIndex: 1 }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3", lineHeight: "20px" }}>Order Type</span>
+                          </div>
+                          {orderRows.map((o, i) => (
+                            <div key={o.id} style={{ display: "flex", alignItems: "center", minHeight: 72, padding: "8px 12px", borderBottom: i < orderRows.length - 1 ? "1px solid #282828" : "none" }}>
+                              <span style={{ fontSize: 16, color: "#E5E5E5", lineHeight: "24px", whiteSpace: "nowrap" }}>
+                                {o.orderType === "L" ? "Load" : o.orderType === "T" ? "Transfer" : "Delivery"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 
               {/* Right: Truck Selector */}
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-                <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3", lineHeight: "24px" }}>Truck (& Trailer)</span>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16, overflow: "hidden" }}>
+                <span style={{ fontSize: 16, fontWeight: 300, color: "#A3A3A3", lineHeight: "24px", flexShrink: 0 }}>Truck (& Trailer)</span>
 
-                {/* Search */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "1px solid #333", borderRadius: 4, flexShrink: 0 }}>
-                  <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
-                  <input
-                    value={truckSearch}
-                    onChange={(e) => setTruckSearch(e.target.value)}
-                    placeholder="Search Trucks"
-                    style={{ flex: 1, background: "none", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }}
-                  />
-                </div>
+                {/* Search + grouped list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1, overflow: "hidden" }}>
+                  {/* Search */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "1px solid #333", borderRadius: 4, flexShrink: 0 }}>
+                    <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
+                    <input
+                      value={truckSearch}
+                      onChange={(e) => setTruckSearch(e.target.value)}
+                      placeholder="Search Trucks"
+                      style={{ flex: 1, background: "none", border: "none", outline: "none", fontSize: 16, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }}
+                    />
+                  </div>
 
-                {/* Truck list — scrollable area */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, height: 328, overflowY: "auto" }}>
-                  {filteredTrucks.map((truck) => {
-                    const isSelected = selectedTruckIds.includes(truck.id)
-                    return (
-                      <div
-                        key={truck.id}
-                        onClick={() => toggleTruck(truck.id)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-                          borderRadius: 4, cursor: "pointer", flexShrink: 0,
-                          backgroundColor: isSelected ? "rgba(255,255,255,0.04)" : "transparent",
-                          border: isSelected ? "1px solid #333" : "1px solid transparent",
-                          transition: "background-color 100ms",
-                        }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.06)" }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? "rgba(255,255,255,0.04)" : "transparent" }}
-                      >
-                        {/* Checkbox */}
-                        <div style={{
-                          width: 16, height: 16, borderRadius: 3, border: isSelected ? "none" : "1px solid #737373",
-                          backgroundColor: isSelected ? "#E5E5E5" : "transparent",
-                          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                        }}>
-                          {isSelected && <Check size={12} color="#171717" strokeWidth={2.5} />}
+                  {/* Grouped truck list — scrollable */}
+                  <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, borderRadius: 4 }}>
+                    {TRUCK_GROUPS.map((group) => {
+                      const groupTrucks = group.trucks.filter(t => t.name.toLowerCase().includes(truckSearch.toLowerCase()))
+                      if (groupTrucks.length === 0) return null
+                      return (
+                        <div key={group.hub} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          {/* Hub header */}
+                          <span style={{ fontSize: 14, fontWeight: 500, color: "#737373", padding: "0 0 4px 0" }}>{group.hub}</span>
+                          {/* Truck items */}
+                          {groupTrucks.map((truck) => {
+                            const isSelected = selectedTruckIds.includes(truck.id)
+                            return (
+                              <div
+                                key={truck.id}
+                                onClick={() => toggleTruck(truck.id)}
+                                style={{
+                                  display: "flex", alignItems: "flex-start", gap: 8, padding: 12,
+                                  borderRadius: 2, cursor: "pointer",
+                                  backgroundColor: isSelected ? "rgba(255,255,255,0.04)" : "transparent",
+                                  transition: "background-color 100ms",
+                                }}
+                                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.06)" }}
+                                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? "rgba(255,255,255,0.04)" : "transparent" }}
+                              >
+                                {/* Checkbox */}
+                                <div style={{
+                                  width: 16, height: 16, borderRadius: 3, border: isSelected ? "none" : "1px solid #737373",
+                                  backgroundColor: isSelected ? "#E5E5E5" : "transparent",
+                                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2,
+                                }}>
+                                  {isSelected && <Check size={12} color="#171717" strokeWidth={2.5} />}
+                                </div>
+                                {/* Info */}
+                                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                                  <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{truck.name}</span>
+                                  <div style={{ display: "flex", alignItems: "center" }}>
+                                    <span style={{ fontSize: 13, color: "#A3A3A3" }}>{truck.capacity}</span>
+                                    <SpecsDot />
+                                    <span style={{ fontSize: 13, color: "#A3A3A3" }}>{truck.compartments}</span>
+                                    <SpecsDot />
+                                    <span style={{ fontSize: 13, color: "#A3A3A3" }}>{truck.products}</span>
+                                  </div>
+                                  {truck.goodMatch && (
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: "#10B981", marginTop: 2 }}>Good match</span>
+                                  )}
+                                </div>
+                                <TypeBadge label={truck.badge} />
+                              </div>
+                            )
+                          })}
                         </div>
-                        {/* Info */}
-                        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                          <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{truck.name}</span>
-                          <div style={{ display: "flex", alignItems: "center" }}>
-                            <span style={{ fontSize: 13, color: "#A3A3A3" }}>{truck.capacity}</span>
-                            <SpecsDot />
-                            <span style={{ fontSize: 13, color: "#A3A3A3" }}>{truck.compartments}</span>
-                            <SpecsDot />
-                            <span style={{ fontSize: 13, color: "#A3A3A3" }}>{truck.products}</span>
-                          </div>
-                        </div>
-                        <TypeBadge label={truck.badge} />
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
 
                 {/* Bottom area: selected chips OR empty state */}
                 {selectedTruckIds.length > 0 ? (
                   <div style={{
-                    display: "flex", flexDirection: "column", gap: 8,
+                    display: "flex", flexDirection: "column", gap: 8, flexShrink: 0,
                     padding: "14px 16px",
                     backgroundColor: "rgba(255,255,255,0.01)",
                     border: "1px solid #333", borderRadius: 4,
@@ -427,10 +526,9 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                 ) : (
                   <div style={{
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
-                    padding: "14px 16px", height: 84,
+                    padding: "14px 16px", height: 84, flexShrink: 0,
                     backgroundColor: "rgba(255,255,255,0.01)",
                     border: "1px solid #333", borderRadius: 4,
-                    boxShadow: "0px 0px 0px 0px rgba(163,163,163,0.5)",
                   }}>
                     <Truck size={20} color="#737373" />
                     <span style={{ fontSize: 14, color: "#A3A3A3", textAlign: "center" }}>Select from {AVAILABLE_TRUCKS.length} available trucks</span>
