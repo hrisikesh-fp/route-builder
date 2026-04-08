@@ -119,6 +119,9 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, m
   const [activeHub, setActiveHub] = useState("All Hubs")
   const [loadingPhase, setLoadingPhase] = useState("")
   const [canCancel, setCanCancel] = useState(true)
+  const [isSortOpen, setIsSortOpen] = useState(false)
+  const [sortField, setSortField] = useState<"capacity" | "name">("capacity")
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
 
   if (!isOpen) return null
 
@@ -129,6 +132,9 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, m
     setTruckSearch("")
     setActiveHub("All Hubs")
     setCanCancel(true)
+    setIsSortOpen(false)
+    setSortField("capacity")
+    setSortDir("asc")
     onClose()
   }
 
@@ -149,7 +155,19 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, m
       t.productNames.some(p => p.toLowerCase().includes(q))
     )
   }
-  const filteredTrucks = getFilteredTrucks()
+  const filteredTrucks = (() => {
+    const trucks = getFilteredTrucks()
+    const sorted = [...trucks].sort((a, b) => {
+      if (sortField === "capacity") {
+        const capA = parseInt(a.capacity.replace(/[^0-9]/g, "")) || 0
+        const capB = parseInt(b.capacity.replace(/[^0-9]/g, "")) || 0
+        return sortDir === "asc" ? capA - capB : capB - capA
+      }
+      const cmp = a.name.localeCompare(b.name)
+      return sortDir === "asc" ? cmp : -cmp
+    })
+    return sorted
+  })()
 
   // Per-truck: does the search match name / badge / products?
   const getMatchTypes = (truck: TruckItem) => {
@@ -399,15 +417,69 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, m
                       style={{ flex: 1, background: "none", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }}
                     />
                   </div>
-                  <button style={{
-                    display: "flex", alignItems: "center", gap: 4, padding: "8px 12px",
-                    border: "1px solid #333", borderRadius: 4, background: "none",
-                    cursor: "pointer", color: "#E5E5E5", fontSize: 14, fontFamily: "Geist, sans-serif",
-                    whiteSpace: "nowrap", flexShrink: 0,
-                  }}>
-                    <ArrowUpDown size={14} color="#A3A3A3" />
-                    <span>Sort</span>
-                  </button>
+                  <div style={{ position: "relative", flexShrink: 0 }}>
+                    <button
+                      onClick={() => setIsSortOpen(!isSortOpen)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4, padding: "8px 12px",
+                        border: isSortOpen ? "1px solid #737373" : "1px solid #333", borderRadius: 4, background: "none",
+                        cursor: "pointer", color: "#E5E5E5", fontSize: 14, fontFamily: "Geist, sans-serif",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <ArrowUpDown size={14} color="#A3A3A3" />
+                      <span>Sort</span>
+                    </button>
+                    {isSortOpen && (
+                      <>
+                        <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setIsSortOpen(false)} />
+                        <div style={{
+                          position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
+                          width: 180, backgroundColor: "#1A1A1A", border: "1px solid #333", borderRadius: 4,
+                          boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
+                          padding: "8px 0", fontFamily: "Geist, sans-serif",
+                        }}>
+                          <div style={{ padding: "0 12px 6px", fontSize: 12, fontWeight: 500, color: "#737373", lineHeight: "16px" }}>Sort by</div>
+                          {(["capacity", "name"] as const).map(field => (
+                            <div
+                              key={field}
+                              onClick={() => { setSortField(field); setSortDir("asc") }}
+                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", cursor: "pointer", fontSize: 14, color: "#E5E5E5", lineHeight: "20px" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#282828" }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                            >
+                              <div style={{
+                                width: 14, height: 14, borderRadius: "50%",
+                                border: sortField === field ? "4px solid #E5E5E5" : "1.5px solid #737373",
+                                boxSizing: "border-box", flexShrink: 0,
+                              }} />
+                              {field === "capacity" ? "Truck Capacity" : "Truck Name"}
+                            </div>
+                          ))}
+                          <div style={{ height: 1, backgroundColor: "#333", margin: "6px 0" }} />
+                          {(sortField === "capacity"
+                            ? [{ dir: "asc" as const, label: "Ascending", icon: "↑" }, { dir: "desc" as const, label: "Descending", icon: "↓" }]
+                            : [{ dir: "asc" as const, label: "A-Z", icon: "↑" }, { dir: "desc" as const, label: "Z-A", icon: "↓" }]
+                          ).map(opt => (
+                            <div
+                              key={opt.dir}
+                              onClick={() => { setSortDir(opt.dir); setIsSortOpen(false) }}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", cursor: "pointer",
+                                fontSize: 14, color: sortDir === opt.dir ? "#E5E5E5" : "#A3A3A3", lineHeight: "20px",
+                                fontWeight: sortDir === opt.dir ? 500 : 400,
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#282828" }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                            >
+                              <span style={{ fontSize: 12, width: 14, textAlign: "center", flexShrink: 0 }}>{opt.icon}</span>
+                              {opt.label}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Hub tabs */}
