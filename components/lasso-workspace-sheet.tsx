@@ -249,6 +249,7 @@ function RouteCardCollapsed({
   onRemoveRoute,
   onDriverSelect,
   currentDriverId,
+  onOptimise,
 }: {
   color: string
   driverName: string
@@ -277,6 +278,7 @@ function RouteCardCollapsed({
   onRemoveRoute?: () => void
   onDriverSelect?: (driver: DriverItem) => void
   currentDriverId?: string
+  onOptimise?: () => void
 }) {
   // Determine config
   const config: "A" | "B" | "C" | "D" | "E" = !hasTruck ? "E"
@@ -547,6 +549,42 @@ function RouteCardCollapsed({
           gap: 4,
         }}
       >
+        {/* Optimise Route icon button */}
+        <div
+          style={{ position: "relative" }}
+          onMouseEnter={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+            if (tip) tip.style.display = "flex"
+            const btn = e.currentTarget.querySelector<HTMLElement>("button")
+            if (btn) btn.style.backgroundColor = "#333"
+          }}
+          onMouseLeave={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+            if (tip) tip.style.display = "none"
+            const btn = e.currentTarget.querySelector<HTMLElement>("button")
+            if (btn) btn.style.backgroundColor = "transparent"
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); onOptimise?.() }}
+            style={{
+              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 2, border: "none", background: "transparent", cursor: "pointer",
+              color: "#FAFAFA", padding: 0,
+            }}
+          >
+            <Sparkles size={16} />
+          </button>
+          <div data-fab-tooltip style={{
+            display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+            flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
+          }}>
+            <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+              Optimise Route
+            </div>
+            <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+          </div>
+        </div>
         {/* View Route icon button — only for published routes */}
         {isPublished && (
           <div
@@ -568,7 +606,7 @@ function RouteCardCollapsed({
               onClick={(e) => { e.stopPropagation(); onViewRoute?.() }}
               style={{
                 width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-                borderRadius: 4, border: "none", background: "transparent", cursor: "pointer",
+                borderRadius: 2, border: "none", background: "transparent", cursor: "pointer",
                 color: "#FAFAFA", padding: 0,
               }}
             >
@@ -585,49 +623,13 @@ function RouteCardCollapsed({
             </div>
           </div>
         )}
-        {/* Optimise Route icon button */}
-        <div
-          style={{ position: "relative" }}
-          onMouseEnter={(e) => {
-            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
-            if (tip) tip.style.display = "flex"
-            const btn = e.currentTarget.querySelector<HTMLElement>("button")
-            if (btn) btn.style.backgroundColor = "#333"
-          }}
-          onMouseLeave={(e) => {
-            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
-            if (tip) tip.style.display = "none"
-            const btn = e.currentTarget.querySelector<HTMLElement>("button")
-            if (btn) btn.style.backgroundColor = "transparent"
-          }}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation() }}
-            style={{
-              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-              borderRadius: 4, border: "none", background: "transparent", cursor: "pointer",
-              color: "#FAFAFA", padding: 0,
-            }}
-          >
-            <Sparkles size={16} />
-          </button>
-          <div data-fab-tooltip style={{
-            display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
-            flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
-          }}>
-            <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
-              Optimise Route
-            </div>
-            <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
-          </div>
-        </div>
         {/* 3-dot icon button */}
         <div style={{ position: "relative" }}>
           <button
             onClick={(e) => { e.stopPropagation(); onMenuClick?.() }}
             style={{
               width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-              borderRadius: 4, border: "none", backgroundColor: isMenuOpen ? "#333" : "transparent",
+              borderRadius: 2, border: "none", backgroundColor: isMenuOpen ? "#333" : "transparent",
               cursor: "pointer", color: "#FAFAFA", padding: 0,
             }}
             onMouseEnter={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "#333" }}
@@ -655,7 +657,7 @@ function RouteCardCollapsed({
             >
               {/* Optimise Route */}
               <div
-                onClick={(e) => { e.stopPropagation() }}
+                onClick={(e) => { e.stopPropagation(); onOptimise?.() }}
                 style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
@@ -1809,7 +1811,7 @@ function OrderStopRow({
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
-                borderRadius: 4,
+                borderRadius: 2,
                 opacity: 0,
                 transition: "opacity 0.15s",
                 color: "#A3A3A3",
@@ -2098,7 +2100,7 @@ function OrderStopRowDetailed({
                   width: 24, height: 24, flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   background: "transparent", border: "none", cursor: "pointer",
-                  borderRadius: 4, opacity: 0, transition: "opacity 0.15s",
+                  borderRadius: 2, opacity: 0, transition: "opacity 0.15s",
                   color: "#A3A3A3", padding: 0,
                 }}
               >
@@ -2430,6 +2432,7 @@ export function LassoWorkspaceSheet({
   onShowMessage,
   initialExpandedRouteIds = [],
 }: LassoWorkspaceSheetProps) {
+  const { orderCardView } = useSettings()
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
   const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>(initialExpandedRouteIds)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
@@ -2471,6 +2474,8 @@ export function LassoWorkspaceSheet({
   const [cardTrailerSlot, setCardTrailerSlot] = useState<0 | 1 | 2>(0)
   const [truckDropupEnabled, setTruckDropupEnabled] = useState(false)
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
+  const [mergeModalMode, setMergeModalMode] = useState<"create" | "optimise">("create")
+  const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
 
   // Driver dropdown state
   const [driverDropdownRouteId, setDriverDropdownRouteId] = useState<string | null>(null)
@@ -2958,6 +2963,12 @@ export function LassoWorkspaceSheet({
                               }}
                               isMenuOpen={menuRouteId === routeId}
                               isPublished={routeId !== "route-6"}
+                              onOptimise={() => {
+                                setOptimiseRouteId(routeId)
+                                setMergeModalMode("optimise")
+                                setIsMergeModalOpen(true)
+                                setMenuRouteId(null)
+                              }}
                               onViewRoute={() => { /* future: open route detail */ }}
                               onRemoveRoute={() => {
                                 setSelectedOrders(prev => prev.filter(o => o.routeId !== routeId))
@@ -3467,6 +3478,96 @@ export function LassoWorkspaceSheet({
                     const totalAssets = order.totalAssets ?? 0
                     const totalTopOffs = order.totalTopOffs ?? 0
                     const urgency = order.urgency ?? { red: 0, yellow: 0, green: 0, blue: 0 }
+
+                    if (orderCardView === "condensed") {
+                      return (
+                        <div
+                          key={order.id}
+                          style={{
+                            backgroundColor: "#1F1F1F",
+                            borderRadius: 4,
+                            padding: "16px 16px 12px",
+                            display: "flex",
+                            flexDirection: "row",
+                            gap: 12,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#282828"
+                            const grip = e.currentTarget.querySelector<SVGElement>(".unassigned-grip-icon")
+                            if (grip) grip.style.opacity = "1"
+                            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".unassigned-menu-btn")
+                            if (btn) btn.style.opacity = "1"
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "#1F1F1F"
+                            const grip = e.currentTarget.querySelector<SVGElement>(".unassigned-grip-icon")
+                            if (grip) grip.style.opacity = "0"
+                            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".unassigned-menu-btn")
+                            if (btn) btn.style.opacity = "0"
+                          }}
+                        >
+                          {/* Left: checkbox + grip */}
+                          <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", paddingBottom: 4, gap: 12, flexShrink: 0 }}>
+                            <div style={{ paddingTop: 4 }}>
+                              <CheckboxInput checked={false} onChange={() => {}} />
+                            </div>
+                            <svg className="unassigned-grip-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0, transition: "opacity 0.15s", cursor: "grab" }}>
+                              <circle cx="7" cy="6" r="1.5" fill="#A3A3A3" />
+                              <circle cx="7" cy="10" r="1.5" fill="#A3A3A3" />
+                              <circle cx="7" cy="14" r="1.5" fill="#A3A3A3" />
+                              <circle cx="13" cy="6" r="1.5" fill="#A3A3A3" />
+                              <circle cx="13" cy="10" r="1.5" fill="#A3A3A3" />
+                              <circle cx="13" cy="14" r="1.5" fill="#A3A3A3" />
+                            </svg>
+                          </div>
+                          {/* Right: content */}
+                          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                            {/* Time */}
+                            <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3", lineHeight: "16px" }}>
+                              5:45 AM
+                            </span>
+                            {/* Badge + name + 3-dot row */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <div style={{
+                                width: 20, height: 20, backgroundColor: "#E5E5E5", border: "1px solid #737373",
+                                borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: 11, fontWeight: 500, color: "#171717", lineHeight: 1, flexShrink: 0,
+                              }}>
+                                {type}
+                              </div>
+                              <span style={{ flex: 1, fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {order.customerName}
+                              </span>
+                              <button
+                                className="unassigned-menu-btn"
+                                style={{
+                                  width: 24, height: 24, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                                  background: "transparent", border: "none", cursor: "pointer", borderRadius: 2, padding: 0,
+                                  opacity: 0, transition: "opacity 0.15s", color: "#A3A3A3",
+                                }}
+                              >
+                                <MoreVertical size={14} />
+                              </button>
+                            </div>
+                            {/* Planned qty — button, same pattern as scheduled cards */}
+                            <button
+                              style={{
+                                fontSize: 14, fontWeight: 500, color: "#FAFAFA", opacity: 0.6, lineHeight: "20px",
+                                background: "transparent", border: "none", cursor: "pointer",
+                                height: 28, padding: "0 10px", marginLeft: -10, borderRadius: 4,
+                                textAlign: "left", transition: "opacity 0.15s, background-color 0.15s",
+                                alignSelf: "flex-start",
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.backgroundColor = "#404040" }}
+                              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; e.currentTarget.style.backgroundColor = "transparent" }}
+                            >
+                              Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    }
+
                     return (
                     <div
                       key={order.id}
@@ -3608,23 +3709,40 @@ export function LassoWorkspaceSheet({
                 >
                   Unassign
                 </button>
-                {/* Optimise — only when 2+ routes checked */}
-                {checkedRouteIds.length > 1 && (
-                  <>
-                    <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-                    <button
-                      onClick={() => setIsMergeModalOpen(true)}
-                      style={{
-                        height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
-                        color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                        cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                    >
-                      Merge
-                    </button>
-                  </>
+                <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                {checkedRouteIds.length === 1 ? (
+                  <button
+                    onClick={() => {
+                      setOptimiseRouteId(checkedRouteIds[0])
+                      setMergeModalMode("optimise")
+                      setIsMergeModalOpen(true)
+                    }}
+                    style={{
+                      height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
+                      color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+                      cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                  >
+                    Optimise
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setMergeModalMode("create")
+                      setIsMergeModalOpen(true)
+                    }}
+                    style={{
+                      height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
+                      color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+                      cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                  >
+                    Merge
+                  </button>
                 )}
               </div>
             </div>
@@ -3777,15 +3895,19 @@ export function LassoWorkspaceSheet({
         />
       )}
 
-      {/* Merge Modal */}
+      {/* Merge / Optimise Modal */}
       <MergeModal
         isOpen={isMergeModalOpen}
-        onClose={() => setIsMergeModalOpen(false)}
-        checkedRouteIds={checkedRouteIds}
+        onClose={() => { setIsMergeModalOpen(false); setOptimiseRouteId(null) }}
+        checkedRouteIds={mergeModalMode === "optimise" && optimiseRouteId ? [optimiseRouteId] : checkedRouteIds}
         selectedOrders={selectedOrders}
+        modalMode={mergeModalMode}
         onComplete={(truckCount, orderCount) => {
           onCheckedRoutesChange([])
-          onShowMessage?.(`${truckCount} optimised routes created with ${orderCount} orders`)
+          setOptimiseRouteId(null)
+          onShowMessage?.(mergeModalMode === "optimise"
+            ? `Route optimised with ${orderCount} orders`
+            : `${truckCount} optimised routes created with ${orderCount} orders`)
         }}
       />
     </div>

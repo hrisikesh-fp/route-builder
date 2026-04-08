@@ -81,6 +81,7 @@ interface MergeModalProps {
   onClose: () => void
   checkedRouteIds: string[]
   selectedOrders: ExtractionOrder[]
+  modalMode?: "create" | "optimise"
   onComplete?: (truckCount: number, orderCount: number) => void
 }
 
@@ -110,7 +111,7 @@ const TypeBadge = ({ label, query }: { label: string; query?: string }) => (
 )
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, onComplete }: MergeModalProps) {
+export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, modalMode = "create", onComplete }: MergeModalProps) {
   const [screen, setScreen] = useState<"main" | "loading">("main")
   const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [selectedTruckIds, setSelectedTruckIds] = useState<string[]>([])
@@ -253,49 +254,56 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
             {/* Header */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>Create Routes</span>
-                {/* Divider */}
-                <div style={{ width: 1, height: 20, backgroundColor: "#333", flexShrink: 0 }} />
-                {/* Auto / Manual toggle — inline with title */}
-                <div style={{
-                  display: "inline-flex", alignItems: "center",
-                  height: 28, padding: 2, borderRadius: 4,
-                  backgroundColor: "#1B1B1B", border: "1px solid #282828",
-                  boxSizing: "border-box" as const,
-                }}>
-                  {(["auto", "manual"] as const).map(m => {
-                    const isActive = mode === m
-                    return (
-                      <button
-                        key={m}
-                        onClick={() => setMode(m)}
-                        style={{
-                          padding: "0 16px", fontSize: 14, lineHeight: "20px",
-                          height: "100%",
-                          fontWeight: isActive ? 500 : 400,
-                          color: isActive ? "#E5E5E5" : "#A3A3A3",
-                          backgroundColor: isActive ? "#282828" : "transparent",
-                          border: isActive ? "1px solid #333" : "1px solid transparent",
-                          borderRadius: 2, cursor: "pointer",
-                          fontFamily: "Geist, sans-serif",
-                          boxShadow: isActive ? "0px 1px 3px 0px rgba(0,0,0,0.1), 0px 1px 2px 0px rgba(0,0,0,0.1)" : "none",
-                          transition: "background-color 150ms, color 150ms",
-                        }}
-                      >
-                        {m === "auto" ? "Auto" : "Manual"}
-                      </button>
-                    )
-                  })}
-                </div>
+                <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>
+                  {modalMode === "optimise" ? "Optimise Route" : "Create Routes"}
+                </span>
+                {/* Divider + Auto/Manual toggle — only for create mode */}
+                {modalMode === "create" && (
+                  <>
+                    <div style={{ width: 1, height: 20, backgroundColor: "#333", flexShrink: 0 }} />
+                    <div style={{
+                      display: "inline-flex", alignItems: "center",
+                      height: 28, padding: 2, borderRadius: 4,
+                      backgroundColor: "#1B1B1B", border: "1px solid #282828",
+                      boxSizing: "border-box" as const,
+                    }}>
+                      {(["auto", "manual"] as const).map(m => {
+                        const isActive = mode === m
+                        return (
+                          <button
+                            key={m}
+                            onClick={() => setMode(m)}
+                            style={{
+                              padding: "0 16px", fontSize: 14, lineHeight: "20px",
+                              height: "100%",
+                              fontWeight: isActive ? 500 : 400,
+                              color: isActive ? "#E5E5E5" : "#A3A3A3",
+                              backgroundColor: isActive ? "#282828" : "transparent",
+                              border: isActive ? "1px solid #333" : "1px solid transparent",
+                              borderRadius: 2, cursor: "pointer",
+                              fontFamily: "Geist, sans-serif",
+                              boxShadow: isActive ? "0px 1px 3px 0px rgba(0,0,0,0.1), 0px 1px 2px 0px rgba(0,0,0,0.1)" : "none",
+                              transition: "background-color 150ms, color 150ms",
+                            }}
+                          >
+                            {m === "auto" ? "Auto" : "Manual"}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
                 <div style={{ flex: 1 }} />
                 <button onClick={handleClose} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#E5E5E5", padding: 0 }}>
                   <X size={24} strokeWidth={2} />
                 </button>
               </div>
               <span style={{ fontSize: 14, color: "#A3A3A3", lineHeight: "20px" }}>
-                {mode === "auto"
-                  ? "Select atleast one truck to create optimised routes automatically."
-                  : "Select atleast one truck or a driver to create route manually."}
+                {modalMode === "optimise"
+                  ? "Select atleast one truck to optimise this route automatically."
+                  : mode === "auto"
+                    ? "Select atleast one truck to create optimised routes automatically."
+                    : "Select atleast one truck or a driver to create route manually."}
               </span>
             </div>
 
@@ -567,7 +575,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
               >
                 Cancel
               </button>
-              {mode === "auto" ? (
+              {(modalMode === "optimise" || mode === "auto") ? (
               <button
                 disabled={selectedTruckIds.length === 0}
                 onClick={handleOptimise}
@@ -580,7 +588,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, o
                   fontFamily: "Geist, sans-serif",
                 }}
               >
-                Optimise and Create Routes
+                {modalMode === "optimise" ? "Optimize Route" : "Optimise and Create Routes"}
               </button>
               ) : (
               <button
