@@ -3846,7 +3846,7 @@ export function LassoWorkspaceSheet({
             }}
           >
             <button
-              disabled={checkedRouteIds.length > 0}
+              disabled={checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0}
               style={{
                 width: "100%",
                 height: 40,
@@ -3856,11 +3856,11 @@ export function LassoWorkspaceSheet({
                 color: "#FAFAFA",
                 backgroundColor: "#4D55F8",
                 border: "none",
-                cursor: checkedRouteIds.length > 0 ? "default" : "pointer",
-                opacity: checkedRouteIds.length > 0 ? 0.5 : 1,
+                cursor: (checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0) ? "default" : "pointer",
+                opacity: (checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0) ? 0.5 : 1,
                 transition: "opacity 150ms ease",
               }}
-              onMouseEnter={(e) => { if (checkedRouteIds.length === 0) e.currentTarget.style.backgroundColor = "#3D45E8" }}
+              onMouseEnter={(e) => { if (checkedRouteIds.length === 0 && checkedUnassignedOrderIds.length === 0) e.currentTarget.style.backgroundColor = "#3D45E8" }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#4D55F8" }}
             >
               Publish Routes
