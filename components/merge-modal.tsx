@@ -80,6 +80,7 @@ interface MergeModalProps {
   isOpen: boolean
   onClose: () => void
   checkedRouteIds: string[]
+  checkedUnassignedOrderIds?: string[]
   selectedOrders: ExtractionOrder[]
   modalMode?: "create" | "optimise"
   onComplete?: (truckCount: number, orderCount: number) => void
@@ -111,7 +112,7 @@ const TypeBadge = ({ label, query }: { label: string; query?: string }) => (
 )
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, modalMode = "create", onComplete }: MergeModalProps) {
+export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassignedOrderIds = [], selectedOrders, modalMode = "create", onComplete }: MergeModalProps) {
   const [screen, setScreen] = useState<"main" | "loading">("main")
   const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [selectedTruckIds, setSelectedTruckIds] = useState<string[]>([])
@@ -138,9 +139,12 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, selectedOrders, m
     onClose()
   }
 
-  // Orders for the left panel — all orders belonging to checked routes
+  // Orders for the left panel — all orders belonging to checked routes + checked unassigned orders
   const orderRows = selectedOrders
-    .filter(o => checkedRouteIds.includes(o.routeId ?? ""))
+    .filter(o =>
+      checkedRouteIds.includes(o.routeId ?? "") ||
+      (!o.routeId && checkedUnassignedOrderIds.includes(o.id))
+    )
     .sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
 
   // Search: match against name, badge, or product names

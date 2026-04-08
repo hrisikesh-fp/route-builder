@@ -2476,6 +2476,7 @@ export function LassoWorkspaceSheet({
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
   const [mergeModalMode, setMergeModalMode] = useState<"create" | "optimise">("create")
   const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
+  const [checkedUnassignedOrderIds, setCheckedUnassignedOrderIds] = useState<string[]>([])
 
   // Driver dropdown state
   const [driverDropdownRouteId, setDriverDropdownRouteId] = useState<string | null>(null)
@@ -2616,6 +2617,21 @@ export function LassoWorkspaceSheet({
   }
 
   const unassignedOrders = selectedOrders.filter((o) => !o.routeId)
+
+  // Unassigned order checkbox logic
+  const unassignedOrderIds = unassignedOrders.map(o => o.id)
+  const allUnassignedChecked = unassignedOrderIds.length > 0 && unassignedOrderIds.every(id => checkedUnassignedOrderIds.includes(id))
+  const someUnassignedChecked = checkedUnassignedOrderIds.length > 0 && !allUnassignedChecked
+  const toggleUnassignedOrderChecked = (orderId: string) => {
+    setCheckedUnassignedOrderIds(prev => prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId])
+  }
+  const toggleAllUnassigned = () => {
+    if (allUnassignedChecked) {
+      setCheckedUnassignedOrderIds([])
+    } else {
+      setCheckedUnassignedOrderIds(unassignedOrderIds)
+    }
+  }
 
   const getTankLevelColor = (level: number) => {
     if (level > 75) return "#E15252"
@@ -3473,7 +3489,15 @@ export function LassoWorkspaceSheet({
                     No unassigned orders selected.
                   </p>
                 ) : (
-                  unassignedOrders.map((order) => {
+                  <>
+                  {/* Select All Unassigned Orders header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 0 4px" }}>
+                    <CheckboxInput checked={allUnassignedChecked} indeterminate={someUnassignedChecked} onChange={toggleAllUnassigned} />
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5", lineHeight: "20px" }}>
+                      Select All Unassigned Orders
+                    </span>
+                  </div>
+                  {unassignedOrders.map((order) => {
                     const type = order.orderType ?? "D"
                     const totalAssets = order.totalAssets ?? 0
                     const totalTopOffs = order.totalTopOffs ?? 0
@@ -3509,7 +3533,7 @@ export function LassoWorkspaceSheet({
                           {/* Left: checkbox + grip */}
                           <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", paddingBottom: 4, gap: 12, flexShrink: 0 }}>
                             <div style={{ paddingTop: 4 }}>
-                              <CheckboxInput checked={false} onChange={() => {}} />
+                              <CheckboxInput checked={checkedUnassignedOrderIds.includes(order.id)} onChange={() => toggleUnassignedOrderChecked(order.id)} />
                             </div>
                             <svg className="unassigned-grip-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0, transition: "opacity 0.15s", cursor: "grab" }}>
                               <circle cx="7" cy="6" r="1.5" fill="#A3A3A3" />
@@ -3585,7 +3609,7 @@ export function LassoWorkspaceSheet({
                     >
                       {/* Left: checkbox */}
                       <div style={{ paddingTop: 4, flexShrink: 0 }}>
-                        <CheckboxInput checked={false} onChange={() => {}} />
+                        <CheckboxInput checked={checkedUnassignedOrderIds.includes(order.id)} onChange={() => toggleUnassignedOrderChecked(order.id)} />
                       </div>
                       {/* Right: content */}
                       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -3658,14 +3682,79 @@ export function LassoWorkspaceSheet({
                     </div>
                     </div>
                     )
-                  })
+                  })}
+                  </>
                 )}
               </div>
             )}
           </div>
 
+          {/* ── UNASSIGNED ORDERS FAB — appears when unassigned orders are checked ── */}
+          {activeTab === "unassigned" && checkedUnassignedOrderIds.length > 0 && (
+            <div style={{
+              position: "absolute", bottom: 40, left: 24, right: 24, zIndex: 100,
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+              padding: 12, backgroundColor: "#3E45C8", borderRadius: 8,
+              boxShadow: "0px 25px 50px -12px rgba(0,0,0,0.25)",
+              fontFamily: "Geist, sans-serif",
+            }}>
+              {/* Left: order count */}
+              <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA", lineHeight: "20px", whiteSpace: "nowrap", padding: "8px 4px" }}>
+                {checkedUnassignedOrderIds.length} Order{checkedUnassignedOrderIds.length !== 1 ? "s" : ""} Selected
+              </span>
+              {/* Right: action buttons */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() => {
+                    // Remove checked unassigned orders from workspace
+                    setCheckedUnassignedOrderIds([])
+                  }}
+                  style={{
+                    height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
+                    color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+                    cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                >
+                  Remove
+                </button>
+                <button
+                  style={{
+                    height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
+                    color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+                    cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                    display: "flex", alignItems: "center", gap: 4,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                >
+                  Move
+                  <ChevronDown size={16} />
+                </button>
+                {/* Divider */}
+                <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                <button
+                  onClick={() => {
+                    setMergeModalMode("create")
+                    setIsMergeModalOpen(true)
+                  }}
+                  style={{
+                    height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
+                    color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+                    cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ── WORKSPACE FAB — appears when routes are checked ── */}
-          {checkedRouteIds.length > 0 && (
+          {activeTab === "routes" && checkedRouteIds.length > 0 && (
             <div style={{
               position: "absolute", bottom: 40, left: 24, right: 24, zIndex: 100,
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
@@ -3900,10 +3989,12 @@ export function LassoWorkspaceSheet({
         isOpen={isMergeModalOpen}
         onClose={() => { setIsMergeModalOpen(false); setOptimiseRouteId(null) }}
         checkedRouteIds={mergeModalMode === "optimise" && optimiseRouteId ? [optimiseRouteId] : checkedRouteIds}
+        checkedUnassignedOrderIds={checkedUnassignedOrderIds}
         selectedOrders={selectedOrders}
         modalMode={mergeModalMode}
         onComplete={(truckCount, orderCount) => {
           onCheckedRoutesChange([])
+          setCheckedUnassignedOrderIds([])
           setOptimiseRouteId(null)
           onShowMessage?.(mergeModalMode === "optimise"
             ? `Route optimised with ${orderCount} orders`
