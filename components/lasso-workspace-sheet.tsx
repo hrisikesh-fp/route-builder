@@ -2493,22 +2493,27 @@ export function LassoWorkspaceSheet({
   const [checkedUnassignedOrderIds, setCheckedUnassignedOrderIds] = useState<string[]>([])
   const [checkedScheduledOrderIds, setCheckedScheduledOrderIds] = useState<string[]>([])
   const toggleScheduledOrderChecked = (orderId: string) => {
-    setCheckedScheduledOrderIds(prev => {
-      const next = prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
-      // Auto-sync parent route checkbox
-      const order = selectedOrders.find(o => o.id === orderId)
-      if (order?.routeId) {
-        const routeOrderIds = selectedOrders.filter(o => o.routeId === order.routeId).map(o => o.id)
-        const allRouteOrdersChecked = routeOrderIds.every(id => next.includes(id))
-        if (allRouteOrdersChecked && !checkedRouteIds.includes(order.routeId)) {
-          onCheckedRoutesChange([...checkedRouteIds, order.routeId])
-        } else if (!allRouteOrdersChecked && checkedRouteIds.includes(order.routeId)) {
-          onCheckedRoutesChange(checkedRouteIds.filter(id => id !== order.routeId))
-        }
-      }
-      return next
-    })
+    setCheckedScheduledOrderIds(prev => prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId])
   }
+
+  // Auto-sync route checkbox when individual orders are toggled
+  useEffect(() => {
+    const updates: string[] = []
+    const removals: string[] = []
+    for (const routeId of selectedRouteIds) {
+      const routeOrderIds = selectedOrders.filter(o => o.routeId === routeId).map(o => o.id)
+      if (routeOrderIds.length === 0) continue
+      const allCheckedNow = routeOrderIds.every(id => checkedScheduledOrderIds.includes(id))
+      const isRouteChecked = checkedRouteIds.includes(routeId)
+      if (allCheckedNow && !isRouteChecked) updates.push(routeId)
+      else if (!allCheckedNow && isRouteChecked) removals.push(routeId)
+    }
+    if (updates.length > 0 || removals.length > 0) {
+      onCheckedRoutesChange(
+        [...checkedRouteIds.filter(id => !removals.includes(id)), ...updates]
+      )
+    }
+  }, [checkedScheduledOrderIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Driver dropdown state
   const [driverDropdownRouteId, setDriverDropdownRouteId] = useState<string | null>(null)
