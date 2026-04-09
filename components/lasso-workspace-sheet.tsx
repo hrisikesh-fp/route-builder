@@ -3712,153 +3712,116 @@ export function LassoWorkspaceSheet({
               </div>
           </div>
 
-          {/* ── UNASSIGNED ORDERS FAB — appears when unassigned orders are checked ── */}
-          {checkedUnassignedOrderIds.length > 0 && (
-            <div style={{
-              position: "absolute", bottom: 40, left: 24, right: 24, zIndex: 100,
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-              padding: 12, backgroundColor: "#3E45C8", borderRadius: 8,
-              boxShadow: "0px 25px 50px -12px rgba(0,0,0,0.25)",
-              fontFamily: "Geist, sans-serif",
-            }}>
-              {/* Left: order count */}
-              <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA", lineHeight: "20px", whiteSpace: "nowrap", padding: "8px 4px" }}>
-                {checkedUnassignedOrderIds.length} Order{checkedUnassignedOrderIds.length !== 1 ? "s" : ""} Selected
-              </span>
-              {/* Right: action buttons */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  onClick={() => {
-                    // Remove checked unassigned orders from workspace
-                    setCheckedUnassignedOrderIds([])
-                  }}
-                  style={{
-                    height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
-                    color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                    cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                >
-                  Remove
-                </button>
-                <button
-                  style={{
-                    height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
-                    color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                    cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                    display: "flex", alignItems: "center", gap: 4,
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                >
-                  Move
-                  <ChevronDown size={16} />
-                </button>
-                {/* Divider */}
-                <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-                <button
-                  onClick={() => {
-                    setMergeModalMode("create")
-                    setIsMergeModalOpen(true)
-                  }}
-                  style={{
-                    height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
-                    color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                    cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                >
-                  Create
-                </button>
-              </div>
-            </div>
-          )}
+          {/* ── UNIFIED FAB — appears when anything is checked ── */}
+          {(checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0) && (() => {
+            const hasRoutes = checkedRouteIds.length > 0
+            const hasUnassigned = checkedUnassignedOrderIds.length > 0
+            const hasBoth = hasRoutes && hasUnassigned
+            const routeOrderCount = checkedRouteIds.reduce((sum, rid) => sum + selectedOrders.filter(o => o.routeId === rid).length, 0)
+            const totalCount = routeOrderCount + checkedUnassignedOrderIds.length
+            const btnStyle: React.CSSProperties = {
+              height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
+              color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+              cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+            }
+            const hoverIn = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }
+            const hoverOut = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.backgroundColor = "transparent" }
 
-          {/* ── WORKSPACE FAB — appears when routes are checked ── */}
-          {checkedRouteIds.length > 0 && (
-            <div style={{
-              position: "absolute", bottom: 40, left: 24, right: 24, zIndex: 100,
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-              padding: 12, backgroundColor: "#3E45C8", borderRadius: 8,
-              boxShadow: "0px 25px 50px -12px rgba(0,0,0,0.25)",
-              fontFamily: "Geist, sans-serif",
-            }}>
-              {/* Left: order count */}
-              <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA", lineHeight: "20px", whiteSpace: "nowrap", padding: "8px 4px" }}>
-                {(() => {
-                  const count = checkedRouteIds.reduce((sum, rid) => sum + selectedOrders.filter(o => o.routeId === rid).length, 0)
-                  return `${count} Order${count !== 1 ? "s" : ""} Selected`
-                })()}
-              </span>
-              {/* Right: action buttons */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  onClick={() => {
-                    setSelectedOrders(prev => prev.filter(o => !o.routeId || !checkedRouteIds.includes(o.routeId)))
-                    setSelectedRouteIds(prev => prev.filter(id => !checkedRouteIds.includes(id)))
-                    onCheckedRoutesChange([])
-                  }}
-                  style={{
-                    height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
-                    color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                    cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                >
-                  Remove
-                </button>
-                <button
-                  style={{
-                    height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
-                    color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                    cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                >
-                  Unassign
-                </button>
-                <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-                {checkedRouteIds.length === 1 ? (
+            return (
+              <div style={{
+                position: "absolute", bottom: 40, left: 24, right: 24, zIndex: 100,
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                padding: 12, backgroundColor: "#3E45C8", borderRadius: 8,
+                boxShadow: "0px 25px 50px -12px rgba(0,0,0,0.25)",
+                fontFamily: "Geist, sans-serif",
+              }}>
+                {/* Left: count */}
+                <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA", lineHeight: "20px", whiteSpace: "nowrap", padding: "8px 4px" }}>
+                  {totalCount} Order{totalCount !== 1 ? "s" : ""} Selected
+                </span>
+                {/* Right: actions */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {/* Remove — always present */}
                   <button
                     onClick={() => {
-                      setOptimiseRouteId(checkedRouteIds[0])
-                      setMergeModalMode("optimise")
-                      setIsMergeModalOpen(true)
+                      if (hasRoutes) {
+                        setSelectedOrders(prev => prev.filter(o => !o.routeId || !checkedRouteIds.includes(o.routeId)))
+                        setSelectedRouteIds(prev => prev.filter(id => !checkedRouteIds.includes(id)))
+                        onCheckedRoutesChange([])
+                      }
+                      if (hasUnassigned) {
+                        setCheckedUnassignedOrderIds([])
+                      }
                     }}
-                    style={{
-                      height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
-                      color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                      cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    style={btnStyle}
+                    onMouseEnter={hoverIn}
+                    onMouseLeave={hoverOut}
                   >
-                    Optimise
+                    Remove
                   </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setMergeModalMode("create")
-                      setIsMergeModalOpen(true)
-                    }}
-                    style={{
-                      height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
-                      color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-                      cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                  >
-                    Merge
-                  </button>
-                )}
+
+                  {hasBoth ? (
+                    /* ── Mixed: routes + unassigned → Remove | Merge ── */
+                    <>
+                      <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                      <button
+                        onClick={() => { setMergeModalMode("create"); setIsMergeModalOpen(true) }}
+                        style={btnStyle}
+                        onMouseEnter={hoverIn}
+                        onMouseLeave={hoverOut}
+                      >
+                        Merge
+                      </button>
+                    </>
+                  ) : hasRoutes ? (
+                    /* ── Routes only → Unassign | Optimise/Merge ── */
+                    <>
+                      <button style={btnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                        Unassign
+                      </button>
+                      <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                      {checkedRouteIds.length === 1 ? (
+                        <button
+                          onClick={() => { setOptimiseRouteId(checkedRouteIds[0]); setMergeModalMode("optimise"); setIsMergeModalOpen(true) }}
+                          style={btnStyle}
+                          onMouseEnter={hoverIn}
+                          onMouseLeave={hoverOut}
+                        >
+                          Optimise
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { setMergeModalMode("create"); setIsMergeModalOpen(true) }}
+                          style={btnStyle}
+                          onMouseEnter={hoverIn}
+                          onMouseLeave={hoverOut}
+                        >
+                          Merge
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    /* ── Unassigned only → Move | Create ── */
+                    <>
+                      <button style={{ ...btnStyle, display: "flex", alignItems: "center", gap: 4 }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                        Move
+                        <ChevronDown size={16} />
+                      </button>
+                      <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                      <button
+                        onClick={() => { setMergeModalMode("create"); setIsMergeModalOpen(true) }}
+                        style={btnStyle}
+                        onMouseEnter={hoverIn}
+                        onMouseLeave={hoverOut}
+                      >
+                        Create
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* ── FOOTER ── */}
           <div
