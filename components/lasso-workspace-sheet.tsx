@@ -2495,6 +2495,24 @@ export function LassoWorkspaceSheet({
 
   // Scroll container ref for chip scroll-to-stop
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const unassignedSectionRef = useRef<HTMLDivElement>(null)
+  const routesSectionRef = useRef<HTMLDivElement>(null)
+
+  // Update active tab based on scroll position
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    const unassignedEl = unassignedSectionRef.current
+    if (!container || !unassignedEl) return
+    const onScroll = () => {
+      const containerRect = container.getBoundingClientRect()
+      const unassignedRect = unassignedEl.getBoundingClientRect()
+      // Switch to "unassigned" tab when its top reaches upper third of container
+      const threshold = containerRect.top + containerRect.height * 0.33
+      setActiveTab(unassignedRect.top <= threshold ? "unassigned" : "routes")
+    }
+    container.addEventListener("scroll", onScroll, { passive: true })
+    return () => container.removeEventListener("scroll", onScroll)
+  }, [])
 
   // Close route menu on outside click
   useEffect(() => {
@@ -2736,7 +2754,15 @@ export function LassoWorkspaceSheet({
               return (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => {
+                    setActiveTab(tab)
+                    const target = tab === "routes" ? routesSectionRef.current : unassignedSectionRef.current
+                    if (target && scrollContainerRef.current) {
+                      const containerRect = scrollContainerRef.current.getBoundingClientRect()
+                      const targetRect = target.getBoundingClientRect()
+                      scrollContainerRef.current.scrollBy({ top: targetRect.top - containerRect.top, behavior: "smooth" })
+                    }
+                  }}
                   style={{
                     height: 56,
                     padding: "0 12px",
@@ -2776,9 +2802,8 @@ export function LassoWorkspaceSheet({
             className="flex-1 overflow-y-auto"
             style={{ padding: "0 24px" }}
           >
-            {/* ── ROUTES TAB ── */}
-            {activeTab === "routes" && (
-              <div>
+            {/* ── ROUTES SECTION ── */}
+              <div ref={routesSectionRef}>
                 {/* Select All Row */}
                 <div
                   style={{
@@ -3465,11 +3490,10 @@ export function LassoWorkspaceSheet({
                   })}
                 </div>
               </div>
-            )}
 
-            {/* ── UNASSIGNED TAB ── */}
-            {activeTab === "unassigned" && (
+            {/* ── UNASSIGNED SECTION ── */}
               <div
+                ref={unassignedSectionRef}
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -3686,11 +3710,10 @@ export function LassoWorkspaceSheet({
                   </>
                 )}
               </div>
-            )}
           </div>
 
           {/* ── UNASSIGNED ORDERS FAB — appears when unassigned orders are checked ── */}
-          {activeTab === "unassigned" && checkedUnassignedOrderIds.length > 0 && (
+          {checkedUnassignedOrderIds.length > 0 && (
             <div style={{
               position: "absolute", bottom: 40, left: 24, right: 24, zIndex: 100,
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
@@ -3754,7 +3777,7 @@ export function LassoWorkspaceSheet({
           )}
 
           {/* ── WORKSPACE FAB — appears when routes are checked ── */}
-          {activeTab === "routes" && checkedRouteIds.length > 0 && (
+          {checkedRouteIds.length > 0 && (
             <div style={{
               position: "absolute", bottom: 40, left: 24, right: 24, zIndex: 100,
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
