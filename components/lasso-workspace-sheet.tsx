@@ -2493,7 +2493,21 @@ export function LassoWorkspaceSheet({
   const [checkedUnassignedOrderIds, setCheckedUnassignedOrderIds] = useState<string[]>([])
   const [checkedScheduledOrderIds, setCheckedScheduledOrderIds] = useState<string[]>([])
   const toggleScheduledOrderChecked = (orderId: string) => {
-    setCheckedScheduledOrderIds(prev => prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId])
+    setCheckedScheduledOrderIds(prev => {
+      const next = prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
+      // Auto-sync parent route checkbox
+      const order = selectedOrders.find(o => o.id === orderId)
+      if (order?.routeId) {
+        const routeOrderIds = selectedOrders.filter(o => o.routeId === order.routeId).map(o => o.id)
+        const allRouteOrdersChecked = routeOrderIds.every(id => next.includes(id))
+        if (allRouteOrdersChecked && !checkedRouteIds.includes(order.routeId)) {
+          onCheckedRoutesChange([...checkedRouteIds, order.routeId])
+        } else if (!allRouteOrdersChecked && checkedRouteIds.includes(order.routeId)) {
+          onCheckedRoutesChange(checkedRouteIds.filter(id => id !== order.routeId))
+        }
+      }
+      return next
+    })
   }
 
   // Driver dropdown state
@@ -2624,10 +2638,15 @@ export function LassoWorkspaceSheet({
   }
 
   const toggleRouteChecked = (routeId: string) => {
+    const routeOrderIds = (routeGroups[routeId] ?? []).map(o => o.id)
     if (checkedRouteIds.includes(routeId)) {
+      // Uncheck route → remove all its orders from scheduled
       onCheckedRoutesChange(checkedRouteIds.filter((id) => id !== routeId))
+      setCheckedScheduledOrderIds(prev => prev.filter(id => !routeOrderIds.includes(id)))
     } else {
+      // Check route → add all its orders to scheduled
       onCheckedRoutesChange([...checkedRouteIds, routeId])
+      setCheckedScheduledOrderIds(prev => [...new Set([...prev, ...routeOrderIds])])
     }
   }
 
@@ -2647,8 +2666,14 @@ export function LassoWorkspaceSheet({
   const toggleAllRoutes = () => {
     if (allChecked) {
       onCheckedRoutesChange([])
+      // Remove all route orders from scheduled
+      const allRouteOrderIds = allRouteIds.flatMap(rid => (routeGroups[rid] ?? []).map(o => o.id))
+      setCheckedScheduledOrderIds(prev => prev.filter(id => !allRouteOrderIds.includes(id)))
     } else {
       onCheckedRoutesChange(allRouteIds)
+      // Add all route orders to scheduled
+      const allRouteOrderIds = allRouteIds.flatMap(rid => (routeGroups[rid] ?? []).map(o => o.id))
+      setCheckedScheduledOrderIds(prev => [...new Set([...prev, ...allRouteOrderIds])])
     }
   }
 
@@ -3738,8 +3763,7 @@ export function LassoWorkspaceSheet({
             const hasUnassigned = checkedUnassignedOrderIds.length > 0
             const hasScheduled = checkedScheduledOrderIds.length > 0
             const hasBoth = hasRoutes && hasUnassigned
-            const routeOrderCount = checkedRouteIds.reduce((sum, rid) => sum + selectedOrders.filter(o => o.routeId === rid).length, 0)
-            const totalCount = routeOrderCount + checkedUnassignedOrderIds.length + checkedScheduledOrderIds.length
+            const totalCount = checkedScheduledOrderIds.length + checkedUnassignedOrderIds.length
             const btnStyle: React.CSSProperties = {
               height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
               color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
