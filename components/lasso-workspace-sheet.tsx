@@ -1406,6 +1406,8 @@ function ExpandedRouteCard({
   onPlannedQtyClick,
   detailsOpenOrderId,
   onHoverOrder,
+  checkedScheduledOrderIds,
+  onToggleScheduledOrder,
 }: {
   orders: ExtractionOrder[]
   color?: string
@@ -1422,6 +1424,8 @@ function ExpandedRouteCard({
   onPlannedQtyClick?: (order: ExtractionOrder, anchorY: number, anchorX: number) => void
   detailsOpenOrderId?: string | null
   onHoverOrder?: (orderId: string | null) => void
+  checkedScheduledOrderIds?: string[]
+  onToggleScheduledOrder?: (orderId: string) => void
 }) {
   const { orderCardView } = useSettings()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
@@ -1511,6 +1515,8 @@ function ExpandedRouteCard({
                   onPlannedQtyClick,
                   isDetailsOpen: detailsOpenOrderId === order.id,
                   onHoverOrder,
+                  isChecked: checkedScheduledOrderIds?.includes(order.id) ?? false,
+                  onToggleCheck: () => onToggleScheduledOrder?.(order.id),
                 }
                 return orderCardView === "detailed"
                   ? <OrderStopRowDetailed {...sharedProps} />
@@ -1602,6 +1608,8 @@ function OrderStopRow({
   onPlannedQtyClick,
   isDetailsOpen,
   onHoverOrder,
+  isChecked,
+  onToggleCheck,
 }: {
   order: ExtractionOrder
   idx: number
@@ -1619,6 +1627,8 @@ function OrderStopRow({
   onPlannedQtyClick?: (order: ExtractionOrder, anchorY: number, anchorX: number) => void
   isDetailsOpen?: boolean
   onHoverOrder?: (orderId: string | null) => void
+  isChecked?: boolean
+  onToggleCheck?: () => void
 }) {
   const seq = idx + 1
   const type = order.orderType ?? "D"
@@ -1738,7 +1748,7 @@ function OrderStopRow({
           }}
         >
           <div style={{ paddingTop: 4 }}>
-            <CheckboxInput checked={false} onChange={() => {}} />
+            <CheckboxInput checked={isChecked ?? false} onChange={onToggleCheck ?? (() => {})} />
           </div>
           {/* Grip icon — visible on hover, cursor grab */}
           <svg className="order-grip-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0, transition: "opacity 0.15s", cursor: "grab" }}>
@@ -1912,6 +1922,8 @@ function OrderStopRowDetailed({
   onPlannedQtyClick,
   isDetailsOpen,
   onHoverOrder,
+  isChecked,
+  onToggleCheck,
 }: {
   order: ExtractionOrder
   idx: number
@@ -1929,6 +1941,8 @@ function OrderStopRowDetailed({
   onPlannedQtyClick?: (order: ExtractionOrder, anchorY: number, anchorX: number) => void
   isDetailsOpen?: boolean
   onHoverOrder?: (orderId: string | null) => void
+  isChecked?: boolean
+  onToggleCheck?: () => void
 }) {
   const seq = idx + 1
   const type = order.orderType ?? "D"
@@ -2059,7 +2073,7 @@ function OrderStopRowDetailed({
             }}
           >
             <div style={{ paddingTop: 4 }}>
-              <CheckboxInput checked={false} onChange={() => {}} />
+              <CheckboxInput checked={isChecked ?? false} onChange={onToggleCheck ?? (() => {})} />
             </div>
             <svg className="order-grip-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ opacity: 0, transition: "opacity 0.15s", cursor: "grab" }}>
               <circle cx="7" cy="6" r="1.5" fill="#A3A3A3" />
@@ -2477,6 +2491,10 @@ export function LassoWorkspaceSheet({
   const [mergeModalMode, setMergeModalMode] = useState<"create" | "optimise">("create")
   const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
   const [checkedUnassignedOrderIds, setCheckedUnassignedOrderIds] = useState<string[]>([])
+  const [checkedScheduledOrderIds, setCheckedScheduledOrderIds] = useState<string[]>([])
+  const toggleScheduledOrderChecked = (orderId: string) => {
+    setCheckedScheduledOrderIds(prev => prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId])
+  }
 
   // Driver dropdown state
   const [driverDropdownRouteId, setDriverDropdownRouteId] = useState<string | null>(null)
@@ -3482,6 +3500,8 @@ export function LassoWorkspaceSheet({
                             }}
                             detailsOpenOrderId={orderDetailsOrder?.id ?? null}
                             onHoverOrder={onHoveredOrderChange}
+                            checkedScheduledOrderIds={checkedScheduledOrderIds}
+                            onToggleScheduledOrder={toggleScheduledOrderChecked}
                           />
                           </div>
                         )}
@@ -3713,12 +3733,13 @@ export function LassoWorkspaceSheet({
           </div>
 
           {/* ── UNIFIED FAB — appears when anything is checked ── */}
-          {(checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0) && (() => {
+          {(checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0 || checkedScheduledOrderIds.length > 0) && (() => {
             const hasRoutes = checkedRouteIds.length > 0
             const hasUnassigned = checkedUnassignedOrderIds.length > 0
+            const hasScheduled = checkedScheduledOrderIds.length > 0
             const hasBoth = hasRoutes && hasUnassigned
             const routeOrderCount = checkedRouteIds.reduce((sum, rid) => sum + selectedOrders.filter(o => o.routeId === rid).length, 0)
-            const totalCount = routeOrderCount + checkedUnassignedOrderIds.length
+            const totalCount = routeOrderCount + checkedUnassignedOrderIds.length + checkedScheduledOrderIds.length
             const btnStyle: React.CSSProperties = {
               height: 32, padding: "0 12px", borderRadius: 4, fontSize: 14, fontWeight: 500,
               color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.08)",
@@ -3726,6 +3747,32 @@ export function LassoWorkspaceSheet({
             }
             const hoverIn = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }
             const hoverOut = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.backgroundColor = "transparent" }
+
+            // Scheduled orders only (individual order checkboxes inside routes) → Unassign + Move
+            if (hasScheduled && !hasRoutes && !hasUnassigned) {
+              return (
+                <div style={{
+                  position: "absolute", bottom: 40, left: 24, right: 24, zIndex: 100,
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                  padding: 12, backgroundColor: "#3E45C8", borderRadius: 8,
+                  boxShadow: "0px 25px 50px -12px rgba(0,0,0,0.25)",
+                  fontFamily: "Geist, sans-serif",
+                }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA", lineHeight: "20px", whiteSpace: "nowrap", padding: "8px 4px" }}>
+                    {checkedScheduledOrderIds.length} Order{checkedScheduledOrderIds.length !== 1 ? "s" : ""} Selected
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button onClick={() => setCheckedScheduledOrderIds([])} style={btnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                      Unassign
+                    </button>
+                    <button style={{ ...btnStyle, display: "flex", alignItems: "center", gap: 4 }} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                      Move
+                      <ChevronDown size={16} />
+                    </button>
+                  </div>
+                </div>
+              )
+            }
 
             return (
               <div style={{
@@ -3751,6 +3798,9 @@ export function LassoWorkspaceSheet({
                       }
                       if (hasUnassigned) {
                         setCheckedUnassignedOrderIds([])
+                      }
+                      if (hasScheduled) {
+                        setCheckedScheduledOrderIds([])
                       }
                     }}
                     style={btnStyle}
@@ -3832,7 +3882,7 @@ export function LassoWorkspaceSheet({
             }}
           >
             <button
-              disabled={checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0}
+              disabled={checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0 || checkedScheduledOrderIds.length > 0}
               style={{
                 width: "100%",
                 height: 40,
@@ -3842,11 +3892,11 @@ export function LassoWorkspaceSheet({
                 color: "#FAFAFA",
                 backgroundColor: "#4D55F8",
                 border: "none",
-                cursor: (checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0) ? "default" : "pointer",
-                opacity: (checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0) ? 0.5 : 1,
+                cursor: (checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0 || checkedScheduledOrderIds.length > 0) ? "default" : "pointer",
+                opacity: (checkedRouteIds.length > 0 || checkedUnassignedOrderIds.length > 0 || checkedScheduledOrderIds.length > 0) ? 0.5 : 1,
                 transition: "opacity 150ms ease",
               }}
-              onMouseEnter={(e) => { if (checkedRouteIds.length === 0 && checkedUnassignedOrderIds.length === 0) e.currentTarget.style.backgroundColor = "#3D45E8" }}
+              onMouseEnter={(e) => { if (checkedRouteIds.length === 0 && checkedUnassignedOrderIds.length === 0 && checkedScheduledOrderIds.length === 0) e.currentTarget.style.backgroundColor = "#3D45E8" }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#4D55F8" }}
             >
               Publish Routes
