@@ -1650,7 +1650,7 @@ function OrderStopRow({
         alignItems: "flex-start",
         gap: SEQ_TO_CARD_GAP,
         position: "relative",
-        zIndex: 1,
+        zIndex: isMenuOpen ? 50 : 1,
         borderTop: isDragOver ? "2px solid #6366f1" : "2px solid transparent",
         transition: "border-color 0.1s",
       }}
@@ -2009,7 +2009,7 @@ function OrderStopRowDetailed({
         alignItems: "center",
         gap: SEQ_TO_CARD_GAP,
         position: "relative",
-        zIndex: 1,
+        zIndex: isMenuOpen ? 50 : 1,
         borderTop: isDragOver ? "2px solid #6366f1" : "2px solid transparent",
         transition: "border-color 0.1s",
       }}
