@@ -791,10 +791,10 @@ function RouteCardCollapsed({
               <div style={{ height: 6, display: "flex", alignItems: "center", padding: "0 0" }}>
                 <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
               </div>
-              {/* Unassign Route */}
+              {/* Unassign Route — destructive */}
               <div
-                style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
+                style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#F87171", lineHeight: "20px", cursor: "pointer" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.borderRadius = "2px" }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
               >
                 Unassign Route
@@ -1893,10 +1893,10 @@ function OrderStopRow({
                     <span style={{ flex: 1 }}>Move</span>
                     <ChevronRight size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
                   </div>
-                  {/* Unassign */}
+                  {/* Unassign — destructive */}
                   <div
-                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#F87171", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)" }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
                     onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
                   >
@@ -2320,10 +2320,10 @@ function OrderStopRowDetailed({
                     <span style={{ flex: 1 }}>Move</span>
                     <ChevronRight size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
                   </div>
-                  {/* Unassign */}
+                  {/* Unassign — destructive */}
                   <div
-                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#F87171", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)" }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
                     onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
                   >
