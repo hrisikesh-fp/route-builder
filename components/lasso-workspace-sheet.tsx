@@ -3719,11 +3719,7 @@ export function LassoWorkspaceSheet({
                           </div>
                           {/* Right: content */}
                           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-                            {/* Time */}
-                            <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3", lineHeight: "16px" }}>
-                              5:45 AM
-                            </span>
-                            {/* Badge + name + 3-dot row */}
+                            {/* Badge + name + time row */}
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                               <div style={{
                                 width: 20, height: 20, backgroundColor: "#E5E5E5", border: "1px solid #737373",
@@ -3734,6 +3730,9 @@ export function LassoWorkspaceSheet({
                               </div>
                               <span style={{ flex: 1, fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {order.customerName}
+                              </span>
+                              <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3", lineHeight: "16px", flexShrink: 0 }}>
+                                5:45 AM
                               </span>
                             </div>
                             {/* Planned qty — button, same pattern as scheduled cards */}
