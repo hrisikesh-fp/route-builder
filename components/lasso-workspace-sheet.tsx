@@ -1631,6 +1631,15 @@ function OrderStopRow({
   onToggleCheck?: () => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!isMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [isMenuOpen])
   const seq = idx + 1
   const type = order.orderType ?? "D"
   const hasWarning = !!warning
@@ -1875,34 +1884,31 @@ function OrderStopRow({
               <MoreVertical size={16} />
             </button>
             {isMenuOpen && (
-              <>
-                <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setIsMenuOpen(false)} />
-                <div style={{
-                  position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
-                  width: 120, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
-                  padding: 4, display: "flex", flexDirection: "column",
-                  boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
-                }}>
-                  {/* Move */}
-                  <div
-                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
-                  >
-                    Move
-                  </div>
-                  {/* Unassign — destructive on hover */}
-                  <div
-                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.color = "#F87171" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#E5E5E5" }}
-                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
-                  >
-                    Unassign
-                  </div>
+              <div ref={menuRef} style={{
+                position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
+                width: 120, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
+                padding: 4, display: "flex", flexDirection: "column",
+                boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
+              }}>
+                {/* Move */}
+                <div
+                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
+                >
+                  Move
                 </div>
-              </>
+                {/* Unassign — destructive on hover */}
+                <div
+                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.color = "#F87171" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#E5E5E5" }}
+                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
+                >
+                  Unassign
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -1983,6 +1989,15 @@ function OrderStopRowDetailed({
   onToggleCheck?: () => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!isMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setIsMenuOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [isMenuOpen])
   const seq = idx + 1
   const type = order.orderType ?? "D"
   const isLoad = type === "L"
@@ -2301,34 +2316,31 @@ function OrderStopRowDetailed({
               <MoreVertical size={16} />
             </button>
             {isMenuOpen && (
-              <>
-                <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setIsMenuOpen(false)} />
-                <div style={{
-                  position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
-                  width: 120, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
-                  padding: 4, display: "flex", flexDirection: "column",
-                  boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
-                }}>
-                  {/* Move */}
-                  <div
-                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
-                  >
-                    Move
-                  </div>
-                  {/* Unassign — destructive on hover */}
-                  <div
-                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.color = "#F87171" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#E5E5E5" }}
-                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
-                  >
-                    Unassign
-                  </div>
+              <div ref={menuRef} style={{
+                position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
+                width: 120, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
+                padding: 4, display: "flex", flexDirection: "column",
+                boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
+              }}>
+                {/* Move */}
+                <div
+                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
+                >
+                  Move
                 </div>
-              </>
+                {/* Unassign — destructive on hover */}
+                <div
+                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.color = "#F87171" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#E5E5E5" }}
+                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
+                >
+                  Unassign
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -3674,20 +3686,21 @@ export function LassoWorkspaceSheet({
                             display: "flex",
                             flexDirection: "row",
                             gap: 12,
+                            position: "relative",
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = "#282828"
                             const grip = e.currentTarget.querySelector<SVGElement>(".unassigned-grip-icon")
                             if (grip) grip.style.opacity = "1"
-                            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".unassigned-menu-btn")
-                            if (btn) btn.style.opacity = "1"
+                            const fab = e.currentTarget.querySelector<HTMLDivElement>(".unassigned-fab")
+                            if (fab) fab.style.opacity = "1"
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = "#1F1F1F"
                             const grip = e.currentTarget.querySelector<SVGElement>(".unassigned-grip-icon")
                             if (grip) grip.style.opacity = "0"
-                            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".unassigned-menu-btn")
-                            if (btn) btn.style.opacity = "0"
+                            const fab = e.currentTarget.querySelector<HTMLDivElement>(".unassigned-fab")
+                            if (fab) fab.style.opacity = "0"
                           }}
                         >
                           {/* Left: checkbox + grip */}
@@ -3722,16 +3735,6 @@ export function LassoWorkspaceSheet({
                               <span style={{ flex: 1, fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {order.customerName}
                               </span>
-                              <button
-                                className="unassigned-menu-btn"
-                                style={{
-                                  width: 24, height: 24, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                                  background: "transparent", border: "none", cursor: "pointer", borderRadius: 2, padding: 0,
-                                  opacity: 0, transition: "opacity 0.15s", color: "#A3A3A3",
-                                }}
-                              >
-                                <MoreVertical size={14} />
-                              </button>
                             </div>
                             {/* Planned qty — button, same pattern as scheduled cards */}
                             <button
@@ -3746,6 +3749,29 @@ export function LassoWorkspaceSheet({
                               onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; e.currentTarget.style.backgroundColor = "transparent" }}
                             >
                               Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
+                            </button>
+                          </div>
+                          {/* FAB — 3-dot, positioned top-right */}
+                          <div
+                            className="unassigned-fab"
+                            style={{
+                              position: "absolute", top: 8, right: 8,
+                              opacity: 0, transition: "opacity 0.15s",
+                              display: "flex", alignItems: "center",
+                              backgroundColor: "#1B1B1B", border: "1px solid #282828",
+                              borderRadius: 4, padding: 4,
+                            }}
+                          >
+                            <button
+                              style={{
+                                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                                borderRadius: 2, border: "none", background: "transparent",
+                                cursor: "pointer", color: "#FAFAFA", padding: 0,
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                            >
+                              <MoreVertical size={16} />
                             </button>
                           </div>
                         </div>
