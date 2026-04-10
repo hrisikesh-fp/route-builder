@@ -791,11 +791,11 @@ function RouteCardCollapsed({
               <div style={{ height: 6, display: "flex", alignItems: "center", padding: "0 0" }}>
                 <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
               </div>
-              {/* Unassign Route — destructive */}
+              {/* Unassign Route — destructive on hover */}
               <div
-                style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#F87171", lineHeight: "20px", cursor: "pointer" }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.borderRadius = "2px" }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
+                style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.color = "#F87171"; e.currentTarget.style.borderRadius = "2px" }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#E5E5E5"; e.currentTarget.style.borderRadius = "4px" }}
               >
                 Unassign Route
               </div>
@@ -1879,25 +1879,24 @@ function OrderStopRow({
                 <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setIsMenuOpen(false)} />
                 <div style={{
                   position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
-                  width: 160, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
+                  width: 120, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
                   padding: 4, display: "flex", flexDirection: "column",
                   boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
                 }}>
-                  {/* Move — submenu trigger */}
+                  {/* Move */}
                   <div
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
                     onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
                   >
-                    <span style={{ flex: 1 }}>Move</span>
-                    <ChevronRight size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                    Move
                   </div>
-                  {/* Unassign — destructive */}
+                  {/* Unassign — destructive on hover */}
                   <div
-                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#F87171", lineHeight: "20px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.color = "#F87171" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#E5E5E5" }}
                     onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
                   >
                     Unassign
@@ -2306,25 +2305,24 @@ function OrderStopRowDetailed({
                 <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setIsMenuOpen(false)} />
                 <div style={{
                   position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
-                  width: 160, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
+                  width: 120, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
                   padding: 4, display: "flex", flexDirection: "column",
                   boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
                 }}>
-                  {/* Move — submenu trigger */}
+                  {/* Move */}
                   <div
-                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
                     onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
                   >
-                    <span style={{ flex: 1 }}>Move</span>
-                    <ChevronRight size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                    Move
                   </div>
-                  {/* Unassign — destructive */}
+                  {/* Unassign — destructive on hover */}
                   <div
-                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#F87171", lineHeight: "20px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)" }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(220, 38, 38, 0.2)"; e.currentTarget.style.color = "#F87171" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#E5E5E5" }}
                     onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
                   >
                     Unassign
