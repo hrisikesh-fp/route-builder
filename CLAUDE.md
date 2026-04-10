@@ -97,8 +97,10 @@ Config E: No truck → dimmed "Select Truck" pill (opacity 0.6) + "No Truck sele
 #### FAB (Floating Action Buttons) on route card
 - Appears on card hover, positioned absolute top-right
 - Container: bg #1B1B1B, border 1px solid #282828, borderRadius 4px, padding 4px, gap 4px
-- Two 24×24px icon buttons: `ExternalLink` (view route) + `MoreVertical` (3-dot menu)
-- 3-dot menu dropdown: Driver submenu (with search + driver list) + "Unassign Route"
+- Three 24×24px icon buttons (order: Sparkles → ExternalLink → MoreVertical), all borderRadius 2px
+- Sparkles (Optimise Route) → opens MergeModal in optimise mode
+- ExternalLink (View Route) → only for published routes
+- MoreVertical (3-dot menu) → dropdown: Optimise Route, View Route, Driver submenu, Unassign Route
 - FAB stays visible when ANY dropdown is open (`isMenuOpen || isTruckDropdownOpen || isTrailerDropdownOpen || isDriverDropdownOpen`)
 
 #### Two-level truck dropdown (on collapsed card)
@@ -118,9 +120,49 @@ Config E: No truck → dimmed "Select Truck" pill (opacity 0.6) + "No Truck sele
 - Zone A: truck-level info displayed on card
 - Zone B: route-level banner (e.g., "Below Truck Capacity", "1 Issue")
 
+#### Workspace scroll & tabs
+- **Unified scroll**: Driver Routes and Unassigned Orders sections are in one continuous scroll (NOT separate tab content)
+- Tabs are scroll anchors — clicking a tab smooth-scrolls to that section
+- Active tab indicator updates on scroll via scroll position threshold (33% of container)
+- Refs: `routesSectionRef`, `unassignedSectionRef`, `scrollContainerRef`
+
+#### Unified bottom FAB (selection actions)
+Single FAB adapts based on what's checked:
+- **Scheduled orders only** (individual order checkboxes): Unassign + Move ▾
+- **Routes only** (route-level checkbox, 1 route): Remove + Unassign | Optimise
+- **Routes only** (2+ routes): Remove + Unassign | Merge
+- **Unassigned orders only**: Remove + Move ▾ | Create
+- **Routes + Unassigned (mixed)**: Remove | Merge
+- Count = `checkedScheduledOrderIds.length + checkedUnassignedOrderIds.length` (no double-counting)
+
+#### Checkbox sync (route ↔ orders)
+- Checking a route auto-checks all its orders in `checkedScheduledOrderIds`
+- Unchecking a route removes its orders from `checkedScheduledOrderIds`
+- Checking all orders in a route auto-checks the parent route via `useEffect`
+- Unchecking any order in a checked route unchecks the route
+- "Select All Routes" syncs all route orders too
+- **Important:** Route→order sync uses `useEffect` on `checkedScheduledOrderIds` to avoid setState-during-render
+
+#### Unassigned order cards
+- Two variants: condensed (time + badge + name + planned qty button) and detailed (stats card, urgency dots)
+- Controlled by `orderCardView` setting ("condensed" | "detailed") from `useSettings()`
+- Condensed: hover shows grip icon + inline 3-dot menu (same pattern as scheduled order cards)
+- "Select All Unassigned Orders" header with indeterminate state
+- Functional checkboxes tracked via `checkedUnassignedOrderIds`
+
 #### Order hover → map pin correlation
 - `onHoveredOrderChange(orderId)` bubbles up through page.tsx to route-map
 - Map pin gets `translateY(-3px) scale(1.1)` + SVG fill `#A1A1AA` via DOM manipulation on inner div
+
+### `components/merge-modal.tsx` — Create Routes / Optimise Route modal
+- Two modes via `modalMode` prop: `"create"` (with Auto/Manual toggle) and `"optimise"` (no toggle)
+- **Left panel:** Orders table (Stops, Planned Qty, Planned Time, Order Type)
+- **Right panel:** Truck search with hub tabs, sort dropdown (by capacity or name, asc/desc)
+- **Create mode:** title "Create Routes", Auto/Manual toggle, CTA "Optimise and Create Routes"
+- **Optimise mode:** title "Optimise Route", no toggle, CTA "Optimize Route"
+- Accepts `checkedUnassignedOrderIds` to include unassigned orders in the order list
+- Loading screen with spinner + phase text animation
+- Mock truck data: 4 hub groups, ~20 trucks with capacity/compartments/products
 
 ### `components/add-load-order-modal.tsx` — Load order selection modal
 - Terminal selection → load order listing with product breakdown
@@ -228,6 +270,7 @@ components/
   map-pin-tooltip.tsx          ← Order pin hover tooltip
   route-line-tooltip.tsx       ← Route line hover tooltip
   infrastructure-marker.tsx    ← Hub/Terminal/Bulk Plant/Warehouse markers
+  merge-modal.tsx              ← Create Routes / Optimise Route modal (truck search, sort, loading)
   add-load-order-modal.tsx     ← Terminal + load order selection modal
   map-stats.tsx                ← Bottom-left metrics display
   create-route-panel.tsx       ← Create route panel (incomplete)
@@ -244,7 +287,7 @@ lib/
   utils.ts                     ← cn() utility
 
 contexts/
-  settings-context.tsx         ← App settings (map style, etc.)
+  settings-context.tsx         ← App settings: routeLineDisplay, showBadges, reducedOpacity, orderCardView (condensed/detailed)
 ```
 
 ---
@@ -259,6 +302,7 @@ contexts/
 
 **Figma files:**
 - Phase 1.2.1: `KIZz6xXZYrRPHarKEa7wXu`
+- Phase 1.2.1 Dev file: `Zvutylr6lxkxIuKMXEuSX6`
 - Phase 1.3: `tbb6l7lTDhlN0jFo7pYeJw`
 
 ---
