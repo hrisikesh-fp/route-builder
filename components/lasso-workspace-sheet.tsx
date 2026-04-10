@@ -1630,6 +1630,7 @@ function OrderStopRow({
   isChecked?: boolean
   onToggleCheck?: () => void
 }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const seq = idx + 1
   const type = order.orderType ?? "D"
   const hasWarning = !!warning
@@ -1709,6 +1710,7 @@ function OrderStopRow({
         <div
           style={{
             flex: 1,
+            position: "relative",
             backgroundColor: "#1F1F1F",
             borderRadius: hasWarning ? "4px 4px 0 0" : 4,
             border: hasWarning ? "1px solid rgba(248, 113, 113, 0.3)" : undefined,
@@ -1722,16 +1724,17 @@ function OrderStopRow({
             e.currentTarget.style.backgroundColor = "#282828"
             const grip = e.currentTarget.querySelector<SVGElement>(".order-grip-icon")
             if (grip) grip.style.opacity = "1"
-            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
-            if (btn) btn.style.opacity = "1"
+            const fab = e.currentTarget.querySelector<HTMLDivElement>(".order-fab")
+            if (fab) fab.style.opacity = "1"
             onHoverOrder?.(order.id)
           }}
           onMouseLeave={(e) => {
+            if (isMenuOpen) return
             e.currentTarget.style.backgroundColor = "#1F1F1F"
             const grip = e.currentTarget.querySelector<SVGElement>(".order-grip-icon")
             if (grip) grip.style.opacity = "0"
-            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
-            if (btn) btn.style.opacity = "0"
+            const fab = e.currentTarget.querySelector<HTMLDivElement>(".order-fab")
+            if (fab) fab.style.opacity = "0"
             onHoverOrder?.(null)
           }}
         >
@@ -1808,28 +1811,6 @@ function OrderStopRow({
             >
               {order.customerName}
             </span>
-            {/* 3-dot menu — visible on hover */}
-            <button
-              className="order-menu-btn"
-              style={{
-                width: 24,
-                height: 24,
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                borderRadius: 2,
-                opacity: 0,
-                transition: "opacity 0.15s",
-                color: "#A3A3A3",
-                padding: 0,
-              }}
-            >
-              <MoreVertical size={14} />
-            </button>
           </div>
 
           {/* Planned qty — ghost button, self-hover like driver dropdown */}
@@ -1867,6 +1848,64 @@ function OrderStopRow({
           >
             Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
           </button>
+        </div>
+
+        {/* FAB — 3-dot menu, positioned top-right of card */}
+        <div
+          className="order-fab"
+          style={{
+            position: "absolute", top: 8, right: 8,
+            opacity: isMenuOpen ? 1 : 0, transition: "opacity 0.15s",
+            display: "flex", alignItems: "center",
+            backgroundColor: "#1B1B1B", border: "1px solid #282828",
+            borderRadius: 4, padding: 4,
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen) }}
+              style={{
+                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: 2, border: "none", backgroundColor: isMenuOpen ? "#333" : "transparent",
+                cursor: "pointer", color: "#FAFAFA", padding: 0,
+              }}
+              onMouseEnter={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "#333" }}
+              onMouseLeave={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "transparent" }}
+            >
+              <MoreVertical size={16} />
+            </button>
+            {isMenuOpen && (
+              <>
+                <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setIsMenuOpen(false)} />
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
+                  width: 160, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
+                  padding: 4, display: "flex", flexDirection: "column",
+                  boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
+                }}>
+                  {/* Move — submenu trigger */}
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
+                  >
+                    <span style={{ flex: 1 }}>Move</span>
+                    <ChevronRight size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                  </div>
+                  {/* Unassign */}
+                  <div
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
+                  >
+                    Unassign
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
         {/* Warning strip for products that run out at this stop — one per stop, comma-separated */}
@@ -1944,6 +1983,7 @@ function OrderStopRowDetailed({
   isChecked?: boolean
   onToggleCheck?: () => void
 }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const seq = idx + 1
   const type = order.orderType ?? "D"
   const isLoad = type === "L"
@@ -2026,6 +2066,7 @@ function OrderStopRowDetailed({
         <div
           style={{
             flex: 1,
+            position: "relative",
             backgroundColor: "#1F1F1F",
             borderRadius: hasWarning ? "4px 4px 0 0" : 4,
             border: hasWarning ? "1px solid rgba(248, 113, 113, 0.3)" : undefined,
@@ -2039,8 +2080,8 @@ function OrderStopRowDetailed({
             e.currentTarget.style.backgroundColor = "#282828"
             const grip = e.currentTarget.querySelector<SVGElement>(".order-grip-icon")
             if (grip) grip.style.opacity = "1"
-            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
-            if (btn) btn.style.opacity = "1"
+            const fab = e.currentTarget.querySelector<HTMLDivElement>(".order-fab")
+            if (fab) fab.style.opacity = "1"
             const sec = e.currentTarget.querySelector<HTMLDivElement>(".detailed-secondary")
             if (sec) sec.style.backgroundColor = "#333"
             const card = e.currentTarget.closest<HTMLElement>("[data-order-card]")
@@ -2049,11 +2090,12 @@ function OrderStopRowDetailed({
             onHoverOrder?.(order.id)
           }}
           onMouseLeave={(e) => {
+            if (isMenuOpen) return
             e.currentTarget.style.backgroundColor = "#1F1F1F"
             const grip = e.currentTarget.querySelector<SVGElement>(".order-grip-icon")
             if (grip) grip.style.opacity = "0"
-            const btn = e.currentTarget.querySelector<HTMLButtonElement>(".order-menu-btn")
-            if (btn) btn.style.opacity = "0"
+            const fab = e.currentTarget.querySelector<HTMLDivElement>(".order-fab")
+            if (fab) fab.style.opacity = "0"
             const sec = e.currentTarget.querySelector<HTMLDivElement>(".detailed-secondary")
             if (sec) sec.style.backgroundColor = "#282828"
             const card = e.currentTarget.closest<HTMLElement>("[data-order-card]")
@@ -2108,18 +2150,6 @@ function OrderStopRowDetailed({
               >
                 {order.customerName}
               </span>
-              <button
-                className="order-menu-btn"
-                style={{
-                  width: 24, height: 24, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "transparent", border: "none", cursor: "pointer",
-                  borderRadius: 2, opacity: 0, transition: "opacity 0.15s",
-                  color: "#A3A3A3", padding: 0,
-                }}
-              >
-                <MoreVertical size={14} />
-              </button>
             </div>
 
             {/* Secondary section wrapper — « button + stats card */}
@@ -2246,6 +2276,64 @@ function OrderStopRowDetailed({
             </div>{/* end stats card (detailed-secondary) */}
           </div>{/* end wrapper: « + stats */}
           </div>{/* end Right: content */}
+
+        {/* FAB — 3-dot menu, positioned top-right of card */}
+        <div
+          className="order-fab"
+          style={{
+            position: "absolute", top: 8, right: 8,
+            opacity: isMenuOpen ? 1 : 0, transition: "opacity 0.15s",
+            display: "flex", alignItems: "center",
+            backgroundColor: "#1B1B1B", border: "1px solid #282828",
+            borderRadius: 4, padding: 4,
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen) }}
+              style={{
+                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: 2, border: "none", backgroundColor: isMenuOpen ? "#333" : "transparent",
+                cursor: "pointer", color: "#FAFAFA", padding: 0,
+              }}
+              onMouseEnter={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "#333" }}
+              onMouseLeave={(e) => { if (!isMenuOpen) e.currentTarget.style.backgroundColor = "transparent" }}
+            >
+              <MoreVertical size={16} />
+            </button>
+            {isMenuOpen && (
+              <>
+                <div style={{ position: "fixed", inset: 0, zIndex: 998 }} onClick={() => setIsMenuOpen(false)} />
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 999,
+                  width: 160, backgroundColor: "#1B1B1B", border: "1px solid #282828", borderRadius: 4,
+                  padding: 4, display: "flex", flexDirection: "column",
+                  boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
+                }}>
+                  {/* Move — submenu trigger */}
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
+                  >
+                    <span style={{ flex: 1 }}>Move</span>
+                    <ChevronRight size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                  </div>
+                  {/* Unassign */}
+                  <div
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false) }}
+                  >
+                    Unassign
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
         </div>{/* end inner card bg div with hover */}
 
         {/* Warning strip */}
