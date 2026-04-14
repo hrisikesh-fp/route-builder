@@ -549,7 +549,8 @@ function RouteCardCollapsed({
           gap: 4,
         }}
       >
-        {/* Optimise Route icon button */}
+        {/* Optimise Route icon button — hidden when no truck */}
+        {hasTruck && (
         <div
           style={{ position: "relative" }}
           onMouseEnter={(e) => {
@@ -585,6 +586,7 @@ function RouteCardCollapsed({
             <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
           </div>
         </div>
+        )}
         {/* View Route icon button — only for published routes */}
         {isPublished && (
           <div
@@ -655,7 +657,8 @@ function RouteCardCollapsed({
                 flexDirection: "column",
               }}
             >
-              {/* Optimise Route */}
+              {/* Optimise Route — hidden when no truck */}
+              {hasTruck && (
               <div
                 onClick={(e) => { e.stopPropagation(); onOptimise?.() }}
                 style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
@@ -664,6 +667,7 @@ function RouteCardCollapsed({
               >
                 Optimise Route
               </div>
+              )}
               {/* View Route — only for published routes */}
               {isPublished && (
                 <div
@@ -2588,6 +2592,44 @@ export function LassoWorkspaceSheet({
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
   const [mergeModalMode, setMergeModalMode] = useState<"create" | "optimise">("create")
   const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
+  // Inline optimise loading state (per route, on the card itself)
+  const [optimisingInlineRouteId, setOptimisingInlineRouteId] = useState<string | null>(null)
+  const [optimisingPhaseIndex, setOptimisingPhaseIndex] = useState(0)
+  const OPTIMISE_PHASES = [
+    { delay: 2500, text: "Evaluating orders across truck selection..." },
+    { delay: 2200, text: "Applying compartment constraints..." },
+    { delay: 2000, text: "Checking product compatibility..." },
+    { delay: 2500, text: "Optimising stop sequences..." },
+    { delay: 2000, text: "Finalising routes..." },
+  ]
+  // Drive phase progression
+  useEffect(() => {
+    if (!optimisingInlineRouteId) return
+    let i = optimisingPhaseIndex
+    const timers: ReturnType<typeof setTimeout>[] = []
+    const runPhase = () => {
+      if (i >= OPTIMISE_PHASES.length) {
+        const routeId = optimisingInlineRouteId
+        const orderCount = selectedOrders.filter(o => o.routeId === routeId).length
+        const t = setTimeout(() => {
+          setOptimisingInlineRouteId(null)
+          setOptimisingPhaseIndex(0)
+          onShowMessage?.(`Route optimised with ${orderCount} orders`)
+        }, 600)
+        timers.push(t)
+        return
+      }
+      const phase = OPTIMISE_PHASES[i]
+      i++
+      const t = setTimeout(() => {
+        setOptimisingPhaseIndex(i)
+        runPhase()
+      }, phase.delay)
+      timers.push(t)
+    }
+    runPhase()
+    return () => { timers.forEach(clearTimeout) }
+  }, [optimisingInlineRouteId]) // eslint-disable-line react-hooks/exhaustive-deps
   const [checkedUnassignedOrderIds, setCheckedUnassignedOrderIds] = useState<string[]>([])
   const [checkedScheduledOrderIds, setCheckedScheduledOrderIds] = useState<string[]>([])
   const toggleScheduledOrderChecked = (orderId: string) => {
@@ -2816,6 +2858,24 @@ export function LassoWorkspaceSheet({
         borderLeft: "1px solid #282828",
       }}
     >
+      {/* Inline optimise overlay keyframes */}
+      <style>{`
+        @keyframes rb-overlay-in {
+          from { opacity: 0; transform: scale(0.97); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes rb-shimmer {
+          from { background-position: 200% 0; }
+          to   { background-position: -200% 0; }
+        }
+        @keyframes rb-spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes rb-phase-in {
+          from { opacity: 0; filter: blur(2px); transform: translateY(2px); }
+          to   { opacity: 1; filter: blur(0); transform: translateY(0); }
+        }
+      `}</style>
       {!hasSelection ? (
         /* ── Empty state ── */
         <>
@@ -3151,9 +3211,13 @@ export function LassoWorkspaceSheet({
                               isMenuOpen={menuRouteId === routeId}
                               isPublished={routeId !== "route-6"}
                               onOptimise={() => {
-                                setOptimiseRouteId(routeId)
-                                setMergeModalMode("optimise")
-                                setIsMergeModalOpen(true)
+                                // Run inline on the card (no modal) — only triggered when truck is present
+                                // Clear any selections for this route so FAB doesn't show on top
+                                const orderIdsForRoute = selectedOrders.filter(o => o.routeId === routeId).map(o => o.id)
+                                onCheckedRoutesChange(checkedRouteIds.filter(id => id !== routeId))
+                                setCheckedScheduledOrderIds(prev => prev.filter(id => !orderIdsForRoute.includes(id)))
+                                setOptimisingPhaseIndex(0)
+                                setOptimisingInlineRouteId(routeId)
                                 setMenuRouteId(null)
                               }}
                               onViewRoute={() => { /* future: open route detail */ }}
@@ -3168,6 +3232,91 @@ export function LassoWorkspaceSheet({
                                 setMenuRouteId(null)
                               }}
                             />
+
+                            {/* Inline optimise loading overlay — covers card body, leaves wedge visible */}
+                            {optimisingInlineRouteId === routeId && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 0, bottom: 0, left: 6, right: 0,
+                                  backgroundColor: "#282828",
+                                  borderRadius: validation && validation.zoneB.visible ? "0 4px 0 0" : "0 4px 0 4px",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  overflow: "hidden",
+                                  animation: "rb-overlay-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both",
+                                  zIndex: 2,
+                                }}
+                              >
+                                {/* Subtle shimmer sweep */}
+                                <div
+                                  aria-hidden
+                                  style={{
+                                    position: "absolute", inset: 0, pointerEvents: "none",
+                                    background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%)",
+                                    backgroundSize: "200% 100%",
+                                    animation: "rb-shimmer 2.4s linear infinite",
+                                  }}
+                                />
+                                {/* Centred content column — Figma "Empty" frame, width 308, gap 12 */}
+                                <div style={{
+                                  position: "relative",
+                                  display: "flex", flexDirection: "column",
+                                  alignItems: "center", gap: 12,
+                                  width: 308,
+                                  padding: "16px 16px 12px 20px",
+                                }}>
+                                  {/* EmptyHeader: title row + subtitle with tight 2px gap */}
+                                  <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", alignSelf: "stretch", gap: 2 }}>
+                                    {/* Title row: spinner + title, gap 8 */}
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                                      {/* 32×32 spinner container with 20px svg inside */}
+                                      <div style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "rb-spin 1s linear infinite" }}>
+                                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                        </svg>
+                                      </div>
+                                      <span style={{ fontSize: 16, fontWeight: 500, color: "#FAFAFA", lineHeight: "24px", fontFamily: "Geist, sans-serif" }}>
+                                        Optimising Routes...
+                                      </span>
+                                    </div>
+                                    {/* Phase subtitle (keyed for crossfade) */}
+                                    <span
+                                      key={optimisingPhaseIndex}
+                                      style={{
+                                        display: "block",
+                                        fontSize: 14, color: "#A3A3A3", lineHeight: "20px",
+                                        textAlign: "center", fontFamily: "Geist, sans-serif",
+                                        animation: "rb-phase-in 220ms ease both",
+                                      }}
+                                    >
+                                      {OPTIMISE_PHASES[Math.min(optimisingPhaseIndex, OPTIMISE_PHASES.length - 1)].text}
+                                    </span>
+                                  </div>
+                                  {/* Cancel */}
+                                  <button
+                                    onClick={() => {
+                                      setOptimisingInlineRouteId(null)
+                                      setOptimisingPhaseIndex(0)
+                                    }}
+                                    style={{
+                                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                      height: 32, padding: "0 12px", borderRadius: 4,
+                                      fontSize: 14, fontWeight: 500, lineHeight: 1, color: "#FAFAFA",
+                                      backgroundColor: "transparent", border: "1px solid #333",
+                                      cursor: "pointer", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)",
+                                      fontFamily: "Geist, sans-serif",
+                                      transition: "background-color 150ms ease, transform 120ms ease",
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)" }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                                    onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.97)" }}
+                                    onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)" }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Driver dropdown — floating popover anchored below card */}
                             {driverDropdownRouteId === routeId && (
@@ -3965,31 +4114,55 @@ export function LassoWorkspaceSheet({
                     </>
                   ) : hasRoutes ? (
                     /* ── Routes only → Unassign | Optimise/Merge ── */
-                    <>
-                      <button style={btnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
-                        Unassign
-                      </button>
-                      <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
-                      {checkedRouteIds.length === 1 ? (
-                        <button
-                          onClick={() => { setOptimiseRouteId(checkedRouteIds[0]); setMergeModalMode("optimise"); setIsMergeModalOpen(true) }}
-                          style={btnStyle}
-                          onMouseEnter={hoverIn}
-                          onMouseLeave={hoverOut}
-                        >
-                          Optimise
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => { setMergeModalMode("create"); setIsMergeModalOpen(true) }}
-                          style={btnStyle}
-                          onMouseEnter={hoverIn}
-                          onMouseLeave={hoverOut}
-                        >
-                          Merge
-                        </button>
-                      )}
-                    </>
+                    (() => {
+                      const singleId = checkedRouteIds.length === 1 ? checkedRouteIds[0] : null
+                      const singleRoute = singleId ? mockRoutes.find(r => r.id === singleId) : null
+                      const singleTruckProfile = singleId
+                        ? (selectedTrucks[singleId]?.id ? TRUCK_CAPACITIES[selectedTrucks[singleId].id] : null) ?? (singleRoute?.truckId ? TRUCK_CAPACITIES[singleRoute.truckId] : null)
+                        : null
+                      const singleHasTruck = !!(singleId && (selectedTrucks[singleId] ?? singleTruckProfile ?? singleRoute?.truckName))
+                      return (
+                        <>
+                          <button style={btnStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                            Unassign
+                          </button>
+                          {checkedRouteIds.length === 1 ? (
+                            singleHasTruck && (
+                              <>
+                                <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                                <button
+                                  onClick={() => {
+                                    const rid = checkedRouteIds[0]
+                                    const orderIdsForRoute = selectedOrders.filter(o => o.routeId === rid).map(o => o.id)
+                                    onCheckedRoutesChange([])
+                                    setCheckedScheduledOrderIds(prev => prev.filter(id => !orderIdsForRoute.includes(id)))
+                                    setOptimisingPhaseIndex(0)
+                                    setOptimisingInlineRouteId(rid)
+                                  }}
+                                  style={btnStyle}
+                                  onMouseEnter={hoverIn}
+                                  onMouseLeave={hoverOut}
+                                >
+                                  Optimise
+                                </button>
+                              </>
+                            )
+                          ) : (
+                            <>
+                              <div style={{ width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                              <button
+                                onClick={() => { setMergeModalMode("create"); setIsMergeModalOpen(true) }}
+                                style={btnStyle}
+                                onMouseEnter={hoverIn}
+                                onMouseLeave={hoverOut}
+                              >
+                                Merge
+                              </button>
+                            </>
+                          )}
+                        </>
+                      )
+                    })()
                   ) : (
                     /* ── Unassigned only → Move | Create ── */
                     <>
