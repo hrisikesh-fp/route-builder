@@ -3868,7 +3868,7 @@ export function LassoWorkspaceSheet({
                           </div>
                           {/* Right: content */}
                           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-                            {/* Badge + name + time row */}
+                            {/* Badge + name row */}
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                               <div style={{
                                 width: 20, height: 20, backgroundColor: "#E5E5E5", border: "1px solid #737373",
@@ -3880,24 +3880,25 @@ export function LassoWorkspaceSheet({
                               <span style={{ flex: 1, fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {order.customerName}
                               </span>
+                            </div>
+                            {/* Planned qty + time row */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <button
+                                style={{
+                                  fontSize: 14, fontWeight: 500, color: "#FAFAFA", opacity: 0.6, lineHeight: "20px",
+                                  background: "transparent", border: "none", cursor: "pointer",
+                                  height: 28, padding: "0 10px", marginLeft: -10, borderRadius: 4,
+                                  textAlign: "left", transition: "opacity 0.15s, background-color 0.15s",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.backgroundColor = "#404040" }}
+                                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; e.currentTarget.style.backgroundColor = "transparent" }}
+                              >
+                                Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
+                              </button>
                               <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3", lineHeight: "16px", flexShrink: 0 }}>
                                 5:45 AM
                               </span>
                             </div>
-                            {/* Planned qty — button, same pattern as scheduled cards */}
-                            <button
-                              style={{
-                                fontSize: 14, fontWeight: 500, color: "#FAFAFA", opacity: 0.6, lineHeight: "20px",
-                                background: "transparent", border: "none", cursor: "pointer",
-                                height: 28, padding: "0 10px", marginLeft: -10, borderRadius: 4,
-                                textAlign: "left", transition: "opacity 0.15s, background-color 0.15s",
-                                alignSelf: "flex-start",
-                              }}
-                              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.backgroundColor = "#404040" }}
-                              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; e.currentTarget.style.backgroundColor = "transparent" }}
-                            >
-                              Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
-                            </button>
                           </div>
                           {/* FAB — 3-dot, positioned top-right */}
                           <div

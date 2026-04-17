@@ -23,7 +23,7 @@ A **fuel logistics route-builder tool** used by dispatchers at FleetPanda. Dispa
 **Package manager:** pnpm
 
 ```bash
-cd /Users/hrisikeshmedhi/Projects/route-builder
+cd /Users/hrisikeshmedhi/Projects/fleetpanda/route-builder
 pnpm install && pnpm dev
 ```
 
