@@ -69,7 +69,7 @@ const LOAD_ORDERS: ModalLoadOrder[] = [
   { id: "lo-8", terminalId: "t-1", time: "02:45 PM", volumeGal: 2800, products: ["87 UNLEDED", "100*DIESEL-ONROAD CLEAR"],                                linkedDeliveryCount: null },
   { id: "lo-9", terminalId: "t-1", time: "04:45 AM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],                                linkedDeliveryCount: null },
   // Mid-route fix load orders
-  { id: "lo-r1-initial", terminalId: "t-1", time: "05:30 AM", volumeGal: 4200, products: ["200*DIESEL-OFFROAD RED", "200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"], linkedDeliveryCount: null },
+  { id: "lo-r1-initial", terminalId: "t-1", time: "05:30 AM", volumeGal: 4600, products: ["200*DIESEL-ONROAD CLEAR"], linkedDeliveryCount: null },
   { id: "lo-r1-mid", terminalId: "t-1", time: "09:00 AM", volumeGal: 600, products: ["200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"],                              linkedDeliveryCount: null },
   { id: "lo-r3-mid", terminalId: "t-1", time: "09:30 AM", volumeGal: 200, products: ["200*DIESEL-ONROAD CLEAR"],                                                     linkedDeliveryCount: null },
   // ── Valero Taylor (t-2) — 7 orders ──
@@ -123,7 +123,7 @@ const ORDER_DETAILS: Record<string, OrderDetailRow[]> = {
   "lo-8":  [{ product: "87 UNLEDED", plannedQty: 1400 }, { product: "100*DIESEL-ONROAD CLEAR", plannedQty: 1400 }],
   "lo-9":  [{ product: "100*DIESEL-ONROAD CLEAR", plannedQty: 1400 }, { product: "87 UNLEDED", plannedQty: 1400 }],
   // Mid-route fix load orders (Flint Hills)
-  "lo-r1-initial": [{ product: "200*DIESEL-OFFROAD RED", plannedQty: 700 }, { product: "200*DIESEL-ONROAD CLEAR", plannedQty: 1800 }, { product: "87 OCT W/ 10% ETH", plannedQty: 1700 }],
+  "lo-r1-initial": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 4600 }],
   "lo-r1-mid": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 200 }, { product: "87 OCT W/ 10% ETH", plannedQty: 400 }],
   "lo-r3-mid": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 200 }],
   // Valero Taylor (t-2)
