@@ -538,7 +538,7 @@ function RouteCardCollapsed({
       <div
         data-route-menu
         style={{
-          position: "absolute", top: 16, right: 16,
+          position: "absolute", top: 8, right: 8,
           opacity: (isHovered || isMenuOpen || isTruckDropdownOpen || isTrailerDropdownOpen || isDriverDropdownOpen) ? 1 : 0,
           transition: "opacity 150ms ease",
           display: "flex", alignItems: "center",
