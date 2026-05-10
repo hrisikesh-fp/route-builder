@@ -1,20 +1,23 @@
-# Phase 1.3 — Per-Stop Balance (Milestone 3: dynamic per-stop sheet)
+# Phase 1.3 — Per-Stop Balance (Milestone 4: hover interactions + spacing polish)
 
-> Continuation of Phase 1.3. Milestones 1 & 2 are complete (data updates + breakdown sheet shell). This milestone makes the sheet **per-stop dynamic** — clicking the package icon on each order card shows that specific stop's snapshot, not the route-total view.
+> Continuation of Phase 1.3. Milestones 1, 2, 3 are complete (data updates, breakdown sheet shell, per-stop dynamic data). This milestone adds **bar hover interactions** (config tooltip + value label) and a small **spacing tweak** between subheader and chart. Applies Emil Kowalski's design-engineering principles for motion polish.
 
 ## Context
 
-The current sheet shows the same chart for every stop on a route — wrong. The user spec defines a deterministic per-stop snapshot:
+The breakdown sheet is functionally correct (per-stop dynamic data) but it's silent — no way to see *what each bar means* without referencing the truck config separately. Per Figma:
 
-- **R1 Stop 2 (Mueller, after delivering 1,000 gal Diesel CLR)**: on-truck = 3,600. Compartments: `C1=0, C2=1000, C3=1500, C4=1000, C5=100`.
-- **R1 Stop 3 (Manor, after −800)**: on-truck = 2,800. Compartments: `C1=0, C2=200, C3=1500, C4=1000, C5=100`.
-- ...and so on for every stop in R1, R2, R3.
+- **Hover a "By Product" bar** → tooltip listing the truck compartments that can hold that product (e.g., Diesel CLR → `C1, C2, C3, C4, C5`).
+- **Hover a "By Compartments" bar** → tooltip listing the products that compartment is configured to hold (e.g., C3 → `Diesel-Offroad CLR`).
+- **Hover any bar** → an in-chart value label appears above the bar (e.g., `4600 gal`, `1,500 gal`).
+- **No clicks.** Pure hover, like a chart in Recharts/Observable Plot.
 
-The validator already has the per-stop product totals; what's missing is (a) the sheet using them and (b) compartment-level snapshots via sequential drain.
+Plus a small spacing tweak: the subheader ("By Product" / "By Compartments") and the chart below currently sit at `gap: 8` but read as too tight. Bump to `12`.
+
+This milestone applies Emil Kowalski's design-engineering principles (`/.claude/skills/emil-design-eng/SKILL.md`) — animations are CSS transitions (interruptible), use a strong custom ease-out curve, durations stay 125–200ms (tooltip-class), tooltips skip delay on subsequent hovers, hover gated on `(hover: hover) and (pointer: fine)`, only `transform` + `opacity` are animated.
 
 ---
 
-## What's already in place (Milestones 1 & 2, shipped)
+## What's already in place (Milestones 1, 2, 3 shipped)
 
 | Item | Status |
 |---|---|
@@ -33,112 +36,135 @@ The validator already has the per-stop product totals; what's missing is (a) the
 | Per-product bar colors per Figma (RED orange / CLR indigo / Gas neutral) | ✅ |
 | Multi-product rule: hide compartment chart for `products.length > 1` | ✅ |
 | `validation.runningBalance` already produces post-transaction per-product balances per stop | ✅ |
+| Per-stop dynamic snapshot in sheet: by-product onTruck + sequential drain | ✅ (M3) |
+| Negative bars dip below X-axis when balance < 0 (R3 Stop 6 Gas) | ✅ (M3) |
 
-## What changes this milestone (per-stop dynamic)
+## What changes this milestone
 
 | Item | Today | After |
 |---|---|---|
-| **By Product chart at stop K** | Sums all delivery orders' products → route-total demand | Shows **on-truck balance per product AFTER stop K's transaction** (post-load if K is a load, post-delivery if K is a delivery). |
-| **By Compartments chart at stop K** | Distributes total loaded volume across compartments → route-total fill | Shows **compartment fills AFTER stop K's transaction** via sequential drain (single-product routes only — R1, R2). |
-| **Sheet input** | `orders[]`, `truckProfile`, `anchor*` | Adds `selectedOrderId` so the sheet knows which stop to render. |
-| **Y-axis range** | Picked from data max | Should reflect truck capacity ceiling so stops with low fill don't appear "huge" relative to the chart. Use truck `productCapacities` per product and `compartments[i].capacities` per compartment. |
-| **Empty-state bar** | Bar at 0 hidden | Bar with value 0 still shown (bar is invisible / opacity 0) so the X-axis label appears, matching Figma's "C5 ~10%" pattern where empty compartments still occupy slots. |
-| **Negative balance bar** | n/a | When a product runs short (e.g. R3 Gas at Stop 6 = −100), the bar **dips below the X-axis** by the shortfall amount. Y-axis extends just enough below 0 to show the negative slice (e.g. one extra step at −500). Same product color, no red tint. |
+| **Bar hover** | None | Hovering a bar shows: (a) value label `{n} gal` floating above the bar, (b) tooltip with truck-config context. |
+| **Product-bar tooltip** | n/a | Heading `Compartments` + comma-separated list of compartments configured for that product (e.g. R1 Diesel CLR → `C1, C2, C3, C4, C5`). |
+| **Compartment-bar tooltip** | n/a | Heading `Products` + comma-separated list of products configured for that compartment, **filtered to products that actually run on this route** (e.g. R1 C3 → `Diesel-Offroad CLR` even though the comp can hold Gas too — Gas isn't on R1). Decided 2026-05-10 (Option A): consistent with the "By Product" chart, which already only shows requested products. Easy to flip to "show all configured" later if it becomes useful. |
+| **Subheader → chart spacing** | `gap: 8` | `gap: 12` (visually too tight at 8 even though spec says 8). |
+| **Tooltip motion** | n/a | CSS transitions, `transform: scale(0.97) → scale(1)` + `opacity: 0 → 1`, `175ms`, custom curve `cubic-bezier(0.23, 1, 0.32, 1)` (Emil's strong ease-out). `transform-origin` set to the bar's top edge so the tooltip scales out *from* the bar, not from its own center. |
+| **Subsequent-hover delay** | n/a | First hover delays ~150ms before tooltip appears. While a tooltip is already open, hovering a sibling bar shows its tooltip **instantly with no animation** (Emil's "tooltip skip-delay" rule). |
+| **Hover gating** | n/a | Wrap interactions in `@media (hover: hover) and (pointer: fine)` so touch devices don't trigger sticky tooltips. |
+| **Reduced motion** | n/a | `@media (prefers-reduced-motion: reduce)` → opacity-only transition (no scale). |
 
-## Sequential drain algorithm (single-product)
+## Tooltip data derivation
 
-Used for R1 (5 comps × Diesel CLR) and R2 (3 comps × ULSD). Multi-product (R3) skips compartment chart per the existing rule.
+```ts
+// Build once from truckProfile + the route's distinct product set
+const routeProducts = new Set(distinctProductsOnRoute) // already computed for chart rule
 
+function compartmentsForProduct(p: FuelProduct, truck: TruckCapacityProfile): string[] {
+  return truck.compartments
+    .filter(c => (c.capacities[p] ?? 0) > 0)
+    .map(c => c.id)
+}
+
+function productsForCompartment(c: TruckCompartment, routeProducts: Set<string>): string[] {
+  return Object.entries(c.capacities)
+    .filter(([_, cap]) => (cap ?? 0) > 0)
+    .map(([product]) => product)
+    .filter(p => routeProducts.has(p)) // only products actually on this route
+}
 ```
-state: comps[i].fill = 0 for all i
-For each order in route order:
-  if order.type === "L":
-    remaining = order.productBreakdown[product].volume
-    for each comp in order: fill room = comp.capacity - comp.fill;
-                            add = min(room, remaining); comp.fill += add; remaining -= add
-  if order.type === "D":
-    remaining = order.productBreakdown[product].volume
-    for each comp in order (C1 → Cn):
-      draw = min(comp.fill, remaining); comp.fill -= draw; remaining -= draw
-  Push snapshot of comps state, keyed by order.id
-```
 
-Verified against R1 spec table:
-- After Load Flint Hills (+4,600): C1=1000, C2=1000, C3=1500, C4=1000, C5=100. ✓
-- After Stop 2 Mueller (−1000): C1=0, C2=1000, C3=1500, C4=1000, C5=100. ✓
-- After Stop 4 Elgin (−1000): drains C2 (200→0) then C3 (1500→700). ✓
-- ...all subsequent stops match the spec.
+Display via `PRODUCT_LABEL` map (already in the sheet) — e.g. `200*DIESEL-ONROAD CLEAR` → `Diesel-Offroad CLR`.
 
-Verified against R2 spec table:
-- After Load Valero (+4,200): C1=1500, C2=1500, C3=1200. ✓
-- After Stop 2 Georgetown (−1200): C1=300, C2=1500, C3=1200. ✓
-- ...all subsequent stops match.
+## Visual details
 
----
+**Tooltip body** (per Figma screenshots):
+- Background `#FAFAFA`, text `#171717`.
+- Padding `12px`, gap `4px` between heading and list, rounded `6px`.
+- Heading: `font-size 14, weight 500, color #171717`.
+- List: `font-size 14, weight 400, color #525252`.
+- Small downward triangle pointer (8px wide, 4px tall) on the bottom edge, centered on the bar.
+
+**Value label above bar** (per Figma):
+- Plain text `{n.toLocaleString()} gal`, `font-size 14, weight 500, color #FAFAFA`.
+- Sits centered above the bar's top edge, ~6px gap.
+- For negative bars (R3 Stop 6 Gas), the label sits *below* the bar (since the bar is below x-axis) so it doesn't get clipped.
+
+**Layering**:
+- Tooltip layered above the chart (`zIndex: 1` within chart) but stays inside the sheet's stacking context.
+- Sheet itself is at `zIndex: 10000` (existing) — tooltip inherits this context.
 
 ## Files to modify
 
-- `components/breakdown-sheet.tsx` — main work. Add `selectedOrderId` prop. Replace route-total computation with per-stop snapshot. Add inline sequential-drain timeline computation (single-product). Replace By-Product source with timeline's product totals.
-- `components/lasso-workspace-sheet.tsx` — pass `selectedOrderId={breakdownOrderId}` to `<BreakdownSheet>`. The state already exists.
+- `components/breakdown-sheet.tsx` — main work. Add per-bar `onMouseEnter` / `onMouseLeave`. Track `hoveredBarKey` state (string id like `product:200*DIESEL-ONROAD CLEAR` or `comp:C3`). Render value label + tooltip conditionally. Manage "skip-delay-after-first-hover" via a `lastHoverTimeRef`. Bump subheader→chart `gap` from 8 to 12. Add `prefers-reduced-motion` and `hover: hover` media gates.
 
-No changes needed to `lib/capacity-validation.ts` — its `runningBalance` already produces post-transaction product totals, but to keep the sheet self-contained (independent of the validator) we'll compute fresh inside the sheet from `orders + truckProfile`.
+No other files need changes.
 
-## Reuse, don't reinvent
+## Reuse
 
-- **`runningBalance: BalanceRow[]`** in `lib/capacity-validation.ts:27–32, 175–198` — already produces post-transaction per-product totals per stop. Keyed by `stopName` + `stopIndex`. We'll match by stop sequence rather than calling validator from the sheet (cleaner separation).
-- **`TruckCompartment.capacities: Partial<Record<FuelProduct, number>>`** in `lib/truck-data.ts:11–14` — gives per-compartment per-product capacity for the drain algorithm.
-- **`PRODUCT_BAR_COLOR` map + `chooseYAxis()` + `<BarChart>` sub-component** already in `components/breakdown-sheet.tsx` — keep, just feed them the new per-stop data.
-- **Anchoring + flip + viewport-clamp** already in the sheet — no change.
+- **`PRODUCT_LABEL`** map already in the sheet for display names.
+- **`<BarChart>`** sub-component — extend its bar item to accept `onHover`/`onLeave` callbacks; bar element already has unique key.
+- **Existing chart geometry** (`PLOT_H`, `Y_AXIS_W`, `zeroLineTop`) — reuse for tooltip positioning math.
 
----
+## Implementation steps
 
-## Implementation steps (this milestone)
-
-1. **Add `selectedOrderId: string | null` prop to `BreakdownSheet`.** Pass it from `lasso-workspace-sheet.tsx` (the state exists as `breakdownOrderId`).
-2. **Compute timeline in the sheet** (memoized over `orders + truckProfile`):
-   - For every product appearing on the route, walk orders in `routeSequence` order, accumulate per-product `onTruck` balances. Push one snapshot per order keyed by `order.id`.
-   - For single-product routes, additionally walk compartments per `TruckCapacityProfile`. On `L`: fill C1→Cn until volume exhausted. On `D`: drain C1→Cn. Push compartment snapshot per order.
-3. **Pick the snapshot** for `selectedOrderId`. If not found, default to the last order's snapshot (defensive).
-4. **By Product bars** = the snapshot's `onTruck[product]` values. One bar per product that appears on the route. Y-axis ceiling = `max(truckProfile.productCapacities[product], routeMaxLoaded)`.
-5. **By Compartments bars** = the snapshot's compartment fills. Only render when route's distinct products = 1 (existing rule). Y-axis ceiling = `max(comp.capacity)` across the truck.
-6. **Empty bars (value = 0)** still render with axis label so the snapshot looks consistent (matches Figma's "C1 not yet allocated" variant).
+1. **Bump spacing**: change `gap: 8` → `gap: 12` on the two `<div>`s wrapping subheader + chart.
+2. **Add `hoveredBarKey` state** to `BreakdownSheet`.
+3. **Plumb `onHover(key)` and `onLeave()`** through `<BarChart>` to each bar.
+4. **Build tooltip data lookup tables** at the top of the sheet body (`compartmentsByProduct`, `productsByCompartment`) — pure derivation from `truckProfile` + `routeProducts`.
+5. **Render value label** above each hovered bar (positioned via the same percentage math used for the bar itself).
+6. **Render tooltip** below the value label (or above the bar's bottom edge for negative bars). Use `position: absolute` inside the chart with `top` / `left` computed from the bar's index + chart geometry.
+7. **Animation**: define CSS-in-JS transitions on tooltip wrapper (`opacity`, `transform: scale`). Use `@starting-style` if supported, otherwise mount-then-set-data-attr pattern.
+8. **Skip-delay timer**: `lastHoverTimeRef = useRef<number>(0)`. On hover, if `Date.now() - lastHoverTimeRef.current < 600ms`, skip the entry delay. Update `lastHoverTimeRef` on every leave.
+9. **Hover gating** wrap event handlers in a `useMediaQuery("(hover: hover) and (pointer: fine)")` check so touch devices skip the hover system entirely.
+10. **Reduced motion**: read `useReducedMotion()` (or matchMedia inline). If true, set transition to `opacity 100ms linear` and remove the scale.
 
 ---
 
 ## What we're explicitly NOT doing this milestone
 
-- ❌ **Compartment chart for multi-product routes** — R3 stays product-only. Multi-product compartment allocation has too many valid arrangements to commit to one without designs.
-- ❌ **Bar hover tooltips** — deferred. The static snapshot is enough for this pass.
-- ❌ **Scenario comparison modal** — R3 Options 2 & 3 still deferred. Default = Option 1 only.
+- ❌ **Compartment chart for multi-product routes** — R3 stays product-only.
+- ❌ **Scenario comparison modal** — R3 Options 2 & 3 still deferred.
+- ❌ **Click interactions on bars** — pure hover, no click. Tapping on touch is intentionally no-op.
+- ❌ **Keyboard focus on bars** — graphs are visual; arrow-key navigation across bars is out of scope.
+- ❌ **Highlighting the hovered bar** (e.g. brightening color) — the value label + tooltip is enough signal. Adding a highlight risks visual noise.
 - ❌ **Per-stop "running balance trace" (separate vertical-line viz)** — different feature, separate milestone.
 - ❌ **R4/R5** — untouched.
-- ❌ **Title that names the stop** — sheet title stays generic ("Product and Compartment breakdown"). Card hover state already signals which order's sheet is open.
+- ❌ **Title that names the stop** — sheet title stays generic.
 
 ---
 
 ## Verification (manual, in browser at localhost:3000)
 
-**R1 (single-product, 5 comps) — sequential drain check:**
+**Hover behavior:**
 
-1. Expand R1, hover **Flint Hills - Johnny Morris** (load), click package icon. Sheet shows:
-   - By Product: Diesel CLR bar at **4,600**.
-   - By Compartments: C1=1000, C2=1000, C3=1500, C4=1000, **C5=100** (the small bar matches Figma).
-2. Click package on **Mueller Construction** (Stop 2). Sheet shows:
-   - By Product: Diesel CLR at **3,600**.
-   - By Compartments: **C1=0**, C2=1000, C3=1500, C4=1000, C5=100.
-3. Click package on **Elgin Concrete** (Stop 4). By Compartments: C1=0, C2=0, C3=700, C4=1000, C5=100.
-4. Click package on **Austin Bergstrom Fleet** (last stop). All compartments at 0; By Product at 0.
+1. Open R1 breakdown sheet on Flint Hills load. Hover the Diesel CLR bar in "By Product":
+   - Value label `4,600 gal` appears above the bar.
+   - Tooltip below value label: heading `Compartments`, body `C1, C2, C3, C4, C5`.
+   - Animation: fades + scales 0.97 → 1 over ~175ms.
+2. Move pointer off → tooltip + label disappear (also via fade/scale).
+3. Re-hover within ~500ms → tooltip appears **instantly, no animation** (skip-delay rule).
+4. Hover the C3 bar in "By Compartments":
+   - Value label `1,500 gal`.
+   - Tooltip: heading `Products`, body `Diesel-Offroad CLR`.
 
-**R2 (single-product, 3 comps) — same check after user adds Load 2:**
+**R2 (single product ULSD):**
 
-5. Expand R2, click package on **Georgetown Fuel Depot** (Stop 2). By Compartments: C1=300, C2=1500, C3=1200. By Product: 3,000.
-6. Click package on **Pflugerville Fleet** (Stop 5). By Compartments: C1=0, C2=0, C3=200. By Product: 200.
+5. Hover the C1 bar in any R2 stop's sheet → tooltip body `ULSD`.
+6. Hover the ULSD bar in "By Product" → tooltip body `C1, C2, C3`.
 
-**R3 (multi-product) — product-only check:**
+**R3 (multi-product, product-only chart):**
 
-7. Expand R3, click package on **Lakeway Fuel Stop** (Stop 2). Sheet shows two product bars: Diesel CLR ≈ 2,400, Gas ≈ 1,300. **No compartment chart**.
-8. Click package on **Lost Creek Equipment** (Stop 5). Diesel ≈ 900, Gas ≈ 200.
-9. Click package on **Barton Creek Ranch** (Stop 6, the break point). Diesel ≈ 400 (positive), Gas ≈ −100 — Gas bar dips **below the X-axis** by ~100. Same product color, no red tint.
+7. Hover Diesel-Offroad CLR bar at any stop → tooltip body `C1, C2, C3, C4` (all four R3 comps hold both Diesel and Gas).
+8. Hover Gas bar at any stop → tooltip body `C1, C2, C3, C4`.
+9. At R3 Stop 6 Barton Creek (Gas = −100), hover the negative-dipping Gas bar → value label `-100 gal` (with minus sign) appears *below* the bar (since the bar is below the X-axis). Tooltip is offset accordingly so it doesn't overlap the label.
+
+**Spacing check:**
+
+10. Inspect the gap between subheader `By Product` and the chart. Should be **12px** (was 8). Same for `By Compartments`.
+
+**Motion polish:**
+
+11. With macOS "Reduce Motion" turned on, hover a bar → tooltip uses opacity-only transition (no scale). Verify in browser DevTools by toggling `prefers-reduced-motion`.
+12. On a touch device (or simulated touch in DevTools), tapping a bar does nothing — no sticky tooltip, no click-to-open behavior.
 
 **Cross-cutting:**
 
@@ -150,10 +176,11 @@ No changes needed to `lib/capacity-validation.ts` — its `runningBalance` alrea
 ## Future scope — Phase 1.3 follow-ups (next up)
 
 1. **Multi-product compartment view (R3)** — once we lock the allocation rule (e.g. "Diesel fills C1→Cn first, Gas fills the remaining slots"), R3 can show compartments too. Currently R3 is product-only by design.
-2. **Bar hover tooltips** — exact numeric readouts on hover (e.g. "C3: 700 / 1,500 gal · 47%"). Designs not yet provided.
+2. ~~Bar hover tooltips — exact numeric readouts on hover.~~ ✅ Shipped in Milestone 4.
 3. **Scenario comparison modal** — R3 has 3 loading options (Diesel-first, Gas-first, Balanced). We hard-pin Option 1 today; the modal that lets the user switch is queued, design pending.
 4. **Per-stop running balance trace** — separate viz from this sheet: a vertical line/curve along the route timeline showing balance trends across all stops.
-5. **Sheet title naming the stop** — title is generic today ("Product and Compartment breakdown"). The card hover state already signals which stop is open. Revisit if usability requires it.
+5. **Sheet title naming the stop** — title is generic today. The card hover state already signals which stop is open. Revisit if usability requires it.
+6. **Highlight hovered bar** (subtle brightness shift on the bar fill) — deliberately skipped this milestone; revisit if usability calls for it.
 
 ## Queued from master to-do (parked, not started)
 
