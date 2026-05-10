@@ -80,7 +80,7 @@ const LOAD_ORDERS: ModalLoadOrder[] = [
   { id: "lo-23", terminalId: "t-2", time: "09:45 AM", volumeGal: 2800, products: ["87 OCT W/ 10% ETH", "ULSD #2"],                                        linkedDeliveryCount: null },
   { id: "lo-24", terminalId: "t-2", time: "01:00 PM", volumeGal: 2600, products: ["ULSD #2"],                                                             linkedDeliveryCount: null },
   // Mid-route fix
-  { id: "lo-r2-mid", terminalId: "t-2", time: "10:30 AM", volumeGal: 900, products: ["ULSD CLEAR DIESEL"],                                                          linkedDeliveryCount: null },
+  { id: "lo-r2-mid", terminalId: "t-2", time: "08:30 AM", volumeGal: 900, products: ["ULSD CLEAR DIESEL"],                                                          linkedDeliveryCount: null },
   // ── BP San Fransisco (t-3) — 3 orders ──
   { id: "lo-13", terminalId: "t-3", time: "06:00 AM", volumeGal: 5500, products: ["100*DIESEL-ONROAD CLEAR", "ULSD #2"],                                  linkedDeliveryCount: 3 },
   { id: "lo-14", terminalId: "t-3", time: "09:30 AM", volumeGal: 3000, products: ["87 UNLEDED"],                                                           linkedDeliveryCount: 1 },

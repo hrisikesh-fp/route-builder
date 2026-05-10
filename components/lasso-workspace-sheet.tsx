@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles } from "lucide-react"
+import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -10,6 +10,7 @@ import { AddLoadOrderModal } from "@/components/add-load-order-modal"
 import { validateRouteCapacity, getShortProductName, type ValidationResult } from "@/lib/capacity-validation"
 import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { MergeModal } from "@/components/merge-modal"
+import { BreakdownSheet } from "@/components/breakdown-sheet"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -1412,6 +1413,7 @@ function ExpandedRouteCard({
   onHoverOrder,
   checkedScheduledOrderIds,
   onToggleScheduledOrder,
+  onBreakdownClick,
 }: {
   orders: ExtractionOrder[]
   color?: string
@@ -1430,6 +1432,7 @@ function ExpandedRouteCard({
   onHoverOrder?: (orderId: string | null) => void
   checkedScheduledOrderIds?: string[]
   onToggleScheduledOrder?: (orderId: string) => void
+  onBreakdownClick?: (orderId: string) => void
 }) {
   const { orderCardView } = useSettings()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
@@ -1521,6 +1524,8 @@ function ExpandedRouteCard({
                   onHoverOrder,
                   isChecked: checkedScheduledOrderIds?.includes(order.id) ?? false,
                   onToggleCheck: () => onToggleScheduledOrder?.(order.id),
+                  hasLoadOrders: orders.some((o) => o.orderType === "L"),
+                  onBreakdownClick,
                 }
                 return orderCardView === "detailed"
                   ? <OrderStopRowDetailed {...sharedProps} />
@@ -1614,6 +1619,8 @@ function OrderStopRow({
   onHoverOrder,
   isChecked,
   onToggleCheck,
+  hasLoadOrders,
+  onBreakdownClick,
 }: {
   order: ExtractionOrder
   idx: number
@@ -1633,6 +1640,8 @@ function OrderStopRow({
   onHoverOrder?: (orderId: string | null) => void
   isChecked?: boolean
   onToggleCheck?: () => void
+  hasLoadOrders?: boolean
+  onBreakdownClick?: (orderId: string) => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -1788,14 +1797,13 @@ function OrderStopRow({
               gap: 6,
             }}
           >
-            {/* Type badge: 20×20, neutral #E5E5E5 bg */}
+            {/* Type badge: 20×20, color by type (L=#189ffc blue, D=#25b8a7 teal), no stroke */}
             <div
               style={{
                 width: 20,
                 height: 20,
                 flexShrink: 0,
-                backgroundColor: "#E5E5E5",
-                border: "1px solid #737373",
+                backgroundColor: type === "L" ? "#189ffc" : "#25b8a7",
                 borderRadius: 4,
                 display: "flex",
                 alignItems: "center",
@@ -1863,17 +1871,32 @@ function OrderStopRow({
           </button>
         </div>
 
-        {/* FAB — 3-dot menu, positioned top-right of card */}
+        {/* FAB — Package + 3-dot menu, positioned top-right of card */}
         <div
           className="order-fab"
           style={{
             position: "absolute", top: 8, right: 8,
             opacity: isMenuOpen ? 1 : 0, transition: "opacity 0.15s",
-            display: "flex", alignItems: "center",
+            display: "flex", alignItems: "center", gap: 4,
             backgroundColor: "#1B1B1B", border: "1px solid #282828",
             borderRadius: 4, padding: 4,
           }}
         >
+          {hasLoadOrders && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onBreakdownClick?.(order.id) }}
+              style={{
+                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: 2, border: "none", backgroundColor: "#404040",
+                cursor: "pointer", color: "#FAFAFA", padding: 0,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#525252" }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#404040" }}
+              aria-label="View product and compartment breakdown"
+            >
+              <Package size={16} />
+            </button>
+          )}
           <div style={{ position: "relative" }}>
             <button
               onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen) }}
@@ -1972,6 +1995,8 @@ function OrderStopRowDetailed({
   onHoverOrder,
   isChecked,
   onToggleCheck,
+  hasLoadOrders,
+  onBreakdownClick,
 }: {
   order: ExtractionOrder
   idx: number
@@ -1991,6 +2016,8 @@ function OrderStopRowDetailed({
   onHoverOrder?: (orderId: string | null) => void
   isChecked?: boolean
   onToggleCheck?: () => void
+  hasLoadOrders?: boolean
+  onBreakdownClick?: (orderId: string) => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -2152,7 +2179,7 @@ function OrderStopRowDetailed({
               <div
                 style={{
                   width: 20, height: 20, flexShrink: 0,
-                  backgroundColor: "#E5E5E5", border: "1px solid #737373", borderRadius: 4,
+                  backgroundColor: type === "L" ? "#189ffc" : "#25b8a7", borderRadius: 4,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 11, fontWeight: 500, color: "#171717", lineHeight: 1,
                 }}
@@ -2295,17 +2322,32 @@ function OrderStopRowDetailed({
           </div>{/* end wrapper: « + stats */}
           </div>{/* end Right: content */}
 
-        {/* FAB — 3-dot menu, positioned top-right of card */}
+        {/* FAB — Package + 3-dot menu, positioned top-right of card */}
         <div
           className="order-fab"
           style={{
             position: "absolute", top: 8, right: 8,
             opacity: isMenuOpen ? 1 : 0, transition: "opacity 0.15s",
-            display: "flex", alignItems: "center",
+            display: "flex", alignItems: "center", gap: 4,
             backgroundColor: "#1B1B1B", border: "1px solid #282828",
             borderRadius: 4, padding: 4,
           }}
         >
+          {hasLoadOrders && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onBreakdownClick?.(order.id) }}
+              style={{
+                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: 2, border: "none", backgroundColor: "#404040",
+                cursor: "pointer", color: "#FAFAFA", padding: 0,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#525252" }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#404040" }}
+              aria-label="View product and compartment breakdown"
+            >
+              <Package size={16} />
+            </button>
+          )}
           <div style={{ position: "relative" }}>
             <button
               onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen) }}
@@ -2574,6 +2616,10 @@ export function LassoWorkspaceSheet({
   const [orderDetailsOrder, setOrderDetailsOrder] = useState<ExtractionOrder | null>(null)
   const [orderDetailsAnchorY, setOrderDetailsAnchorY] = useState<number>(0)
   const [orderDetailsAnchorX, setOrderDetailsAnchorX] = useState<number>(0)
+
+  // Product & Compartment Breakdown sheet state — shows route-level allocation
+  // for the route the clicked order belongs to.
+  const [breakdownRouteId, setBreakdownRouteId] = useState<string | null>(null)
 
   // Route 3-dot menu state
   const [menuRouteId, setMenuRouteId] = useState<string | null>(null)
@@ -3779,6 +3825,7 @@ export function LassoWorkspaceSheet({
                             onHoverOrder={onHoveredOrderChange}
                             checkedScheduledOrderIds={checkedScheduledOrderIds}
                             onToggleScheduledOrder={toggleScheduledOrderChecked}
+                            onBreakdownClick={() => setBreakdownRouteId(routeId)}
                           />
                           </div>
                         )}
@@ -3871,7 +3918,7 @@ export function LassoWorkspaceSheet({
                             {/* Badge + name row */}
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                               <div style={{
-                                width: 20, height: 20, backgroundColor: "#E5E5E5", border: "1px solid #737373",
+                                width: 20, height: 20, backgroundColor: type === "L" ? "#189ffc" : "#25b8a7",
                                 borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center",
                                 fontSize: 11, fontWeight: 500, color: "#171717", lineHeight: 1, flexShrink: 0,
                               }}>
@@ -3978,7 +4025,7 @@ export function LassoWorkspaceSheet({
                             </span>
                           </div>
                           <div style={{
-                            width: 20, height: 20, backgroundColor: "#E5E5E5", border: "1px solid #737373",
+                            width: 20, height: 20, backgroundColor: type === "L" ? "#189ffc" : "#25b8a7",
                             borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 11, fontWeight: 500, color: "#171717", lineHeight: 1,
                           }}>
@@ -4351,6 +4398,26 @@ export function LassoWorkspaceSheet({
             : `${truckCount} optimised routes created with ${orderCount} orders`)
         }}
       />
+
+      {/* Product & Compartment Breakdown sheet — opens from order-card FAB package icon */}
+      {(() => {
+        if (!breakdownRouteId) return null
+        const route = mockRoutes.find((r) => r.id === breakdownRouteId)
+        if (!route) return null
+        const baseOrders = selectedOrders.filter((o) => o.routeId === breakdownRouteId)
+        const added = addedLoadOrders[breakdownRouteId] ?? []
+        const allOrders = [...baseOrders, ...added]
+        const truckId = selectedTrucks[breakdownRouteId]?.id ?? route.truckId
+        const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
+        return (
+          <BreakdownSheet
+            isOpen={true}
+            onClose={() => setBreakdownRouteId(null)}
+            orders={allOrders}
+            truckProfile={truckProfile}
+          />
+        )
+      })()}
     </div>
   )
 }

@@ -95,7 +95,7 @@ Config E: No truck → dimmed "Select Truck" pill (opacity 0.6) + "No Truck sele
 ```
 
 #### FAB (Floating Action Buttons) on route card
-- Appears on card hover, positioned absolute top-right
+- Appears on card hover, positioned absolute `top: 8, right: 8` (8px from card edges — confirmed in Figma)
 - Container: bg #1B1B1B, border 1px solid #282828, borderRadius 4px, padding 4px, gap 4px
 - Three 24×24px icon buttons (order: Sparkles → ExternalLink → MoreVertical), all borderRadius 2px
 - Sparkles (Optimise Route) → opens MergeModal in optimise mode
