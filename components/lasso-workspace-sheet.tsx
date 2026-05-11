@@ -13,6 +13,7 @@ import { MergeModal } from "@/components/merge-modal"
 import { BreakdownSheet } from "@/components/breakdown-sheet"
 import { RouteSummarySheet } from "@/components/route-summary-sheet"
 import { TruckDetailsSheet } from "@/components/truck-details-sheet"
+import { BalanceTableModal } from "@/components/balance-table-modal"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -4580,7 +4581,7 @@ export function LassoWorkspaceSheet({
         )
       })()}
 
-      {/* Route Summary sheet — opens from route-card ScanEye icon */}
+      {/* v2: Balance Table modal — opens from route-card ScanEye icon (replaces RouteSummarySheet) */}
       {(() => {
         if (!routeSummaryRouteId) return null
         const route = mockRoutes.find((r) => r.id === routeSummaryRouteId)
@@ -4588,20 +4589,12 @@ export function LassoWorkspaceSheet({
         const baseOrders = selectedOrders.filter((o) => o.routeId === routeSummaryRouteId)
         const added = addedLoadOrders[routeSummaryRouteId] ?? []
         const allOrders = [...baseOrders, ...added]
-        const truck = selectedTrucks[routeSummaryRouteId] ?? null
-        const truckId = truck?.id ?? route.truckId
-        const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
-        const truckName = truck?.name ?? route.truckName ?? null
         return (
-          <RouteSummarySheet
+          <BalanceTableModal
             isOpen={true}
             onClose={() => setRouteSummaryRouteId(null)}
             orders={allOrders}
-            truckProfile={truckProfile}
-            truckName={truckName}
-            anchorLeft={routeSummaryAnchorLeft}
-            anchorRight={routeSummaryAnchorRight}
-            anchorY={routeSummaryAnchorY}
+            retainedFuel={route.retainedFuel}
           />
         )
       })()}
