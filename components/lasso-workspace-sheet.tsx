@@ -4581,7 +4581,10 @@ export function LassoWorkspaceSheet({
         )
       })()}
 
-      {/* v2: Balance Table modal — opens from route-card ScanEye icon (replaces RouteSummarySheet) */}
+      {/* ScanEye trigger — conditional:
+            - Route has ≥1 load order → BalanceTableModal (v2 per-stop table)
+            - Route has no load orders → RouteSummarySheet (v1 Products + Truck tabs fallback)
+          The balance table is meaningless without a load, so we fall back to v1 for empty routes. */}
       {(() => {
         if (!routeSummaryRouteId) return null
         const route = mockRoutes.find((r) => r.id === routeSummaryRouteId)
@@ -4589,12 +4592,34 @@ export function LassoWorkspaceSheet({
         const baseOrders = selectedOrders.filter((o) => o.routeId === routeSummaryRouteId)
         const added = addedLoadOrders[routeSummaryRouteId] ?? []
         const allOrders = [...baseOrders, ...added]
+        const hasLoad = allOrders.some((o) => o.orderType === "L")
+
+        if (hasLoad) {
+          return (
+            <BalanceTableModal
+              isOpen={true}
+              onClose={() => setRouteSummaryRouteId(null)}
+              orders={allOrders}
+              retainedFuel={route.retainedFuel}
+            />
+          )
+        }
+
+        // v1 fallback for routes without any load
+        const truck = selectedTrucks[routeSummaryRouteId] ?? null
+        const truckId = truck?.id ?? route.truckId
+        const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
+        const truckName = truck?.name ?? route.truckName ?? null
         return (
-          <BalanceTableModal
+          <RouteSummarySheet
             isOpen={true}
             onClose={() => setRouteSummaryRouteId(null)}
             orders={allOrders}
-            retainedFuel={route.retainedFuel}
+            truckProfile={truckProfile}
+            truckName={truckName}
+            anchorLeft={routeSummaryAnchorLeft}
+            anchorRight={routeSummaryAnchorRight}
+            anchorY={routeSummaryAnchorY}
           />
         )
       })()}

@@ -13,23 +13,28 @@ const PRODUCT_LABEL: Record<string, string> = {
   "DEF PACKAGED": "DEF",
 }
 
-// L / D badge colors (match the existing route-card badges, M4)
+// L / D badge colors
 const BADGE_COLOR: Record<string, string> = {
-  L: "#189ffc",
-  D: "#25b8a7",
+  L: "#189FFC",
+  D: "#25B8A7",
   T: "#737373",
 }
 
-const RED_BG = "rgba(248, 113, 113, 0.18)"
-const RED_FG = "#f87171"
+// Tokens from Figma node 4194:104586
+const BG_MODAL = "#1B1B1B" // background-2
+const BG_STRIP = "#282828" // background-4 / stroke-2
+const BORDER = "#282828"
+const TEXT_2 = "#E5E5E5" // text-2
+const TEXT_3 = "#A3A3A3" // text-3
+const DESTRUCTIVE = "#F87171" // base/destructive
+const DESTRUCTIVE_BG = "rgba(248, 113, 113, 0.2)"
+const TEXT_DARK = "#171717"
 
 interface BalanceRow {
   orderId: string
   type: "L" | "D" | "T"
   name: string
-  // per-product delta at this stop (signed: +load, -delivery, 0 for no entry)
   deltas: Record<string, number>
-  // per-product running balance AFTER this stop's transaction
   balances: Record<string, number>
 }
 
@@ -39,14 +44,11 @@ function buildBalanceTable(
 ): { products: string[]; rows: BalanceRow[]; finalBalance: Record<string, number> } {
   const sorted = [...orders].sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
 
-  // distinct products on the route
   const productsSet = new Set<string>()
   for (const o of sorted) for (const pb of o.productBreakdown ?? []) productsSet.add(pb.product)
-  // also include retained-fuel products
   for (const r of retainedFuel ?? []) productsSet.add(r.product)
   const products = Array.from(productsSet)
 
-  // initialize balance from retained
   const balance: Record<string, number> = {}
   for (const p of products) balance[p] = 0
   for (const r of retainedFuel ?? []) balance[r.product] = r.volume
@@ -71,14 +73,12 @@ function buildBalanceTable(
   return { products, rows, finalBalance: { ...balance } }
 }
 
-// Format a signed gallon delta — "+1,600 gal", "-300 gal", or "-" when 0
 function fmtDelta(n: number): string {
   if (n === 0) return "-"
   const sign = n > 0 ? "+" : ""
   return `${sign}${n.toLocaleString()} gal`
 }
 
-// Format a balance — "1,600 gal", or "-100 gal" — same magnitude formatting either way
 function fmtBalance(n: number): string {
   return `${n.toLocaleString()} gal`
 }
@@ -97,49 +97,14 @@ function TypeBadge({ type }: { type: "L" | "D" | "T" }) {
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: 500,
-        color: "#171717",
-        lineHeight: 1,
+        color: TEXT_DARK,
+        lineHeight: "20px",
       }}
     >
       {type}
     </span>
-  )
-}
-
-// ─── Cell helpers ───────────────────────────────────────────────────────────
-
-function Cell({
-  children,
-  isNegative = false,
-  withIcon = false,
-  align = "left",
-}: {
-  children: React.ReactNode
-  isNegative?: boolean
-  withIcon?: boolean
-  align?: "left" | "right"
-}) {
-  return (
-    <td
-      style={{
-        padding: "12px 16px",
-        textAlign: align,
-        verticalAlign: "middle",
-        backgroundColor: isNegative ? RED_BG : undefined,
-        color: isNegative ? RED_FG : "#e5e5e5",
-        fontSize: 14,
-        fontFamily: "Geist, sans-serif",
-        borderBottom: "1px solid #282828",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-        {children}
-        {isNegative && withIcon && <TriangleAlert size={14} color={RED_FG} />}
-      </span>
-    </td>
   )
 }
 
@@ -150,8 +115,6 @@ export interface BalanceTableModalProps {
   onClose: () => void
   orders: ExtractionOrder[]
   retainedFuel?: ProductBreakdown[]
-  /** Optional route label shown in the header subtitle — TBD for design. */
-  routeLabel?: string
 }
 
 export function BalanceTableModal({
@@ -164,9 +127,53 @@ export function BalanceTableModal({
 
   const { products, rows, finalBalance } = buildBalanceTable(orders, retainedFuel)
 
+  // Shared cell styles
+  const headStripCell: React.CSSProperties = {
+    height: 40,
+    padding: "0 12px",
+    backgroundColor: BG_STRIP,
+    borderBottom: `1px solid ${BORDER}`,
+    fontFamily: "Geist, sans-serif",
+    fontWeight: 500,
+    fontSize: 14,
+    lineHeight: "20px",
+    textAlign: "left",
+    verticalAlign: "middle",
+  }
+
+  const subHeadCell: React.CSSProperties = {
+    ...headStripCell,
+    color: TEXT_3,
+  }
+
+  const productHeadCell: React.CSSProperties = {
+    ...headStripCell,
+    color: TEXT_2,
+  }
+
+  const bodyCellBase: React.CSSProperties = {
+    padding: 12,
+    fontFamily: "Geist, sans-serif",
+    fontSize: 16,
+    lineHeight: "24px",
+    color: TEXT_2,
+    borderBottom: `1px solid ${BORDER}`,
+    verticalAlign: "middle",
+  }
+
+  const retainCellBase: React.CSSProperties = {
+    padding: 12,
+    height: 48,
+    fontFamily: "Geist, sans-serif",
+    fontSize: 16,
+    lineHeight: "24px",
+    color: TEXT_2,
+    borderTop: `1px solid ${BORDER}`,
+    verticalAlign: "middle",
+  }
+
   return (
     <div
-      // Backdrop
       onClick={onClose}
       style={{
         position: "fixed",
@@ -181,24 +188,32 @@ export function BalanceTableModal({
       }}
     >
       <div
-        // Modal body — stop click propagation so backdrop click outside closes only
         onClick={(e) => e.stopPropagation()}
         style={{
-          backgroundColor: "#1f1f1f",
+          width: 1200,
+          maxWidth: "calc(100vw - 48px)",
+          maxHeight: "calc(100vh - 48px)",
+          overflow: "auto",
+          backgroundColor: BG_MODAL,
           borderRadius: 8,
-          padding: 16,
+          padding: 24,
           display: "flex",
           flexDirection: "column",
           gap: 16,
-          maxWidth: "min(960px, calc(100vw - 48px))",
-          maxHeight: "calc(100vh - 48px)",
-          overflow: "auto",
           boxShadow: "0px 8px 24px rgba(0,0,0,0.5)",
         }}
       >
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 500, color: "#e5e5e5", margin: 0, lineHeight: "28px" }}>
+          <h3
+            style={{
+              fontSize: 18,
+              fontWeight: 500,
+              color: TEXT_2,
+              margin: 0,
+              lineHeight: "28px",
+            }}
+          >
             Route Summary
           </h3>
           <div style={{ flex: 1 }} />
@@ -214,7 +229,7 @@ export function BalanceTableModal({
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              color: "#a3a3a3",
+              color: TEXT_3,
               padding: 0,
             }}
           >
@@ -227,100 +242,48 @@ export function BalanceTableModal({
           style={{
             borderCollapse: "collapse",
             width: "100%",
-            tableLayout: "auto",
+            tableLayout: "fixed",
+            border: `1px solid ${BORDER}`,
+            borderRadius: 4,
           }}
         >
-          {/* Column-group header: product names spanning two sub-columns */}
+          <colgroup>
+            <col style={{ width: 280 }} />
+            {products.flatMap((p) => [
+              <col key={`${p}-pq`} />,
+              <col key={`${p}-bal`} />,
+            ])}
+          </colgroup>
+
           <thead>
+            {/* Header strip 1 — product spanner */}
             <tr>
-              <th
-                style={{
-                  textAlign: "left",
-                  padding: "8px 16px",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: "#737373",
-                  borderBottom: "1px solid #282828",
-                }}
-              >
-                {/* Empty cell above the Stops column */}
-              </th>
+              <th style={{ ...headStripCell }} />
               {products.map((p) => (
-                <th
-                  key={p}
-                  colSpan={2}
-                  style={{
-                    textAlign: "left",
-                    padding: "8px 16px",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: "#e5e5e5",
-                    borderBottom: "1px solid #282828",
-                  }}
-                >
+                <th key={p} colSpan={2} style={productHeadCell}>
                   {PRODUCT_LABEL[p] ?? p}
                 </th>
               ))}
             </tr>
-            {/* Sub-header */}
+            {/* Header strip 2 — sub-headers */}
             <tr>
-              <th
-                style={{
-                  textAlign: "left",
-                  padding: "8px 16px",
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: "#a3a3a3",
-                  borderBottom: "1px solid #282828",
-                }}
-              >
-                Stops
-              </th>
+              <th style={subHeadCell}>Stops</th>
               {products.map((p) => (
                 <Fragment key={p}>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: "8px 16px",
-                      fontSize: 12,
-                      fontWeight: 400,
-                      color: "#a3a3a3",
-                      borderBottom: "1px solid #282828",
-                    }}
-                  >
-                    Planned Qty
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: "8px 16px",
-                      fontSize: 12,
-                      fontWeight: 400,
-                      color: "#a3a3a3",
-                      borderBottom: "1px solid #282828",
-                    }}
-                  >
-                    Balance
-                  </th>
+                  <th style={subHeadCell}>Planned Qty</th>
+                  <th style={subHeadCell}>Balance</th>
                 </Fragment>
               ))}
             </tr>
           </thead>
 
-          {/* Data rows */}
           <tbody>
             {rows.map((row) => (
               <tr key={row.orderId}>
-                <td
-                  style={{
-                    padding: "12px 16px",
-                    verticalAlign: "middle",
-                    borderBottom: "1px solid #282828",
-                  }}
-                >
+                <td style={bodyCellBase}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                     <TypeBadge type={row.type} />
-                    <span style={{ color: "#e5e5e5", fontSize: 14 }}>{row.name}</span>
+                    <span style={{ color: TEXT_2 }}>{row.name}</span>
                   </span>
                 </td>
                 {products.map((p) => {
@@ -329,12 +292,23 @@ export function BalanceTableModal({
                   const balNeg = bal < 0
                   return (
                     <Fragment key={`${row.orderId}-${p}`}>
-                      <Cell>
-                        <span style={{ color: "#a3a3a3" }}>{fmtDelta(delta)}</span>
-                      </Cell>
-                      <Cell isNegative={balNeg} withIcon={balNeg}>
-                        {fmtBalance(bal)}
-                      </Cell>
+                      {/* Planned Qty cell */}
+                      <td style={{ ...bodyCellBase, color: TEXT_3 }}>
+                        {fmtDelta(delta)}
+                      </td>
+                      {/* Balance cell — different treatment when negative */}
+                      <td
+                        style={{
+                          ...bodyCellBase,
+                          backgroundColor: balNeg ? DESTRUCTIVE_BG : undefined,
+                          fontWeight: balNeg ? 500 : 400,
+                        }}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                          {fmtBalance(bal)}
+                          {balNeg && <TriangleAlert size={16} color={DESTRUCTIVE} />}
+                        </span>
+                      </td>
                     </Fragment>
                   )
                 })}
@@ -345,13 +319,11 @@ export function BalanceTableModal({
             <tr>
               <td
                 style={{
-                  padding: "12px 16px",
-                  verticalAlign: "middle",
-                  color: "#a3a3a3",
+                  ...retainCellBase,
                   fontSize: 14,
+                  lineHeight: "20px",
                   fontWeight: 500,
-                  borderTop: "1px solid #333",
-                  backgroundColor: "#1b1b1b",
+                  color: TEXT_2,
                 }}
               >
                 Retain
@@ -361,31 +333,15 @@ export function BalanceTableModal({
                 const balNeg = bal < 0
                 return (
                   <Fragment key={`retain-${p}`}>
+                    <td style={{ ...retainCellBase, color: TEXT_3 }}>-</td>
                     <td
                       style={{
-                        padding: "12px 16px",
-                        color: "#a3a3a3",
-                        fontSize: 14,
-                        borderTop: "1px solid #333",
-                        backgroundColor: "#1b1b1b",
+                        ...retainCellBase,
+                        color: balNeg ? DESTRUCTIVE : TEXT_2,
+                        fontWeight: balNeg ? 500 : 400,
                       }}
                     >
-                      -
-                    </td>
-                    <td
-                      style={{
-                        padding: "12px 16px",
-                        fontSize: 14,
-                        fontWeight: 500,
-                        borderTop: "1px solid #333",
-                        backgroundColor: balNeg ? RED_BG : "#1b1b1b",
-                        color: balNeg ? RED_FG : "#e5e5e5",
-                      }}
-                    >
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        {fmtBalance(bal)}
-                        {balNeg && <TriangleAlert size={14} color={RED_FG} />}
-                      </span>
+                      {fmtBalance(bal)}
                     </td>
                   </Fragment>
                 )
