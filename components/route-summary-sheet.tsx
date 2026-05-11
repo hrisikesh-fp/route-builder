@@ -162,7 +162,7 @@ function ProductsTab({
   )
 }
 
-function TruckTab({
+export function TruckSummaryContent({
   truckName,
   truckProfile,
 }: {
@@ -415,7 +415,7 @@ export function RouteSummarySheet({
       {activeTab === "products" ? (
         <ProductsTab orders={orders} truckProfile={truckProfile} />
       ) : (
-        <TruckTab truckName={truckName} truckProfile={truckProfile} />
+        <TruckSummaryContent truckName={truckName} truckProfile={truckProfile} />
       )}
     </div>
   )

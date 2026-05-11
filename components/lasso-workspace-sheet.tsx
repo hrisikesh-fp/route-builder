@@ -12,6 +12,7 @@ import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { MergeModal } from "@/components/merge-modal"
 import { BreakdownSheet } from "@/components/breakdown-sheet"
 import { RouteSummarySheet } from "@/components/route-summary-sheet"
+import { TruckDetailsSheet } from "@/components/truck-details-sheet"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -642,44 +643,7 @@ function RouteCardCollapsed({
           </div>
         </div>
         )}
-        {/* View Route icon button — only for published routes */}
-        {isPublished && (
-          <div
-            style={{ position: "relative" }}
-            onMouseEnter={(e) => {
-              const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
-              if (tip) tip.style.display = "flex"
-              const btn = e.currentTarget.querySelector<HTMLElement>("button")
-              if (btn) btn.style.backgroundColor = "#333"
-            }}
-            onMouseLeave={(e) => {
-              const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
-              if (tip) tip.style.display = "none"
-              const btn = e.currentTarget.querySelector<HTMLElement>("button")
-              if (btn) btn.style.backgroundColor = "transparent"
-            }}
-          >
-            <button
-              onClick={(e) => { e.stopPropagation(); onViewRoute?.() }}
-              style={{
-                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-                borderRadius: 2, border: "none", background: "transparent", cursor: "pointer",
-                color: "#FAFAFA", padding: 0,
-              }}
-            >
-              <ExternalLink size={16} />
-            </button>
-            <div data-fab-tooltip style={{
-              display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
-              flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
-            }}>
-              <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
-                View Route
-              </div>
-              <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
-            </div>
-          </div>
-        )}
+        {/* View Route icon removed from FAB (M6): accessible only from the 3-dot dropdown. */}
         {/* 3-dot icon button */}
         <div style={{ position: "relative" }}>
           <button
@@ -908,7 +872,7 @@ function SeqLineBridge() {
 }
 
 // Starting hub row: truck + hub combined card, arm at bottom-20 (hub row center), vertical line going DOWN only
-function TruckHubStartRow({ truckName, hubName, onTruckChange, validation, hasLoadOrders }: { truckName: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void; validation?: ValidationResult | null; hasLoadOrders?: boolean }) {
+function TruckHubStartRow({ truckName, hubName, onTruckChange, validation, hasLoadOrders, onViewTruckDetails }: { truckName: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void; validation?: ValidationResult | null; hasLoadOrders?: boolean; onViewTruckDetails?: (cardLeft: number, cardRight: number, btnTop: number) => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "row", gap: SEQ_TO_CARD_GAP }}>
       {/* Seq col: arm + vertical segment going DOWN from arm only */}
@@ -940,12 +904,12 @@ function TruckHubStartRow({ truckName, hubName, onTruckChange, validation, hasLo
       </div>
 
       {/* Truck + Hub combined card */}
-      <TruckHubCard truckNameProp={truckName} hubName={hubName} onTruckChange={onTruckChange} validation={validation} hasLoadOrders={hasLoadOrders} />
+      <TruckHubCard truckNameProp={truckName} hubName={hubName} onTruckChange={onTruckChange} validation={validation} hasLoadOrders={hasLoadOrders} onViewTruckDetails={onViewTruckDetails} />
     </div>
   )
 }
 
-function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLoadOrders }: { truckNameProp: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void; validation?: ValidationResult | null; hasLoadOrders?: boolean }) {
+function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLoadOrders, onViewTruckDetails }: { truckNameProp: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void; validation?: ValidationResult | null; hasLoadOrders?: boolean; onViewTruckDetails?: (cardLeft: number, cardRight: number, btnTop: number) => void }) {
   const [selectedTruck, setSelectedTruck] = useState<TruckItem | null>(
     () => (truckNameProp ? TRUCKS.find((t) => t.name === truckNameProp) ?? null : null)
   )
@@ -1268,6 +1232,45 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
               </span>
             </div>
           )}
+          {/* View Truck Details — ghost button below truck row + messages.
+              4px top gap from preceding element via padding. Only rendered when a truck is selected. */}
+          {(selectedTruck || truckNameProp) && (
+            <div style={{ padding: "4px 8px 0" }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  const cardEl = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-route-card]")
+                  const cardRect = cardEl?.getBoundingClientRect()
+                  const btnRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  onViewTruckDetails?.(
+                    cardRect?.left ?? btnRect.left,
+                    cardRect?.right ?? btnRect.right,
+                    btnRect.top,
+                  )
+                }}
+                style={{
+                  height: 32,
+                  padding: "8px 12px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "transparent",
+                  border: "none",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  color: "#E5E5E5",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  fontFamily: "Geist, sans-serif",
+                  lineHeight: "20px",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)" }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+              >
+                View Truck Details
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Hub row */}
@@ -1469,6 +1472,7 @@ function ExpandedRouteCard({
   onToggleScheduledOrder,
   onBreakdownClick,
   breakdownOpenOrderId,
+  onViewTruckDetails,
 }: {
   orders: ExtractionOrder[]
   color?: string
@@ -1489,6 +1493,7 @@ function ExpandedRouteCard({
   onToggleScheduledOrder?: (orderId: string) => void
   onBreakdownClick?: (orderId: string, cardLeft: number, cardRight: number, fabTop: number) => void
   breakdownOpenOrderId?: string | null
+  onViewTruckDetails?: (cardLeft: number, cardRight: number, btnTop: number) => void
 }) {
   const { orderCardView } = useSettings()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
@@ -1514,7 +1519,7 @@ function ExpandedRouteCard({
     <div style={{ paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column" }}>
 
       {/* Starting hub: truck + hub combined, arm → down only */}
-      <TruckHubStartRow truckName={truckName} hubName={hubName} onTruckChange={onTruckChange} validation={validation} hasLoadOrders={hasLoadOrders} />
+      <TruckHubStartRow truckName={truckName} hubName={hubName} onTruckChange={onTruckChange} validation={validation} hasLoadOrders={hasLoadOrders} onViewTruckDetails={onViewTruckDetails} />
 
       {/* Bridge gap between starting hub and orders */}
       <SeqLineBridge />
@@ -2750,6 +2755,12 @@ export function LassoWorkspaceSheet({
   const [routeSummaryAnchorRight, setRouteSummaryAnchorRight] = useState<number>(0)
   const [routeSummaryAnchorY, setRouteSummaryAnchorY] = useState<number>(0)
 
+  // Truck Details sheet — opens from "View Truck Details" button inside the expanded route card
+  const [truckDetailsRouteId, setTruckDetailsRouteId] = useState<string | null>(null)
+  const [truckDetailsAnchorLeft, setTruckDetailsAnchorLeft] = useState<number>(0)
+  const [truckDetailsAnchorRight, setTruckDetailsAnchorRight] = useState<number>(0)
+  const [truckDetailsAnchorY, setTruckDetailsAnchorY] = useState<number>(0)
+
   // Route 3-dot menu state
   const [menuRouteId, setMenuRouteId] = useState<string | null>(null)
 
@@ -3267,6 +3278,7 @@ export function LassoWorkspaceSheet({
                     return (
                       <div
                         key={routeId}
+                        data-route-card
                         style={{ display: "flex", flexDirection: "column" }}
                       >
                         {/* Sticky wrapper for card + banner when expanded */}
@@ -3968,6 +3980,12 @@ export function LassoWorkspaceSheet({
                               setBreakdownOrderId(orderId)
                             }}
                             breakdownOpenOrderId={breakdownOrderId}
+                            onViewTruckDetails={(cardLeft, cardRight, btnTop) => {
+                              setTruckDetailsAnchorLeft(cardLeft)
+                              setTruckDetailsAnchorRight(cardRight)
+                              setTruckDetailsAnchorY(btnTop)
+                              setTruckDetailsRouteId(routeId)
+                            }}
                           />
                           </div>
                         )}
@@ -4540,6 +4558,27 @@ export function LassoWorkspaceSheet({
             : `${truckCount} optimised routes created with ${orderCount} orders`)
         }}
       />
+
+      {/* Truck Details sheet — opens from "View Truck Details" button inside expanded route card */}
+      {(() => {
+        if (!truckDetailsRouteId) return null
+        const route = mockRoutes.find((r) => r.id === truckDetailsRouteId)
+        const truck = selectedTrucks[truckDetailsRouteId] ?? null
+        const truckId = truck?.id ?? route?.truckId
+        const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
+        const truckName = truck?.name ?? route?.truckName ?? null
+        return (
+          <TruckDetailsSheet
+            isOpen={true}
+            onClose={() => setTruckDetailsRouteId(null)}
+            truckProfile={truckProfile}
+            truckName={truckName}
+            anchorLeft={truckDetailsAnchorLeft}
+            anchorRight={truckDetailsAnchorRight}
+            anchorY={truckDetailsAnchorY}
+          />
+        )
+      })()}
 
       {/* Route Summary sheet — opens from route-card ScanEye icon */}
       {(() => {
