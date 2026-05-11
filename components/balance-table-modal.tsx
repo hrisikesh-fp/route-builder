@@ -126,6 +126,11 @@ export function BalanceTableModal({
 
   const { products, rows, finalBalance } = buildBalanceTable(orders, retainedFuel)
 
+  // Modal width: scales with product count.
+  // 1 product → 800px (table feels balanced at this width).
+  // 2+ products → 1200px (matches Figma multi-product layout).
+  const MODAL_W = products.length <= 1 ? 800 : 1200
+
   // Shared cell styles
   const headStripCell: React.CSSProperties = {
     height: 40,
@@ -189,7 +194,7 @@ export function BalanceTableModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 1200,
+          width: MODAL_W,
           maxWidth: "calc(100vw - 48px)",
           maxHeight: "calc(100vh - 48px)",
           overflow: "auto",
@@ -237,7 +242,8 @@ export function BalanceTableModal({
         </div>
 
         {/* Table — v2: ONE column per product. Each cell shows Balance (primary) +
-            signed Planned Qty (secondary) inline. Negative balance adds bg tint + icon. */}
+            signed Planned Qty (secondary) inline. Negative balance adds bg tint + icon.
+            All columns flex-equal so the table fills the modal regardless of product count. */}
         <table
           style={{
             borderCollapse: "collapse",
@@ -248,7 +254,7 @@ export function BalanceTableModal({
           }}
         >
           <colgroup>
-            <col style={{ width: 280 }} />
+            <col />
             {products.map((p) => (
               <col key={p} />
             ))}
