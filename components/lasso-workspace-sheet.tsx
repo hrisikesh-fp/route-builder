@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package } from "lucide-react"
+import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, ScanEye } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -11,6 +11,7 @@ import { validateRouteCapacity, getShortProductName, type ValidationResult } fro
 import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { MergeModal } from "@/components/merge-modal"
 import { BreakdownSheet } from "@/components/breakdown-sheet"
+import { RouteSummarySheet } from "@/components/route-summary-sheet"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -251,6 +252,8 @@ function RouteCardCollapsed({
   onDriverSelect,
   currentDriverId,
   onOptimise,
+  onViewSummary,
+  isSummaryOpen = false,
 }: {
   color: string
   driverName: string
@@ -280,6 +283,8 @@ function RouteCardCollapsed({
   onDriverSelect?: (driver: DriverItem) => void
   currentDriverId?: string
   onOptimise?: () => void
+  onViewSummary?: (cardLeft: number, cardRight: number, fabTop: number) => void
+  isSummaryOpen?: boolean
 }) {
   // Determine config
   const config: "A" | "B" | "C" | "D" | "E" = !hasTruck ? "E"
@@ -535,12 +540,14 @@ function RouteCardCollapsed({
       </div>
       </div>
       {/* 3-dot menu — absolute top-right, hidden by default, visible on card hover */}
-      {/* FAB — View Route + 3-dot menu, appears on card hover */}
+      {/* FAB — ScanEye summary + Optimise + View Route + 3-dot menu, appears on card hover */}
       <div
         data-route-menu
         style={{
           position: "absolute", top: 8, right: 8,
-          opacity: (isHovered || isMenuOpen || isTruckDropdownOpen || isTrailerDropdownOpen || isDriverDropdownOpen) ? 1 : 0,
+          opacity: isSummaryOpen
+            ? 0
+            : (isHovered || isMenuOpen || isTruckDropdownOpen || isTrailerDropdownOpen || isDriverDropdownOpen) ? 1 : 0,
           transition: "opacity 150ms ease",
           display: "flex", alignItems: "center",
           backgroundColor: "#1B1B1B",
@@ -550,6 +557,53 @@ function RouteCardCollapsed({
           gap: 4,
         }}
       >
+        {/* View Product & Truck Summary icon button — always visible (independent of truck selection) */}
+        <div
+          style={{ position: "relative" }}
+          onMouseEnter={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+            if (tip) tip.style.display = "flex"
+            const btn = e.currentTarget.querySelector<HTMLElement>("button")
+            if (btn) btn.style.backgroundColor = "#333"
+          }}
+          onMouseLeave={(e) => {
+            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+            if (tip) tip.style.display = "none"
+            const btn = e.currentTarget.querySelector<HTMLElement>("button")
+            if (btn) btn.style.backgroundColor = "transparent"
+          }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              const cardEl = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-route-card]")
+              const cardRect = cardEl?.getBoundingClientRect()
+              const fabRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              onViewSummary?.(
+                cardRect?.left ?? fabRect.left,
+                cardRect?.right ?? fabRect.right,
+                fabRect.top,
+              )
+            }}
+            style={{
+              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 2, border: "none", background: "transparent", cursor: "pointer",
+              color: "#FAFAFA", padding: 0,
+            }}
+            aria-label="View Product and Truck Summary"
+          >
+            <ScanEye size={16} />
+          </button>
+          <div data-fab-tooltip style={{
+            display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+            flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
+          }}>
+            <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+              View Product & Truck Summary
+            </div>
+            <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+          </div>
+        </div>
         {/* Optimise Route icon button — hidden when no truck */}
         {hasTruck && (
         <div
@@ -2690,6 +2744,12 @@ export function LassoWorkspaceSheet({
   const [breakdownAnchorRight, setBreakdownAnchorRight] = useState<number>(0)
   const [breakdownAnchorY, setBreakdownAnchorY] = useState<number>(0)
 
+  // Route Summary sheet (Product + Truck tabs) — opens from route-card ScanEye button
+  const [routeSummaryRouteId, setRouteSummaryRouteId] = useState<string | null>(null)
+  const [routeSummaryAnchorLeft, setRouteSummaryAnchorLeft] = useState<number>(0)
+  const [routeSummaryAnchorRight, setRouteSummaryAnchorRight] = useState<number>(0)
+  const [routeSummaryAnchorY, setRouteSummaryAnchorY] = useState<number>(0)
+
   // Route 3-dot menu state
   const [menuRouteId, setMenuRouteId] = useState<string | null>(null)
 
@@ -3262,7 +3322,7 @@ export function LassoWorkspaceSheet({
                           {/* Card wrapper — contains card body + banner */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Card body — position relative for wedge */}
-                            <div style={{ position: "relative" }}>
+                            <div data-route-card style={{ position: "relative" }}>
                               {/* Color wedge — covers card body only, top-left radius only (bottom-left rounded when no banner) */}
                               <div
                                 style={{
@@ -3346,6 +3406,13 @@ export function LassoWorkspaceSheet({
                                 setSelectedDrivers((prev) => ({ ...prev, [routeId]: driver }))
                                 setMenuRouteId(null)
                               }}
+                              onViewSummary={(cardLeft, cardRight, fabTop) => {
+                                setRouteSummaryAnchorLeft(cardLeft)
+                                setRouteSummaryAnchorRight(cardRight)
+                                setRouteSummaryAnchorY(fabTop)
+                                setRouteSummaryRouteId(routeId)
+                              }}
+                              isSummaryOpen={routeSummaryRouteId === routeId}
                             />
 
                             {/* Inline optimise loading overlay — covers card body, leaves wedge visible */}
@@ -4473,6 +4540,32 @@ export function LassoWorkspaceSheet({
             : `${truckCount} optimised routes created with ${orderCount} orders`)
         }}
       />
+
+      {/* Route Summary sheet — opens from route-card ScanEye icon */}
+      {(() => {
+        if (!routeSummaryRouteId) return null
+        const route = mockRoutes.find((r) => r.id === routeSummaryRouteId)
+        if (!route) return null
+        const baseOrders = selectedOrders.filter((o) => o.routeId === routeSummaryRouteId)
+        const added = addedLoadOrders[routeSummaryRouteId] ?? []
+        const allOrders = [...baseOrders, ...added]
+        const truck = selectedTrucks[routeSummaryRouteId] ?? null
+        const truckId = truck?.id ?? route.truckId
+        const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
+        const truckName = truck?.name ?? route.truckName ?? null
+        return (
+          <RouteSummarySheet
+            isOpen={true}
+            onClose={() => setRouteSummaryRouteId(null)}
+            orders={allOrders}
+            truckProfile={truckProfile}
+            truckName={truckName}
+            anchorLeft={routeSummaryAnchorLeft}
+            anchorRight={routeSummaryAnchorRight}
+            anchorY={routeSummaryAnchorY}
+          />
+        )
+      })()}
 
       {/* Product & Compartment Breakdown sheet — opens from order-card FAB package icon */}
       {(() => {

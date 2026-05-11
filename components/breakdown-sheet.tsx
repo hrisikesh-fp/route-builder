@@ -112,21 +112,8 @@ function Bar({
   const barTopPx = value >= 0
     ? zeroLineTop - (barPctH / 100) * plotH
     : zeroLineTop
-
-  // Mount state for the entry transition
-  const [mounted, setMounted] = useState(instantTooltip)
-  useEffect(() => {
-    if (!isHovered) {
-      setMounted(false)
-      return
-    }
-    if (instantTooltip || reducedMotion) {
-      setMounted(true)
-      return
-    }
-    const id = requestAnimationFrame(() => setMounted(true))
-    return () => cancelAnimationFrame(id)
-  }, [isHovered, instantTooltip, reducedMotion])
+  const barHeightPx = (barPctH / 100) * plotH
+  const barBottomPx = barTopPx + barHeightPx
 
   return (
     <div
@@ -148,25 +135,24 @@ function Bar({
           height: `${barPctH}%`,
           backgroundColor: bar.color,
           borderRadius: value >= 0 ? "2px 2px 0 0" : "0 0 2px 2px",
-          pointerEvents: "none", // hover handled by parent so empty-bar areas still trigger
+          pointerEvents: "none",
         }}
       />
 
-      {/* Hover overlay (full bar slot) — captures hover even when bar value is 0 */}
+      {/* Full-slot hover overlay so 0-value bars still receive hover */}
       {canHover && (
-        <div style={{ position: "absolute", inset: 0 }} />
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "auto" }} />
       )}
 
-      {/* Value label + tooltip — only when hovered */}
+      {/* Value label + tooltip — rendered only while hovered */}
       {isHovered && (
         <BarHoverContent
           value={value}
           barTopPx={barTopPx}
-          barHeightPx={(barPctH / 100) * plotH}
+          barBottomPx={barBottomPx}
           plotH={plotH}
-          color={bar.color}
-          mounted={mounted}
           reducedMotion={reducedMotion}
+          instantTooltip={instantTooltip}
           tooltipHeading={bar.tooltipHeading}
           tooltipBody={bar.tooltipBody}
         />
@@ -175,98 +161,94 @@ function Bar({
   )
 }
 
-// ─── Floating value label + tooltip rendered above (or below) a hovered bar ──
+// ─── Floating value label + tooltip rendered next to a hovered bar ──
 
 function BarHoverContent({
   value,
   barTopPx,
-  barHeightPx,
+  barBottomPx,
   plotH,
-  color: _color,
-  mounted,
   reducedMotion,
+  instantTooltip,
   tooltipHeading,
   tooltipBody,
 }: {
   value: number
   barTopPx: number
-  barHeightPx: number
+  barBottomPx: number
   plotH: number
-  color: string
-  mounted: boolean
   reducedMotion: boolean
+  instantTooltip: boolean
   tooltipHeading: string
   tooltipBody: string
 }) {
   const isNegative = value < 0
-  // Position anchor: outer end of the bar (top for positive, bottom for negative)
-  const outerEndPx = isNegative ? barTopPx + barHeightPx : barTopPx
 
-  // Layout from the outer end outward:
-  //   positive bar: [tooltip] (gap) [triangle ↓] (gap) [value label] (gap) [bar top]
-  //   negative bar: [bar bottom] (gap) [value label] (gap) [triangle ↑] (gap) [tooltip]
-  const VALUE_LABEL_GAP = 6
-  const TRIANGLE_GAP = 4
+  // Wrapper anchored at the bar's outer tip and extending OUTWARD.
+  // - Positive bar: wrapper sits ABOVE the bar's top edge; anchored via `bottom` so
+  //   no `translateY(-100%)` hack is needed (which previously fought with the scale animation).
+  // - Negative bar: wrapper sits BELOW the bar's bottom edge; anchored via `top`.
+  //
+  // Children layout: column-reverse on positive so value-label is closest to bar,
+  // column on negative for the same effect.
+  const GAP_FROM_BAR = 6
 
-  // Style for the wrapper containing label + tooltip
-  // We position absolute children: value label at outer end, tooltip further out.
-  const transitionStyle = reducedMotion
-    ? { transition: "opacity 100ms linear" }
-    : { transition: `opacity 175ms ${EASE_OUT}, transform 175ms ${EASE_OUT}` }
+  // CSS animation handles the entry (opacity + scale). Skip animation when this
+  // tooltip is "instant" (subsequent-hover skip-delay) or when reduced-motion is on
+  // for the scale, falling back to opacity-only.
+  const animationName = instantTooltip
+    ? "none"
+    : reducedMotion
+    ? "rb-breakdown-tip-in-reduced"
+    : "rb-breakdown-tip-in"
+  const animationStyle: React.CSSProperties = {
+    animation: animationName === "none" ? undefined : `${animationName} 175ms ${EASE_OUT} both`,
+    transformOrigin: isNegative ? "top center" : "bottom center",
+  }
 
   return (
-    <>
-      {/* Value label */}
+    <div
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        ...(isNegative
+          ? { top: barBottomPx + GAP_FROM_BAR }
+          : { bottom: plotH - barTopPx + GAP_FROM_BAR }),
+        display: "flex",
+        flexDirection: isNegative ? "column" : "column-reverse",
+        alignItems: "center",
+        gap: 4,
+        pointerEvents: "none",
+        zIndex: 2,
+        ...animationStyle,
+      }}
+    >
+      {/* Value label (closest to bar in both orientations) */}
       <div
         style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          ...(isNegative
-            ? { top: outerEndPx + VALUE_LABEL_GAP }
-            : { top: outerEndPx - VALUE_LABEL_GAP, transform: "translateY(-100%)" }),
-          textAlign: "center",
           fontSize: 14,
           fontWeight: 500,
           color: "#FAFAFA",
           lineHeight: 1.2,
-          opacity: mounted ? 1 : 0,
-          ...transitionStyle,
-          pointerEvents: "none",
           whiteSpace: "nowrap",
         }}
       >
         {value.toLocaleString()} gal
       </div>
 
-      {/* Tooltip (with triangle pointer) */}
+      {/* Tooltip card */}
       <div
         style={{
-          position: "absolute",
-          left: "50%",
-          ...(isNegative
-            ? { top: outerEndPx + VALUE_LABEL_GAP + 18 + TRIANGLE_GAP } // label height (~18) + gap
-            : { top: outerEndPx - VALUE_LABEL_GAP - 18 - TRIANGLE_GAP, transform: "translate(-50%, -100%) scale(" + (mounted ? 1 : 0.97) + ")" }),
-          ...(isNegative
-            ? { transform: "translateX(-50%) scale(" + (mounted ? 1 : 0.97) + ")" }
-            : {}),
-          // Origin: the side facing the bar (so the tooltip scales out of the bar)
-          transformOrigin: isNegative ? "top center" : "bottom center",
-          opacity: mounted ? 1 : 0,
-          ...transitionStyle,
+          position: "relative",
           backgroundColor: "#FAFAFA",
           color: "#171717",
           padding: "10px 12px",
           borderRadius: 6,
           boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-          pointerEvents: "none",
-          // Stop the tooltip from getting clipped by overflow on the chart container
-          zIndex: 2,
           minWidth: 140,
-          maxWidth: 240,
+          maxWidth: 280,
           textAlign: "left",
-          // Prevent the bottom-out clamp from making the tooltip negative when the bar is near top
-          ...(barTopPx < 60 && !isNegative ? { top: outerEndPx + barHeightPx + VALUE_LABEL_GAP + 18 + TRIANGLE_GAP } : {}),
         }}
       >
         <div style={{ fontSize: 14, fontWeight: 500, color: "#171717", lineHeight: 1.2 }}>
@@ -276,7 +258,7 @@ function BarHoverContent({
           {tooltipBody}
         </div>
 
-        {/* Triangle pointer */}
+        {/* Triangle pointer (always points TOWARD the bar) */}
         <div
           aria-hidden
           style={{
@@ -287,13 +269,15 @@ function BarHoverContent({
             height: 0,
             ...(isNegative
               ? {
-                  top: -4,
+                  // Negative bar: bar is ABOVE the tooltip, so triangle on top pointing up
+                  top: -5,
                   borderLeft: "5px solid transparent",
                   borderRight: "5px solid transparent",
                   borderBottom: "5px solid #FAFAFA",
                 }
               : {
-                  bottom: -4,
+                  // Positive bar: bar is BELOW the tooltip, triangle on bottom pointing down
+                  bottom: -5,
                   borderLeft: "5px solid transparent",
                   borderRight: "5px solid transparent",
                   borderTop: "5px solid #FAFAFA",
@@ -301,7 +285,7 @@ function BarHoverContent({
           }}
         />
       </div>
-    </>
+    </div>
   )
 }
 
