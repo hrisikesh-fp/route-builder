@@ -1,6 +1,5 @@
 "use client"
 
-import { Fragment } from "react"
 import { X, TriangleAlert } from "lucide-react"
 import type { ExtractionOrder, ProductBreakdown } from "@/lib/mock-data"
 
@@ -237,7 +236,8 @@ export function BalanceTableModal({
           </button>
         </div>
 
-        {/* Table */}
+        {/* Table — v2: ONE column per product. Each cell shows Balance (primary) +
+            signed Planned Qty (secondary) inline. Negative balance adds bg tint + icon. */}
         <table
           style={{
             borderCollapse: "collapse",
@@ -249,30 +249,28 @@ export function BalanceTableModal({
         >
           <colgroup>
             <col style={{ width: 280 }} />
-            {products.flatMap((p) => [
-              <col key={`${p}-pq`} />,
-              <col key={`${p}-bal`} />,
-            ])}
+            {products.map((p) => (
+              <col key={p} />
+            ))}
           </colgroup>
 
           <thead>
-            {/* Header strip 1 — product spanner */}
+            {/* Header strip 1 — product name */}
             <tr>
               <th style={{ ...headStripCell }} />
               {products.map((p) => (
-                <th key={p} colSpan={2} style={productHeadCell}>
+                <th key={p} style={productHeadCell}>
                   {PRODUCT_LABEL[p] ?? p}
                 </th>
               ))}
             </tr>
-            {/* Header strip 2 — sub-headers */}
+            {/* Header strip 2 — sub-header ("Stops" / "Balance" per product, no "Planned Qty" label) */}
             <tr>
               <th style={subHeadCell}>Stops</th>
               {products.map((p) => (
-                <Fragment key={p}>
-                  <th style={subHeadCell}>Planned Qty</th>
-                  <th style={subHeadCell}>Balance</th>
-                </Fragment>
+                <th key={p} style={subHeadCell}>
+                  Balance
+                </th>
               ))}
             </tr>
           </thead>
@@ -291,25 +289,23 @@ export function BalanceTableModal({
                   const bal = row.balances[p] ?? 0
                   const balNeg = bal < 0
                   return (
-                    <Fragment key={`${row.orderId}-${p}`}>
-                      {/* Planned Qty cell */}
-                      <td style={{ ...bodyCellBase, color: TEXT_3 }}>
-                        {fmtDelta(delta)}
-                      </td>
-                      {/* Balance cell — different treatment when negative */}
-                      <td
-                        style={{
-                          ...bodyCellBase,
-                          backgroundColor: balNeg ? DESTRUCTIVE_BG : undefined,
-                          fontWeight: balNeg ? 500 : 400,
-                        }}
-                      >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <td
+                      key={`${row.orderId}-${p}`}
+                      style={{
+                        ...bodyCellBase,
+                        backgroundColor: balNeg ? DESTRUCTIVE_BG : undefined,
+                      }}
+                    >
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ color: TEXT_2, fontWeight: balNeg ? 500 : 400 }}>
                           {fmtBalance(bal)}
-                          {balNeg && <TriangleAlert size={16} color={DESTRUCTIVE} />}
                         </span>
-                      </td>
-                    </Fragment>
+                        <span style={{ color: TEXT_3, fontWeight: 400 }}>
+                          {fmtDelta(delta)}
+                        </span>
+                        {balNeg && <TriangleAlert size={16} color={DESTRUCTIVE} />}
+                      </span>
+                    </td>
                   )
                 })}
               </tr>
@@ -332,18 +328,16 @@ export function BalanceTableModal({
                 const bal = finalBalance[p] ?? 0
                 const balNeg = bal < 0
                 return (
-                  <Fragment key={`retain-${p}`}>
-                    <td style={{ ...retainCellBase, color: TEXT_3 }}>-</td>
-                    <td
-                      style={{
-                        ...retainCellBase,
-                        color: balNeg ? DESTRUCTIVE : TEXT_2,
-                        fontWeight: balNeg ? 500 : 400,
-                      }}
-                    >
-                      {fmtBalance(bal)}
-                    </td>
-                  </Fragment>
+                  <td
+                    key={`retain-${p}`}
+                    style={{
+                      ...retainCellBase,
+                      color: balNeg ? DESTRUCTIVE : TEXT_2,
+                      fontWeight: balNeg ? 500 : 400,
+                    }}
+                  >
+                    {fmtBalance(bal)}
+                  </td>
                 )
               })}
             </tr>

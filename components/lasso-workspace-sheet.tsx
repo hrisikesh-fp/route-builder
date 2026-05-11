@@ -1965,32 +1965,8 @@ function OrderStopRow({
             borderRadius: 4, padding: 4,
           }}
         >
-          {hasLoadOrders && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                const cardEl = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-order-card]")
-                const cardRect = cardEl?.getBoundingClientRect()
-                const fabRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                onBreakdownClick?.(
-                  order.id,
-                  cardRect?.left ?? fabRect.left,
-                  cardRect?.right ?? fabRect.right,
-                  fabRect.top,
-                )
-              }}
-              style={{
-                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-                borderRadius: 2, border: "none", backgroundColor: "transparent",
-                cursor: "pointer", color: "#FAFAFA", padding: 0,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-              aria-label="View product and compartment breakdown"
-            >
-              <Package size={16} />
-            </button>
-          )}
+          {/* v2: per-stop product balance (package icon → breakdown sheet) removed.
+              Route-level Balance Table modal (ScanEye on route card) covers this use case. */}
           <div style={{ position: "relative" }}>
             <button
               onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen) }}
@@ -2446,32 +2422,8 @@ function OrderStopRowDetailed({
             borderRadius: 4, padding: 4,
           }}
         >
-          {hasLoadOrders && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                const cardEl = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-order-card]")
-                const cardRect = cardEl?.getBoundingClientRect()
-                const fabRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                onBreakdownClick?.(
-                  order.id,
-                  cardRect?.left ?? fabRect.left,
-                  cardRect?.right ?? fabRect.right,
-                  fabRect.top,
-                )
-              }}
-              style={{
-                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-                borderRadius: 2, border: "none", backgroundColor: "transparent",
-                cursor: "pointer", color: "#FAFAFA", padding: 0,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-              aria-label="View product and compartment breakdown"
-            >
-              <Package size={16} />
-            </button>
-          )}
+          {/* v2: per-stop product balance (package icon → breakdown sheet) removed.
+              Route-level Balance Table modal (ScanEye on route card) covers this use case. */}
           <div style={{ position: "relative" }}>
             <button
               onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen) }}
