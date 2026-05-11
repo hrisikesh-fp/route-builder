@@ -1239,12 +1239,12 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  const cardEl = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-route-card]")
-                  const cardRect = cardEl?.getBoundingClientRect()
+                  // Anchor to the BUTTON itself (not the route card) so the sheet sits
+                  // right next to where the user clicked, not way off at the card's left edge.
                   const btnRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                   onViewTruckDetails?.(
-                    cardRect?.left ?? btnRect.left,
-                    cardRect?.right ?? btnRect.right,
+                    btnRect.left,
+                    btnRect.right,
                     btnRect.top,
                   )
                 }}
