@@ -9,8 +9,7 @@ export type FuelProduct =
 // ─── Compartment & Capacity Profile ─────────────────────────────────────────
 
 export interface TruckCompartment {
-  id: string // "C1", "C2", etc. — system-assigned identifier
-  displayName?: string // user-defined name (e.g. "TW Comp 1")
+  id: string // "C1", "C2", etc.
   capacities: Partial<Record<FuelProduct, number>> // product → gallons this compartment holds
 }
 
@@ -26,22 +25,27 @@ export interface TruckCapacityProfile {
 // These match the compartment tables in plan-rb-capacity-v2.md
 
 export const TRUCK_CAPACITIES: Record<string, TruckCapacityProfile> = {
-  // Route 1 — Mark Ruffalo (S1: 1 product, fits in 1 load, no issues)
-  // 5 equal-volume compartments, each can hold Diesel CLR OR Gas 87
-  // Volumes: 1000 / 1000 / 1500 / 1000 / 1000 = 5,500 total
+  // Route 1 — Mark Ruffalo (user selects this truck)
+  // Total truck capacity: C1+C2+C3+C4+C5 max per compartment
+  // Red max = 1500+0+0+800+0 = 2,300
+  // Clear max = 0+1000+0+800+0 = 1,800
+  // 87 Reg max = 0+0+800+800+900 = 2,500 → but plan says 1,700 (C3 800 + C5 900)
+  // Per the plan: Red = 2,300 | Clear = 1,800 | 87 Regular = 1,700
+  // Compartment C4 is flexible (800 each) but product caps are as stated in plan
   "H-118": {
     truckId: "H-118",
-    totalCapacity: 5500,
+    totalCapacity: 5000,
     compartments: [
-      { id: "C1", displayName: "TW Comp 1", capacities: { "200*DIESEL-ONROAD CLEAR": 1000, "87 OCT W/ 10% ETH": 1000 } },
-      { id: "C2", displayName: "TW Comp 2", capacities: { "200*DIESEL-ONROAD CLEAR": 1000, "87 OCT W/ 10% ETH": 1000 } },
-      { id: "C3", displayName: "TW Comp 3", capacities: { "200*DIESEL-ONROAD CLEAR": 1500, "87 OCT W/ 10% ETH": 1500 } },
-      { id: "C4", displayName: "TW Comp 4", capacities: { "200*DIESEL-ONROAD CLEAR": 1000, "87 OCT W/ 10% ETH": 1000 } },
-      { id: "C5", displayName: "TW Comp 5", capacities: { "200*DIESEL-ONROAD CLEAR": 1000, "87 OCT W/ 10% ETH": 1000 } },
+      { id: "C1", capacities: { "200*DIESEL-OFFROAD RED": 1500 } },
+      { id: "C2", capacities: { "200*DIESEL-ONROAD CLEAR": 1000 } },
+      { id: "C3", capacities: { "87 OCT W/ 10% ETH": 800 } },
+      { id: "C4", capacities: { "200*DIESEL-OFFROAD RED": 800, "200*DIESEL-ONROAD CLEAR": 800, "87 OCT W/ 10% ETH": 800 } },
+      { id: "C5", capacities: { "87 OCT W/ 10% ETH": 900 } },
     ],
     productCapacities: {
-      "200*DIESEL-ONROAD CLEAR": 5500,
-      "87 OCT W/ 10% ETH": 5500,
+      "200*DIESEL-OFFROAD RED": 2300,
+      "200*DIESEL-ONROAD CLEAR": 1800,
+      "87 OCT W/ 10% ETH": 1700,
     },
   },
 
@@ -51,30 +55,30 @@ export const TRUCK_CAPACITIES: Record<string, TruckCapacityProfile> = {
     truckId: "H-205",
     totalCapacity: 4200,
     compartments: [
-      { id: "C1", displayName: "Tanker Comp 1", capacities: { "ULSD CLEAR DIESEL": 1500 } },
-      { id: "C2", displayName: "Tanker Comp 2", capacities: { "ULSD CLEAR DIESEL": 1500 } },
-      { id: "C3", displayName: "Tanker Comp 3", capacities: { "ULSD CLEAR DIESEL": 1200 } },
+      { id: "C1", capacities: { "ULSD CLEAR DIESEL": 1500 } },
+      { id: "C2", capacities: { "ULSD CLEAR DIESEL": 1500 } },
+      { id: "C3", capacities: { "ULSD CLEAR DIESEL": 1200 } },
     ],
     productCapacities: {
       "ULSD CLEAR DIESEL": 4200,
     },
   },
 
-  // Route 3 — Jessica Harper (S3: 2 products, mid-route load needed, multi-load options)
-  // 4 equal-volume compartments, each can hold Diesel CLR OR Gas 87
-  // Volumes: 1200 / 1200 / 1200 / 1000 = 4,600 total
+  // Route 3 — Jessica Harper
+  // 4 compartments, Red + Clear, total 4,600
+  // Red = 1200+0+800+800 = 2,800 | Clear = 0+1000+800+0 = 1,800
   "H-310": {
     truckId: "H-310",
     totalCapacity: 4600,
     compartments: [
-      { id: "C1", displayName: "Tanker Comp 1", capacities: { "200*DIESEL-ONROAD CLEAR": 1200, "87 OCT W/ 10% ETH": 1200 } },
-      { id: "C2", displayName: "Tanker Comp 2", capacities: { "200*DIESEL-ONROAD CLEAR": 1200, "87 OCT W/ 10% ETH": 1200 } },
-      { id: "C3", displayName: "Tanker Comp 3", capacities: { "200*DIESEL-ONROAD CLEAR": 1200, "87 OCT W/ 10% ETH": 1200 } },
-      { id: "C4", displayName: "Tanker Comp 4", capacities: { "200*DIESEL-ONROAD CLEAR": 1000, "87 OCT W/ 10% ETH": 1000 } },
+      { id: "C1", capacities: { "200*DIESEL-OFFROAD RED": 1200 } },
+      { id: "C2", capacities: { "200*DIESEL-ONROAD CLEAR": 1000 } },
+      { id: "C3", capacities: { "200*DIESEL-OFFROAD RED": 800, "200*DIESEL-ONROAD CLEAR": 800 } },
+      { id: "C4", capacities: { "200*DIESEL-OFFROAD RED": 800 } },
     ],
     productCapacities: {
-      "200*DIESEL-ONROAD CLEAR": 4600,
-      "87 OCT W/ 10% ETH": 4600,
+      "200*DIESEL-OFFROAD RED": 2800,
+      "200*DIESEL-ONROAD CLEAR": 1800,
     },
   },
 
@@ -86,10 +90,10 @@ export const TRUCK_CAPACITIES: Record<string, TruckCapacityProfile> = {
     truckId: "H-442",
     totalCapacity: 2600,
     compartments: [
-      { id: "C1", displayName: "Tanker Comp 1", capacities: { "ULSD CLEAR DIESEL": 800 } },
-      { id: "C2", displayName: "Tanker Comp 2", capacities: { "87 OCT W/ 10% ETH": 700 } },
-      { id: "C3", displayName: "Tanker Comp 3", capacities: { "ULSD CLEAR DIESEL": 600, "87 OCT W/ 10% ETH": 600 } },
-      { id: "C4", displayName: "Tanker Comp 4", capacities: { "87 OCT W/ 10% ETH": 500 } },
+      { id: "C1", capacities: { "ULSD CLEAR DIESEL": 800 } },
+      { id: "C2", capacities: { "87 OCT W/ 10% ETH": 700 } },
+      { id: "C3", capacities: { "ULSD CLEAR DIESEL": 600, "87 OCT W/ 10% ETH": 600 } },
+      { id: "C4", capacities: { "87 OCT W/ 10% ETH": 500 } },
     ],
     productCapacities: {
       "ULSD CLEAR DIESEL": 1400,
@@ -103,9 +107,9 @@ export const TRUCK_CAPACITIES: Record<string, TruckCapacityProfile> = {
     truckId: "H-556",
     totalCapacity: 5000,
     compartments: [
-      { id: "C1", displayName: "Tanker Comp 1", capacities: { "ULSD CLEAR DIESEL": 2000 } },
-      { id: "C2", displayName: "Tanker Comp 2", capacities: { "ULSD CLEAR DIESEL": 1800 } },
-      { id: "C3", displayName: "Tanker Comp 3", capacities: { "ULSD CLEAR DIESEL": 1200 } },
+      { id: "C1", capacities: { "ULSD CLEAR DIESEL": 2000 } },
+      { id: "C2", capacities: { "ULSD CLEAR DIESEL": 1800 } },
+      { id: "C3", capacities: { "ULSD CLEAR DIESEL": 1200 } },
     ],
     productCapacities: {
       "ULSD CLEAR DIESEL": 5000,

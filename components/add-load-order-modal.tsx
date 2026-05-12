@@ -69,7 +69,7 @@ const LOAD_ORDERS: ModalLoadOrder[] = [
   { id: "lo-8", terminalId: "t-1", time: "02:45 PM", volumeGal: 2800, products: ["87 UNLEDED", "100*DIESEL-ONROAD CLEAR"],                                linkedDeliveryCount: null },
   { id: "lo-9", terminalId: "t-1", time: "04:45 AM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],                                linkedDeliveryCount: null },
   // Mid-route fix load orders
-  { id: "lo-r1-initial", terminalId: "t-1", time: "05:30 AM", volumeGal: 4600, products: ["200*DIESEL-ONROAD CLEAR"], linkedDeliveryCount: null },
+  { id: "lo-r1-initial", terminalId: "t-1", time: "05:30 AM", volumeGal: 4200, products: ["200*DIESEL-OFFROAD RED", "200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"], linkedDeliveryCount: null },
   { id: "lo-r1-mid", terminalId: "t-1", time: "09:00 AM", volumeGal: 600, products: ["200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"],                              linkedDeliveryCount: null },
   { id: "lo-r3-mid", terminalId: "t-1", time: "09:30 AM", volumeGal: 200, products: ["200*DIESEL-ONROAD CLEAR"],                                                     linkedDeliveryCount: null },
   // ── Valero Taylor (t-2) — 7 orders ──
@@ -80,7 +80,7 @@ const LOAD_ORDERS: ModalLoadOrder[] = [
   { id: "lo-23", terminalId: "t-2", time: "09:45 AM", volumeGal: 2800, products: ["87 OCT W/ 10% ETH", "ULSD #2"],                                        linkedDeliveryCount: null },
   { id: "lo-24", terminalId: "t-2", time: "01:00 PM", volumeGal: 2600, products: ["ULSD #2"],                                                             linkedDeliveryCount: null },
   // Mid-route fix
-  { id: "lo-r2-mid", terminalId: "t-2", time: "08:30 AM", volumeGal: 900, products: ["ULSD CLEAR DIESEL"],                                                          linkedDeliveryCount: null },
+  { id: "lo-r2-mid", terminalId: "t-2", time: "10:30 AM", volumeGal: 900, products: ["ULSD CLEAR DIESEL"],                                                          linkedDeliveryCount: null },
   // ── BP San Fransisco (t-3) — 3 orders ──
   { id: "lo-13", terminalId: "t-3", time: "06:00 AM", volumeGal: 5500, products: ["100*DIESEL-ONROAD CLEAR", "ULSD #2"],                                  linkedDeliveryCount: 3 },
   { id: "lo-14", terminalId: "t-3", time: "09:30 AM", volumeGal: 3000, products: ["87 UNLEDED"],                                                           linkedDeliveryCount: 1 },
@@ -123,7 +123,7 @@ const ORDER_DETAILS: Record<string, OrderDetailRow[]> = {
   "lo-8":  [{ product: "87 UNLEDED", plannedQty: 1400 }, { product: "100*DIESEL-ONROAD CLEAR", plannedQty: 1400 }],
   "lo-9":  [{ product: "100*DIESEL-ONROAD CLEAR", plannedQty: 1400 }, { product: "87 UNLEDED", plannedQty: 1400 }],
   // Mid-route fix load orders (Flint Hills)
-  "lo-r1-initial": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 4600 }],
+  "lo-r1-initial": [{ product: "200*DIESEL-OFFROAD RED", plannedQty: 700 }, { product: "200*DIESEL-ONROAD CLEAR", plannedQty: 1800 }, { product: "87 OCT W/ 10% ETH", plannedQty: 1700 }],
   "lo-r1-mid": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 200 }, { product: "87 OCT W/ 10% ETH", plannedQty: 400 }],
   "lo-r3-mid": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 200 }],
   // Valero Taylor (t-2)
