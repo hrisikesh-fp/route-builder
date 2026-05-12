@@ -334,3 +334,13 @@
   from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+/* Breakdown-sheet bar-hover tooltip entry — Emil ease-out curve, scale-and-fade */
+@keyframes rb-breakdown-tip-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes rb-breakdown-tip-in-reduced {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
