@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, ScanEye } from "lucide-react"
+import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -14,6 +14,7 @@ import { BreakdownSheet } from "@/components/breakdown-sheet"
 import { RouteSummarySheet } from "@/components/route-summary-sheet"
 import { TruckDetailsSheet } from "@/components/truck-details-sheet"
 import { BalanceTableModal } from "@/components/balance-table-modal"
+import { InitialInventoryModal, aggregateCompartmentValues } from "@/components/initial-inventory-modal"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -309,9 +310,16 @@ function RouteCardCollapsed({
   return (
     <div
       style={{
-        backgroundColor: isHovered ? "#282828" : "#1F1F1F",
         borderRadius: hasBanner ? "4px 4px 0px 0px" : "4px 4px 0px 4px",
         boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+    <div
+      style={{
+        backgroundColor: isHovered ? "#282828" : "#1F1F1F",
         padding: "16px 16px 12px 20px",
         transition: "background-color 150ms ease",
         display: "flex",
@@ -542,7 +550,9 @@ function RouteCardCollapsed({
       </div>
       </div>
       {/* 3-dot menu — absolute top-right, hidden by default, visible on card hover */}
-      {/* FAB — ScanEye summary + Optimise + View Route + 3-dot menu, appears on card hover */}
+      {/* FAB — Optimise + 3-dot menu, appears on card hover.
+          (ScanEye summary button removed — Route Summary is now reached via the
+          3-dot dropdown's "View Route Summary" item.) */}
       <div
         data-route-menu
         style={{
@@ -559,53 +569,6 @@ function RouteCardCollapsed({
           gap: 4,
         }}
       >
-        {/* View Product & Truck Summary icon button — always visible (independent of truck selection) */}
-        <div
-          style={{ position: "relative" }}
-          onMouseEnter={(e) => {
-            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
-            if (tip) tip.style.display = "flex"
-            const btn = e.currentTarget.querySelector<HTMLElement>("button")
-            if (btn) btn.style.backgroundColor = "#333"
-          }}
-          onMouseLeave={(e) => {
-            const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
-            if (tip) tip.style.display = "none"
-            const btn = e.currentTarget.querySelector<HTMLElement>("button")
-            if (btn) btn.style.backgroundColor = "transparent"
-          }}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              const cardEl = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-route-card]")
-              const cardRect = cardEl?.getBoundingClientRect()
-              const fabRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-              onViewSummary?.(
-                cardRect?.left ?? fabRect.left,
-                cardRect?.right ?? fabRect.right,
-                fabRect.top,
-              )
-            }}
-            style={{
-              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-              borderRadius: 2, border: "none", background: "transparent", cursor: "pointer",
-              color: "#FAFAFA", padding: 0,
-            }}
-            aria-label="View Product and Truck Summary"
-          >
-            <ScanEye size={16} />
-          </button>
-          <div data-fab-tooltip style={{
-            display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
-            flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
-          }}>
-            <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
-              View Product & Truck Summary
-            </div>
-            <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
-          </div>
-        </div>
         {/* Optimise Route icon button — hidden when no truck */}
         {hasTruck && (
         <div
@@ -758,7 +721,19 @@ function RouteCardCollapsed({
               <div style={{ height: 6, display: "flex", alignItems: "center", padding: "0 0" }}>
                 <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
               </div>
-              {/* View Route — only for published routes */}
+              {/* View Route Summary — opens BalanceTableModal */}
+              <div
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onViewSummary?.(0, 0, 0)
+                }}
+                style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
+              >
+                View Route Summary
+              </div>
+              {/* View Route Details — only for published routes */}
               {isPublished && (
                 <div
                   onClick={(e) => { e.stopPropagation(); onViewRoute?.() }}
@@ -766,7 +741,7 @@ function RouteCardCollapsed({
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
                 >
-                  <span style={{ flex: 1 }}>View Route</span>
+                  <span style={{ flex: 1 }}>View Route Details</span>
                   <ExternalLink size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
                 </div>
               )}
@@ -828,6 +803,28 @@ function RouteCardCollapsed({
         </div>
       </div>
     </div>
+    {/* View Route Summary row */}
+    <div
+      style={{
+        backgroundColor: "#282828",
+        padding: "4px 12px 4px 12px",
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
+      <div
+        onClick={(e) => { e.stopPropagation(); onViewSummary?.(0, 0, 0) }}
+        style={{ display: "flex", alignItems: "center", gap: 8, height: 28, paddingLeft: 8, paddingRight: 10, borderRadius: 4, cursor: "pointer" }}
+        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+      >
+        <Route size={16} color="#FAFAFA" style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA", lineHeight: "20px" }}>
+          View Route Summary
+        </span>
+      </div>
+    </div>
+  </div>
   )
 }
 
@@ -2708,6 +2705,13 @@ export function LassoWorkspaceSheet({
   const [routeSummaryAnchorRight, setRouteSummaryAnchorRight] = useState<number>(0)
   const [routeSummaryAnchorY, setRouteSummaryAnchorY] = useState<number>(0)
 
+  // Initial Inventory modal — per-route, per-compartment {product, qty} values.
+  // Aggregated into per-product totals when passed into BalanceTableModal.
+  const [editingInitialInventoryRouteId, setEditingInitialInventoryRouteId] = useState<string | null>(null)
+  const [initialInventories, setInitialInventories] = useState<
+    Record<string, Record<string, { product?: import("@/lib/truck-data").FuelProduct; qty: number }>>
+  >({})
+
   // Truck Details sheet — opens from "View Truck Details" button inside the expanded route card
   const [truckDetailsRouteId, setTruckDetailsRouteId] = useState<string | null>(null)
   const [truckDetailsAnchorLeft, setTruckDetailsAnchorLeft] = useState<number>(0)
@@ -4533,10 +4537,10 @@ export function LassoWorkspaceSheet({
         )
       })()}
 
-      {/* ScanEye trigger — conditional:
-            - Route has ≥1 load order → BalanceTableModal (v2 per-stop table)
-            - Route has no load orders → RouteSummarySheet (v1 Products + Truck tabs fallback)
-          The balance table is meaningless without a load, so we fall back to v1 for empty routes. */}
+      {/* Route Summary modal — opened from the 3-dot dropdown's "View Route Summary" item.
+          BalanceTableModal handles both cases natively:
+            - Load order present → L stop becomes numbered stop #1
+            - No load order → "Assumed starting load" row computes per-product starting qty from truck capacity */}
       {(() => {
         if (!routeSummaryRouteId) return null
         const route = mockRoutes.find((r) => r.id === routeSummaryRouteId)
@@ -4544,34 +4548,66 @@ export function LassoWorkspaceSheet({
         const baseOrders = selectedOrders.filter((o) => o.routeId === routeSummaryRouteId)
         const added = addedLoadOrders[routeSummaryRouteId] ?? []
         const allOrders = [...baseOrders, ...added]
-        const hasLoad = allOrders.some((o) => o.orderType === "L")
 
-        if (hasLoad) {
-          return (
-            <BalanceTableModal
-              isOpen={true}
-              onClose={() => setRouteSummaryRouteId(null)}
-              orders={allOrders}
-              retainedFuel={route.retainedFuel}
-            />
-          )
-        }
-
-        // v1 fallback for routes without any load
         const truck = selectedTrucks[routeSummaryRouteId] ?? null
         const truckId = truck?.id ?? route.truckId
-        const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
-        const truckName = truck?.name ?? route.truckName ?? null
+        const truckCapacity = truckId ? TRUCK_CAPACITIES[truckId]?.totalCapacity : undefined
+        const compartmentValues = initialInventories[routeSummaryRouteId] ?? {}
+        const initialInventory = aggregateCompartmentValues(compartmentValues)
+        const canEditInitialInventory = truckId != null && TRUCK_CAPACITIES[truckId] != null
+
         return (
-          <RouteSummarySheet
+          <BalanceTableModal
             isOpen={true}
             onClose={() => setRouteSummaryRouteId(null)}
             orders={allOrders}
-            truckProfile={truckProfile}
+            truckCapacity={truckCapacity}
+            initialInventory={initialInventory}
+            onEditInitialInventory={
+              canEditInitialInventory
+                ? () => setEditingInitialInventoryRouteId(routeSummaryRouteId)
+                : undefined
+            }
+          />
+        )
+      })()}
+
+      {/* Initial Inventory editor — opens on pencil-icon click inside Route Summary */}
+      {(() => {
+        const routeId = editingInitialInventoryRouteId
+        if (!routeId) return null
+        const route = mockRoutes.find((r) => r.id === routeId)
+        if (!route) return null
+        const truck = selectedTrucks[routeId] ?? null
+        const truckId = truck?.id ?? route.truckId
+        const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] : null
+        if (!truckProfile) return null
+        const truckName = truck?.name ?? route.truckName ?? truckId ?? "Truck"
+
+        // Route-demand products = distinct products across delivery orders for this route
+        const baseOrders = selectedOrders.filter((o) => o.routeId === routeId)
+        const added = addedLoadOrders[routeId] ?? []
+        const allOrders = [...baseOrders, ...added]
+        const demandSet = new Set<import("@/lib/truck-data").FuelProduct>()
+        for (const o of allOrders) {
+          if (o.orderType === "L") continue
+          for (const pb of o.productBreakdown ?? []) {
+            demandSet.add(pb.product)
+          }
+        }
+        const routeDemandProducts = Array.from(demandSet)
+
+        return (
+          <InitialInventoryModal
+            isOpen={true}
+            onClose={() => setEditingInitialInventoryRouteId(null)}
             truckName={truckName}
-            anchorLeft={routeSummaryAnchorLeft}
-            anchorRight={routeSummaryAnchorRight}
-            anchorY={routeSummaryAnchorY}
+            truckProfile={truckProfile}
+            routeDemandProducts={routeDemandProducts}
+            initialValues={initialInventories[routeId]}
+            onSave={(values) =>
+              setInitialInventories((prev) => ({ ...prev, [routeId]: values }))
+            }
           />
         )
       })()}
