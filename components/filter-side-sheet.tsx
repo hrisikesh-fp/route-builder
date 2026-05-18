@@ -18,7 +18,7 @@ import {
   RouteIcon,
   MapPinIcon,
 } from "lucide-react"
-import { mockHubs } from "@/lib/mock-data"
+import { mockHubs, mockExtractionOrders, shipTosWithoutOrders, mockDrivers, mockRoutes } from "@/lib/mock-data"
 
 interface FilterSideSheetProps {
   isOpen: boolean
@@ -28,6 +28,8 @@ interface FilterSideSheetProps {
   showAllRoutes: boolean
   onShowAllRoutesChange: (value: boolean) => void
   onCitySelectionChange?: (cityName: string | null) => void
+  onCustomerSelectionChange?: (ids: Set<string>) => void
+  onShipToSelectionChange?: (ids: Set<string>) => void
 }
 
 interface CityData {
@@ -99,6 +101,279 @@ function TankIcon({ className }: { className?: string }) {
   )
 }
 
+// ─── Data builders for Customer / ShipTo / Driver dropdowns ─────────────────
+
+type FilterItem = { id: string; label: string; count: number }
+type FilterSection = { id: string; label?: string; items: FilterItem[] }
+
+function buildCustomerSections(): FilterSection[] {
+  // One row per parent customer. Count = orders today for this customer (across all shiptos).
+  const byId = new Map<string, { name: string; count: number }>()
+  for (const o of mockExtractionOrders) {
+    if (o.orderType && o.orderType !== "D") continue
+    const existing = byId.get(o.customerId)
+    if (existing) existing.count++
+    else byId.set(o.customerId, { name: o.customerName, count: 1 })
+  }
+  for (const s of shipTosWithoutOrders) {
+    if (!byId.has(s.customerId)) byId.set(s.customerId, { name: s.customerName, count: 0 })
+  }
+  const items: FilterItem[] = Array.from(byId.entries())
+    .map(([id, v]) => ({ id, label: v.name, count: v.count }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  return [{ id: "all", items }]
+}
+
+function buildShipToSections(): FilterSection[] {
+  // Grouped by parent customer. Each section is a customer; items are that customer's shiptos.
+  type ST = { id: string; name: string; address: string; count: number }
+  const byCustomer = new Map<string, { customerName: string; shiptos: Map<string, ST> }>()
+
+  const addShipTo = (
+    customerId: string,
+    customerName: string,
+    shipToKey: string,
+    name: string,
+    address: string,
+    countDelta: number,
+  ) => {
+    let group = byCustomer.get(customerId)
+    if (!group) {
+      group = { customerName, shiptos: new Map() }
+      byCustomer.set(customerId, group)
+    }
+    const existing = group.shiptos.get(shipToKey)
+    if (existing) existing.count += countDelta
+    else group.shiptos.set(shipToKey, { id: shipToKey, name, address, count: countDelta })
+  }
+
+  for (const o of mockExtractionOrders) {
+    if (o.orderType && o.orderType !== "D") continue
+    const key = `${o.customerId}__${o.shipToAddress}`
+    addShipTo(o.customerId, o.customerName, key, o.shipToName ?? o.customerName, o.shipToAddress, 1)
+  }
+  for (const s of shipTosWithoutOrders) {
+    addShipTo(s.customerId, s.customerName, s.id, s.shipToName ?? s.customerName, s.shipToAddress, 0)
+  }
+
+  return Array.from(byCustomer.entries())
+    .sort((a, b) => a[1].customerName.localeCompare(b[1].customerName))
+    .map(([cId, group]) => ({
+      id: cId,
+      label: group.customerName,
+      items: Array.from(group.shiptos.values())
+        .map((st) => ({ id: st.id, label: st.name, count: st.count }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    }))
+}
+
+function buildDriverSections(): FilterSection[] {
+  // Count = # of routes today this driver owns.
+  const items: FilterItem[] = mockDrivers
+    .map((d) => ({
+      id: d.id,
+      label: d.name,
+      count: mockRoutes.filter((r: any) => r.driverId === d.id).length,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  return [{ id: "all", items }]
+}
+
+// ─── Reusable multi-select filter dropdown (mirrors the City UX) ────────────
+
+interface MultiSelectFilterDropdownProps {
+  label: string
+  icon: React.ReactNode
+  sections: FilterSection[]
+  applied: Set<string>
+  onApplyChange: (next: Set<string>) => void
+  searchPlaceholder?: string
+  /** If true, sections render with their .label as a header (used by ShipTo grouping). */
+  showSectionHeaders?: boolean
+}
+
+function MultiSelectFilterDropdown({
+  label,
+  icon,
+  sections,
+  applied,
+  onApplyChange,
+  searchPlaceholder = "Search",
+  showSectionHeaders = false,
+}: MultiSelectFilterDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [temp, setTemp] = useState<Set<string>>(applied)
+  const [query, setQuery] = useState("")
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  // Click outside → cancel.
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+        setTemp(applied)
+        setQuery("")
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [isOpen, applied])
+
+  const filteredSections: FilterSection[] = query.trim()
+    ? sections
+        .map((s) => ({
+          ...s,
+          items: s.items.filter((it) => it.label.toLowerCase().includes(query.toLowerCase())),
+        }))
+        .filter((s) => s.items.length > 0)
+    : sections
+
+  const summary = applied.size === 0
+    ? null
+    : applied.size === 1
+      ? sections.flatMap((s) => s.items).find((it) => applied.has(it.id))?.label ?? `${applied.size} selected`
+      : `${applied.size} selected`
+
+  const toggle = (id: string) => {
+    const next = new Set(temp)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setTemp(next)
+  }
+
+  const apply = () => {
+    onApplyChange(new Set(temp))
+    setIsOpen(false)
+    setQuery("")
+  }
+  const cancel = () => {
+    setTemp(applied)
+    setIsOpen(false)
+    setQuery("")
+  }
+  const handleToggleOpen = () => {
+    if (isOpen) cancel()
+    else {
+      setTemp(applied)
+      setIsOpen(true)
+    }
+  }
+
+  return (
+    <div className="relative" ref={rootRef}>
+      <button
+        onClick={handleToggleOpen}
+        className="w-full px-4 flex items-center justify-between transition-all duration-200 hover:bg-[#1a1a1a]"
+        style={{
+          height: 40,
+          borderRadius: 4,
+          backgroundColor: applied.size > 0 ? "#262626" : "transparent",
+          border: "1px solid #282828",
+        }}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <span style={{ display: "inline-flex", color: applied.size > 0 ? "#FFFFFF" : "#A3A3A3" }}>{icon}</span>
+          <span
+            className="font-normal truncate"
+            style={{
+              color: applied.size > 0 ? "#FFFFFF" : "#A3A3A3",
+              fontSize: 16,
+              lineHeight: "24px",
+            }}
+          >
+            {label}
+          </span>
+          {summary && (
+            <>
+              <div className="w-px h-4 bg-white/20 flex-shrink-0" />
+              <span className="font-normal truncate" style={{ color: "#FB923C", fontSize: 16, lineHeight: "24px" }}>
+                {summary}
+              </span>
+            </>
+          )}
+        </div>
+        <ChevronDown
+          className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          style={{ color: "#A3A3A3" }}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          className="absolute left-0 right-0 z-[1000] overflow-hidden flex flex-col rounded-lg"
+          style={{
+            top: "calc(100% + 8px)",
+            maxHeight: 400,
+            backgroundColor: "#1A1A1A",
+            border: "1px solid #282828",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+          }}
+        >
+          <div className="p-3 border-b border-white/10 flex-shrink-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3A3A3]" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-10 bg-[#171717] border-white/10 text-white placeholder:text-[#A3A3A3] h-9"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {filteredSections.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-[#A3A3A3]">No matches</div>
+            ) : (
+              filteredSections.map((section) => (
+                <div key={section.id}>
+                  {showSectionHeaders && section.label && (
+                    <div className="px-4 py-2">
+                      <span className="text-sm font-medium text-[#A3A3A3]">{section.label}</span>
+                    </div>
+                  )}
+                  {section.items.map((it) => (
+                    <div
+                      key={it.id}
+                      className="flex items-center justify-between px-4 py-2 hover:bg-white/5"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Checkbox
+                          checked={temp.has(it.id)}
+                          onCheckedChange={() => toggle(it.id)}
+                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                        />
+                        <span className="text-sm font-medium text-white truncate">{it.label}</span>
+                      </div>
+                      {it.count > 0 && (
+                        <span className="text-sm text-[#A3A3A3] flex-shrink-0 ml-2">{it.count}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2 p-3 border-t border-white/10 flex-shrink-0">
+            <Button
+              variant="outline"
+              onClick={cancel}
+              className="text-white border-white/20 hover:bg-white/10 bg-transparent h-9"
+            >
+              Cancel
+            </Button>
+            <Button onClick={apply} className="bg-white text-black hover:bg-white/90 h-9">
+              Apply
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function FilterSideSheet({
   isOpen,
   onClose,
@@ -107,12 +382,24 @@ export function FilterSideSheet({
   showAllRoutes,
   onShowAllRoutesChange,
   onCitySelectionChange,
+  onCustomerSelectionChange,
+  onShipToSelectionChange,
 }: FilterSideSheetProps) {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
   const [tempSelectedCities, setTempSelectedCities] = useState<Set<string>>(new Set())
   const [appliedCities, setAppliedCities] = useState<Set<string>>(new Set())
   const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set())
   const [citySearchQuery, setCitySearchQuery] = useState("")
+
+  // Applied selections for the new Customer / ShipTo / Driver filter dropdowns
+  const [appliedCustomers, setAppliedCustomers] = useState<Set<string>>(new Set())
+  const [appliedShipTos, setAppliedShipTos] = useState<Set<string>>(new Set())
+  const [appliedDrivers, setAppliedDrivers] = useState<Set<string>>(new Set())
+
+  // Build the data sections once per render — derived from mock data
+  const customerSections = buildCustomerSections()
+  const shipToSections = buildShipToSections()
+  const driverSections = buildDriverSections()
   
   // Order Type checkboxes
   const [deliveryChecked, setDeliveryChecked] = useState(false)
@@ -135,6 +422,9 @@ export function FilterSideSheet({
   // Count active filters
   const activeFilterCount = [
     appliedCities.size > 0,
+    appliedCustomers.size > 0,
+    appliedShipTos.size > 0,
+    appliedDrivers.size > 0,
     deliveryChecked, loadChecked, transferChecked, extractionChecked,
     scheduledChecked, unassignedChecked,
     highChecked, mediumChecked, lowChecked, naChecked,
@@ -233,6 +523,9 @@ export function FilterSideSheet({
   const handleClearAll = () => {
     setAppliedCities(new Set())
     setTempSelectedCities(new Set())
+    setAppliedCustomers(new Set())
+    setAppliedShipTos(new Set())
+    setAppliedDrivers(new Set())
     setDeliveryChecked(false)
     setLoadChecked(false)
     setTransferChecked(false)
@@ -509,61 +802,43 @@ export function FilterSideSheet({
                 <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Customer & ShipTo</h3>
 
                 <div className="space-y-2">
-                  {/* Customer dropdown - unselected state */}
-                  <button
-                    className="w-full px-4 flex items-center justify-between transition-all duration-200 hover:bg-[#1a1a1a]"
-                    style={{
-                      height: "40px",
-                      borderRadius: "4px",
-                      backgroundColor: "transparent",
-                      border: "1px solid #282828",
+                  <MultiSelectFilterDropdown
+                    label="Customer"
+                    icon={<UsersGroupIcon className="w-5 h-5" />}
+                    sections={customerSections}
+                    applied={appliedCustomers}
+                    onApplyChange={(next) => {
+                      setAppliedCustomers(next)
+                      onCustomerSelectionChange?.(next)
                     }}
-                  >
-                    <div className="flex items-center gap-3 text-[#A3A3A3]">
-                      <UsersGroupIcon className="w-5 h-5" />
-                      <span className="font-normal" style={{ fontSize: "16px", lineHeight: "24px" }}>Customer</span>
-                    </div>
-                    <ChevronDown className="w-4 h-4" style={{ color: "#A3A3A3" }} />
-                  </button>
-
-                  {/* ShipTo dropdown - unselected state */}
-                  <button
-                    className="w-full px-4 flex items-center justify-between transition-all duration-200 hover:bg-[#1a1a1a]"
-                    style={{
-                      height: "40px",
-                      borderRadius: "4px",
-                      backgroundColor: "transparent",
-                      border: "1px solid #282828",
+                    searchPlaceholder="Search Customers"
+                  />
+                  <MultiSelectFilterDropdown
+                    label="ShipTo"
+                    icon={<MapPin className="w-5 h-5" />}
+                    sections={shipToSections}
+                    applied={appliedShipTos}
+                    onApplyChange={(next) => {
+                      setAppliedShipTos(next)
+                      onShipToSelectionChange?.(next)
                     }}
-                  >
-                    <div className="flex items-center gap-3 text-[#A3A3A3]">
-                      <MapPin className="w-5 h-5" />
-                      <span className="font-normal" style={{ fontSize: "16px", lineHeight: "24px" }}>ShipTo</span>
-                    </div>
-                    <ChevronDown className="w-4 h-4" style={{ color: "#A3A3A3" }} />
-                  </button>
+                    searchPlaceholder="Search ShipTos"
+                    showSectionHeaders
+                  />
                 </div>
               </div>
 
               {/* Driver Details Section */}
               <div className="space-y-4">
                 <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Driver Details</h3>
-
-                <button
-                  className="w-full px-4 flex items-center justify-between transition-all duration-200 hover:bg-[#1a1a1a]"
-                  style={{
-                    height: "40px",
-                    borderRadius: "4px",
-                    backgroundColor: "transparent",
-                    border: "1px solid #282828",
-                  }}
-                >
-                  <div className="flex items-center gap-3 text-[#A3A3A3]">
-                    <UsersGroupIcon className="w-5 h-5" />
-                    <span className="font-normal" style={{ fontSize: "16px", lineHeight: "24px" }}>Driver Group & Drivers</span>
-                  </div>
-                  <ChevronDown className="w-4 h-4" style={{ color: "#A3A3A3" }} />
-                </button>
+                <MultiSelectFilterDropdown
+                  label="Driver Group & Drivers"
+                  icon={<UsersGroupIcon className="w-5 h-5" />}
+                  sections={driverSections}
+                  applied={appliedDrivers}
+                  onApplyChange={setAppliedDrivers}
+                  searchPlaceholder="Search Drivers"
+                />
               </div>
 
               {/* Order Type & Status Section */}

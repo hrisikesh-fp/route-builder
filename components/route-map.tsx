@@ -6,7 +6,7 @@ import { mockRoutes } from "@/lib/mock-data"
 import { renderMapPinToHTML } from "@/components/map-pin"
 import { base1Infrastructure, clusterInfrastructure } from "@/lib/infrastructure-data"
 import { renderInfrastructureMarkerHTML, buildTerminalTooltipHTML, type TerminalLoadInfo, type TerminalTooltipInfo } from "@/components/infrastructure-marker"
-import { renderMapPinTooltip } from "@/components/map-pin-tooltip"
+import { renderMapPinTooltip, renderShipToNoOrderTooltip } from "@/components/map-pin-tooltip"
 import { renderRouteLineTooltip } from "@/components/route-line-tooltip"
 import { type TankThreshold } from "@/lib/routes-data"
 import type { MapEntityVisibility } from "@/components/map-controls"
@@ -314,16 +314,47 @@ export function RouteMap({
       if (coords && mapRef.current) mapRef.current.flyTo({ center: [coords.lng, coords.lat], zoom: 12 })
     }
 
-    ;(window as any).__zoomToRoute = (routeId: string) => {
+    ;(window as any).__zoomToRoute = (routeId: string, opts?: { maxZoom?: number }) => {
       const bounds = routeBoundsRef.current.get(routeId)
       if (bounds && mapRef.current) {
         // Right padding accounts for 560px workspace panel so route stays centred in visible area
         mapRef.current.fitBounds(bounds, {
           padding: { top: 80, right: 640, bottom: 80, left: 80 },
-          maxZoom: 13,
+          maxZoom: opts?.maxZoom ?? 13,
           duration: 800,
         })
       }
+    }
+
+    ;(window as any).__zoomToShipTo = (latitude: number, longitude: number, zoom = 13) => {
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: [longitude, latitude],
+          zoom,
+          duration: 800,
+        })
+      }
+    }
+
+    ;(window as any).__fitToShipTos = (coords: { lat: number; lng: number }[]) => {
+      if (!mapRef.current || coords.length === 0) return
+      if (coords.length === 1) {
+        mapRef.current.flyTo({ center: [coords[0].lng, coords[0].lat], zoom: 14, duration: 800 })
+        return
+      }
+      const lngs = coords.map((c) => c.lng)
+      const lats = coords.map((c) => c.lat)
+      const bounds: [number, number, number, number] = [
+        Math.min(...lngs),
+        Math.min(...lats),
+        Math.max(...lngs),
+        Math.max(...lats),
+      ]
+      mapRef.current.fitBounds(bounds, {
+        padding: { top: 80, right: 640, bottom: 80, left: 80 },
+        maxZoom: 14,
+        duration: 800,
+      })
     }
 
     ;(window as any).__zoomToTerminal = (terminalId: string) => {
@@ -618,35 +649,92 @@ export function RouteMap({
 
     if (!entityVisibility.shipTosWithoutOrders || currentZoom < 8 || shipTosWithoutOrders.length === 0) return
 
+    // Hover-only tooltip with "bridge" handlers on the popup itself so it survives the cursor
+    // travelling from the pin onto the tooltip (e.g., to click Create Order).
+    // (Click-to-zoom-and-stick was tried; pulled back on user feedback — see DESIGN_JOURNAL.)
+    let closeTimer: number | null = null
+    const cancelClose = () => {
+      if (closeTimer !== null) {
+        clearTimeout(closeTimer)
+        closeTimer = null
+      }
+    }
+    const scheduleClose = () => {
+      cancelClose()
+      closeTimer = window.setTimeout(() => {
+        activePopupRef.current?.remove()
+        activePopupRef.current = null
+        closeTimer = null
+      }, 180)
+    }
+
+    const buildTooltipHTML = (shipTo: ShipTo) => {
+      // Mock thresholds for the demo (no real per-shipto threshold data yet — see DESIGN_JOURNAL).
+      const thresholds = { red: 3, yellow: 8, green: 4, blue: 2 }
+      // Mock "Next Order" = last delivery + 14 days
+      let nextOrderISO: string | undefined
+      if (shipTo.lastDelivery) {
+        const d = new Date(shipTo.lastDelivery)
+        if (!isNaN(d.getTime())) {
+          d.setDate(d.getDate() + 14)
+          nextOrderISO = d.toISOString()
+        }
+      }
+      return renderShipToNoOrderTooltip({
+        shipToId: shipTo.id,
+        shipToName: shipTo.shipToName ?? shipTo.customerName,
+        address: shipTo.shipToAddress,
+        thresholds,
+        lastOrderedISO: shipTo.lastDelivery,
+        nextOrderISO,
+      })
+    }
+
+    const showTooltip = (shipTo: ShipTo) => {
+      cancelClose()
+      activePopupRef.current?.remove()
+      const popup = new mbRef.current.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 10,
+        className: "rb-pin-popup",
+        maxWidth: "320px",
+      })
+        .setLngLat([shipTo.longitude, shipTo.latitude])
+        .setHTML(buildTooltipHTML(shipTo))
+        .addTo(mapRef.current!)
+      activePopupRef.current = popup
+
+      // Wire bridge handlers + the "Create Order" button after the popup DOM is attached.
+      requestAnimationFrame(() => {
+        const node = popup.getElement?.()
+        if (!node) return
+        node.addEventListener("mouseenter", cancelClose)
+        node.addEventListener("mouseleave", scheduleClose)
+        const btn = node.querySelector('button[data-action="create-order"]') as HTMLButtonElement | null
+        if (btn) {
+          btn.addEventListener("click", (ev) => {
+            ev.stopPropagation()
+            cancelClose()
+            const openFn = (window as any).__openCreateOrderForShipTo as
+              | ((id: string) => void)
+              | undefined
+            openFn?.(shipTo.id)
+            activePopupRef.current?.remove()
+            activePopupRef.current = null
+          })
+        }
+      })
+    }
+
     shipTosWithoutOrders.forEach((shipTo) => {
       const el = document.createElement("div")
       el.className = "custom-map-pin shipto-only"
       el.setAttribute("data-shipto-id", shipTo.id)
       el.innerHTML = renderMapPinToHTML("green", undefined, false, true, false, false, false)
 
-      const tooltipHTML = `
-        <div style="background:#18181B;border:1px solid #27272A;border-radius:8px;padding:12px;min-width:180px;">
-          <div style="font-weight:600;color:#FAFAFA;margin-bottom:4px;">${shipTo.customerName}</div>
-          <div style="font-size:12px;color:#A1A1AA;">${shipTo.shipToAddress}</div>
-          <div style="font-size:11px;color:#71717A;margin-top:6px;">No orders scheduled</div>
-        </div>`
-
-      el.addEventListener("mouseenter", () => {
-        activePopupRef.current?.remove()
-        activePopupRef.current = new mbRef.current.Popup({
-          closeButton: false,
-          closeOnClick: false,
-          offset: 10,
-          className: "rb-pin-popup",
-        })
-          .setLngLat([shipTo.longitude, shipTo.latitude])
-          .setHTML(tooltipHTML)
-          .addTo(mapRef.current!)
-      })
-      el.addEventListener("mouseleave", () => {
-        activePopupRef.current?.remove()
-        activePopupRef.current = null
-      })
+      el.addEventListener("mouseenter", () => showTooltip(shipTo))
+      el.addEventListener("mouseleave", () => scheduleClose())
 
       const marker = new mbRef.current.Marker({ element: el, anchor: "bottom" })
         .setLngLat([shipTo.longitude, shipTo.latitude])

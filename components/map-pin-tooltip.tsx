@@ -239,3 +239,122 @@ export function renderMapPinTooltip(props: MapPinTooltipProps): string {
     </div>
   `
 }
+
+// ─── ShipTo-no-order tooltip (Figma node 6059:153946) ───────────────────────
+// A purpose-built compact panel for shiptos that have no order today: header (name +
+// address), 4 threshold pills (red/yellow/green/blue counts), last-ordered ↔ next-order
+// timeline, and a primary "Create Order" CTA. See DESIGN_JOURNAL.
+
+interface ShipToNoOrderTooltipProps {
+  shipToId: string
+  shipToName: string
+  address: string
+  thresholds: { red: number; yellow: number; green: number; blue: number }
+  lastOrderedISO?: string
+  nextOrderISO?: string
+}
+
+function formatShortDate(iso?: string): string {
+  if (!iso) return "—"
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
+}
+
+export function renderShipToNoOrderTooltip(props: ShipToNoOrderTooltipProps): string {
+  const { shipToId, shipToName, address, thresholds, lastOrderedISO, nextOrderISO } = props
+  const lastOrdered = formatShortDate(lastOrderedISO)
+  const nextOrder = formatShortDate(nextOrderISO)
+
+  return `
+    <div style="
+      background: #111;
+      border-radius: 4px;
+      overflow: hidden;
+      min-width: 280px;
+      font-family: Geist, system-ui, sans-serif;
+    ">
+      <!-- Header block (name + address) -->
+      <div style="
+        border-bottom: 1px solid #282828;
+        padding: 12px 16px;
+      ">
+        <div style="font-size: 16px; font-weight: 500; color: #fff; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          ${shipToName}
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span style="font-size: 12px; color: #A3A3A3; line-height: 16px;">${address}</span>
+        </div>
+      </div>
+
+      <!-- Body block -->
+      <div style="
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding: 12px 16px 16px 16px;
+      ">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- Threshold pills -->
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: #333; border-radius: 4px; padding: 4px 6px;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #EF4444;"></span>
+              <span style="font-size: 12px; color: #E5E5E5; line-height: 1;">${thresholds.red}</span>
+            </div>
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: #333; border-radius: 4px; padding: 4px 6px;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #FBBF24;"></span>
+              <span style="font-size: 12px; color: #E5E5E5; line-height: 1;">${thresholds.yellow}</span>
+            </div>
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: #333; border-radius: 4px; padding: 4px 6px;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
+              <span style="font-size: 12px; color: #E5E5E5; line-height: 1;">${thresholds.green}</span>
+            </div>
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: #333; border-radius: 4px; padding: 4px 6px;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3B82F6;"></span>
+              <span style="font-size: 12px; color: #E5E5E5; line-height: 1;">${thresholds.blue}</span>
+            </div>
+          </div>
+
+          <!-- Timeline: Last Ordered ↔ Next Order -->
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="display: flex; flex-direction: column;">
+              <div style="font-size: 14px; font-weight: 500; color: #E5E5E5; line-height: 20px; white-space: nowrap;">${lastOrdered}</div>
+              <div style="font-size: 12px; color: #A3A3A3; line-height: 16px; white-space: nowrap;">Last Ordered</div>
+            </div>
+            <div style="flex: 1; height: 1px; background: repeating-linear-gradient(to right, #333 0, #333 4px, transparent 4px, transparent 8px);"></div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+              <div style="font-size: 14px; font-weight: 500; color: #E5E5E5; line-height: 20px; white-space: nowrap;">${nextOrder}</div>
+              <div style="font-size: 12px; color: #A3A3A3; line-height: 16px; white-space: nowrap;">Next Order</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div style="display: flex; justify-content: flex-end;">
+          <button
+            type="button"
+            data-action="create-order"
+            data-shipto-id="${shipToId}"
+            style="
+              background: #E5E5E5;
+              color: #171717;
+              border: none;
+              border-radius: 4px;
+              padding: 8px 12px;
+              height: 32px;
+              font-size: 14px;
+              font-weight: 500;
+              line-height: 20px;
+              cursor: pointer;
+              font-family: inherit;
+            "
+          >Create Order</button>
+        </div>
+      </div>
+    </div>
+  `
+}

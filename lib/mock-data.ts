@@ -10,7 +10,8 @@ export interface ProductBreakdown {
 export interface ExtractionOrder {
   id: string
   customerId: string
-  customerName: string
+  customerName: string  // parent customer (Walmart). 1 customer → many shipTos.
+  shipToName?: string   // shipto-level identifier (Walmart-E). Display this on the order card when set.
   shipToAddress: string
   latitude: number
   longitude: number
@@ -42,7 +43,8 @@ export interface ExtractionOrder {
 export interface ShipTo {
   id: string
   customerId: string
-  customerName: string
+  customerName: string  // parent customer (e.g., "Walmart")
+  shipToName?: string   // shipto-level identifier (e.g., "Walmart-E"); fallback to customerName when absent
   shipToAddress: string
   latitude: number
   longitude: number
@@ -2863,40 +2865,22 @@ const thresholdToLevel = (threshold: "red" | "yellow" | "green" | "blue"): numbe
   }
 }
 
-// Route 1 — Mark Ruffalo (S1: simplest scenario, 1 product, fits in 1 load, no issues)
-// 6 deliveries, all Diesel-Offroad CLR. Total demand: 4,600 gal. Truck: H-118 (5,500 gal capacity)
+// Route 1 — Mark Ruffalo (S1: trimmed to 2 deliveries — demo starts here, rest added live via Create Order)
+// All Diesel-Offroad CLR. Truck: H-118 (5,500 gal capacity)
 const route1Orders: ExtractionOrder[] = [
-  // Stop 1: Mueller Construction — 1,000 gal Diesel CLR
-  { id: "r1-1", customerId: "c-r1-1", customerName: "Mueller Construction", shipToAddress: "4500 Mueller Blvd Austin TX 78723", latitude: 30.2989, longitude: -97.7023, status: "assigned", volume: 1000, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78723", tankSize: 5000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-20", zone: "Mueller", routeId: "route-1", routeSequence: 1, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 1000, assets: 3, topOffs: 1 }], totalAssets: 3, totalTopOffs: 1, urgency: { red: 1, yellow: 1, green: 1, blue: 1 } },
-  // Stop 2: Manor Equipment Rental — 800 gal Diesel CLR
-  { id: "r1-2", customerId: "c-r1-2", customerName: "Manor Equipment Rental", shipToAddress: "12501 US-290 E Manor TX 78653", latitude: 30.3567, longitude: -97.5234, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Manor", state: "TX", zip: "78653", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 7, priority: "Medium", lastDelivery: "2026-01-18", zone: "Manor", routeId: "route-1", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 800, assets: 2, topOffs: 1 }], totalAssets: 2, totalTopOffs: 1, urgency: { red: 1, yellow: 1, green: 2, blue: 0 } },
-  // Stop 3: Elgin Concrete — 1,000 gal Diesel CLR
-  { id: "r1-3", customerId: "c-r1-3", customerName: "Elgin Concrete", shipToAddress: "1200 US-290 Elgin TX 78621", latitude: 30.3512, longitude: -97.3734, status: "assigned", volume: 1000, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Elgin", state: "TX", zip: "78621", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 14, priority: "Low", lastDelivery: "2026-01-15", zone: "Elgin", routeId: "route-1", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 1000, assets: 3, topOffs: 1 }], totalAssets: 3, totalTopOffs: 1, urgency: { red: 2, yellow: 1, green: 1, blue: 1 } },
-  // Stop 4: Bastrop Excavating — 600 gal Diesel CLR
-  { id: "r1-4", customerId: "c-r1-4", customerName: "Bastrop Excavating", shipToAddress: "1501 Hwy 71 E Bastrop TX 78602", latitude: 30.1234, longitude: -97.3156, status: "assigned", volume: 600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Bastrop", state: "TX", zip: "78602", tankSize: 3500, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-22", zone: "Bastrop", routeId: "route-1", routeSequence: 4, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 600, assets: 2, topOffs: 1 }], totalAssets: 2, totalTopOffs: 1, urgency: { red: 0, yellow: 1, green: 1, blue: 1 } },
-  // Stop 5: Del Valle ISD — 800 gal Diesel CLR
-  { id: "r1-5", customerId: "c-r1-5", customerName: "Del Valle ISD", shipToAddress: "5301 Ross Rd Del Valle TX 78617", latitude: 30.1456, longitude: -97.6123, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Del Valle", state: "TX", zip: "78617", tankSize: 3000, currentLevel: 85, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-19", zone: "Del Valle", routeId: "route-1", routeSequence: 5, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 800, assets: 2, topOffs: 1 }], totalAssets: 2, totalTopOffs: 1, urgency: { red: 1, yellow: 1, green: 0, blue: 1 } },
-  // Stop 6: Austin Bergstrom Fleet — 400 gal Diesel CLR
-  { id: "r1-6", customerId: "c-r1-6", customerName: "Austin Bergstrom Fleet", shipToAddress: "3600 Presidential Blvd Austin TX 78719", latitude: 30.1989, longitude: -97.6656, status: "assigned", volume: 400, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78719", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 8, priority: "Medium", lastDelivery: "2026-01-17", zone: "Airport", routeId: "route-1", routeSequence: 6, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 400, assets: 1, topOffs: 0 }], totalAssets: 1, totalTopOffs: 0, urgency: { red: 0, yellow: 1, green: 1, blue: 1 } },
+  // Stop 1: Mueller Construction Group — Mueller Blvd Yard
+  { id: "r1-1", customerId: "c-mueller", customerName: "Mueller Construction Group", shipToName: "Mueller - Mueller Blvd Yard", shipToAddress: "4500 Mueller Blvd Austin TX 78723", latitude: 30.2989, longitude: -97.7023, status: "assigned", volume: 1000, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78723", tankSize: 5000, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-20", zone: "Mueller", routeId: "route-1", routeSequence: 1, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 1000, assets: 3, topOffs: 1 }], totalAssets: 3, totalTopOffs: 1, urgency: { red: 1, yellow: 1, green: 1, blue: 1 } },
+  // Stop 3: Elgin Concrete Industries — Elgin Plant (kept at original seq 3 so 5:45 AM / 7:15 AM gap is visible)
+  { id: "r1-3", customerId: "c-elgin", customerName: "Elgin Concrete Industries", shipToName: "Elgin Concrete - US-290 Plant", shipToAddress: "1200 US-290 Elgin TX 78621", latitude: 30.3512, longitude: -97.3734, status: "assigned", volume: 1000, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Elgin", state: "TX", zip: "78621", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 14, priority: "Low", lastDelivery: "2026-01-15", zone: "Elgin", routeId: "route-1", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 1000, assets: 3, topOffs: 1 }], totalAssets: 3, totalTopOffs: 1, urgency: { red: 2, yellow: 1, green: 1, blue: 1 } },
   // TRANSFER: commented out for Phase 1
   // { id: "r1-t2", customerId: "c-r1-t2", customerName: "Austin Fuel Island", shipToAddress: "4500 S Congress Ave Austin TX 78745", latitude: 30.1894, longitude: -97.7544, status: "assigned", volume: 0, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78745", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Hub", routeId: "route-1", routeSequence: 99, orderType: "T" },
 ]
 
-// Route 2 — Dwayne Johnson (Simple exceeding. Single product ULSD. Truck + load pre-assigned.)
-// Load: Valero Taylor 4,200 gal ULSD | 5 deliveries, Planned Qty: 5,100 gal
+// Route 2 — Dwayne Johnson (load-first demo scenario: only the Valero Taylor load order to start)
+// Deliveries are added live via the Create Order modal during the demo.
 const route2Orders: ExtractionOrder[] = [
-  // Load: Valero Taylor — 4,200 gal ULSD
-  { id: "r2-load", customerId: "c-r2-load", customerName: "Valero Taylor", shipToAddress: "3100 N Main Street Taylor TX 78574", latitude: 30.5912, longitude: -97.4092, status: "assigned", volume: 4200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Taylor", state: "TX", zip: "78574", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-2", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 4200 }] },
-  // Stop 2: Georgetown Fuel Depot — 1,200 gal ULSD
-  { id: "r2-1", customerId: "c-r2-1", customerName: "Georgetown Fuel Depot", shipToAddress: "500 Industrial Ave Georgetown TX 78626", latitude: 30.6478, longitude: -97.6773, status: "assigned", volume: 1200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Georgetown", state: "TX", zip: "78626", tankSize: 5000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Georgetown", routeId: "route-2", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1200 }] },
-  // Stop 3: Round Rock Storage — 900 gal ULSD
-  { id: "r2-2", customerId: "c-r2-2", customerName: "Round Rock Storage", shipToAddress: "3400 E Palm Valley Blvd Round Rock TX 78665", latitude: 30.5289, longitude: -97.6645, status: "assigned", volume: 900, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Round Rock", state: "TX", zip: "78665", tankSize: 4000, currentLevel: 55, daysUntilEmpty: 6, priority: "Medium", lastDelivery: "2026-01-18", zone: "Round Rock", routeId: "route-2", routeSequence: 3, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 900 }] },
-  // Stop 4: Cedar Park Warehouse — 1,100 gal ULSD
-  { id: "r2-3", customerId: "c-r2-3", customerName: "Cedar Park Warehouse", shipToAddress: "1400 E Whitestone Blvd Cedar Park TX 78613", latitude: 30.5156, longitude: -97.7934, status: "assigned", volume: 1100, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Cedar Park", state: "TX", zip: "78613", tankSize: 5000, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-01-20", zone: "Cedar Park", routeId: "route-2", routeSequence: 4, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1100 }] },
-  // Stop 5: Pflugerville Fleet — 800 gal ULSD
-  { id: "r2-4", customerId: "c-r2-4", customerName: "Pflugerville Fleet", shipToAddress: "2301 FM 685 Pflugerville TX 78660", latitude: 30.4523, longitude: -97.5812, status: "assigned", volume: 800, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Pflugerville", state: "TX", zip: "78660", tankSize: 3500, currentLevel: 85, daysUntilEmpty: 3, priority: "High", lastDelivery: "2026-01-19", zone: "Pflugerville", routeId: "route-2", routeSequence: 5, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 800 }] },
-  // Stop 6: Hutto Farms Co-op — 1,100 gal ULSD
-  { id: "r2-5", customerId: "c-r2-5", customerName: "Hutto Farms Co-op", shipToAddress: "200 Ed Schmidt Blvd Hutto TX 78634", latitude: 30.5378, longitude: -97.5456, status: "assigned", volume: 1100, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Hutto", state: "TX", zip: "78634", tankSize: 6000, currentLevel: 25, daysUntilEmpty: 12, priority: "Low", lastDelivery: "2026-01-16", zone: "Hutto", routeId: "route-2", routeSequence: 6, orderType: "D", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 1100 }] },
+  // Load: Valero Energy — Taylor Terminal — 4,200 gal ULSD
+  { id: "r2-load", customerId: "c-valero", customerName: "Valero Energy", shipToName: "Valero - Taylor Terminal", shipToAddress: "3100 N Main Street Taylor TX 78574", latitude: 30.5912, longitude: -97.4092, status: "assigned", volume: 4200, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Taylor", state: "TX", zip: "78574", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-2", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "ULSD CLEAR DIESEL", volume: 4200 }] },
 ]
 
 // Route 3 — Jessica Harper (S3: 2 products, mid-route load needed, multi-load options)
@@ -2982,6 +2966,25 @@ const unassignedOrders: ExtractionOrder[] = [
 // ShipTos without orders for today - customer locations that exist but have no scheduled delivery
 // These are scattered around the Austin metro area (left/west, top/north, bottom/south)
 export const shipTosWithoutOrders: ShipTo[] = [
+  // ── Demo-relevant shiptos (parent customer → shipto name). Available in the Create Order picker ──
+  // Mark Ruffalo's Route 1 — 4 shiptos waiting to be added (Manor, Bastrop, Del Valle, Austin Bergstrom)
+  { id: "st-manor-r1", customerId: "c-manor", customerName: "Manor Equipment Group", shipToName: "Manor Equipment - US-290 Yard", shipToAddress: "12501 US-290 E Manor TX 78653", latitude: 30.3567, longitude: -97.5234, city: "Manor", state: "TX", zip: "78653", tankSize: 4000, lastDelivery: "2026-01-18", zone: "Manor" },
+  { id: "st-bastrop-r1", customerId: "c-bastrop", customerName: "Bastrop Earthworks", shipToName: "Bastrop Earthworks - Hwy 71 Yard", shipToAddress: "1501 Hwy 71 E Bastrop TX 78602", latitude: 30.1234, longitude: -97.3156, city: "Bastrop", state: "TX", zip: "78602", tankSize: 3500, lastDelivery: "2026-01-22", zone: "Bastrop" },
+  { id: "st-dvisd-r1", customerId: "c-dvisd", customerName: "Del Valle ISD", shipToName: "DVISD - Transportation Depot", shipToAddress: "5301 Ross Rd Del Valle TX 78617", latitude: 30.1456, longitude: -97.6123, city: "Del Valle", state: "TX", zip: "78617", tankSize: 3000, lastDelivery: "2026-01-19", zone: "Del Valle" },
+  { id: "st-abia-r1", customerId: "c-abia", customerName: "ABIA Fleet Services", shipToName: "ABIA - Presidential Hangar", shipToAddress: "3600 Presidential Blvd Austin TX 78719", latitude: 30.1989, longitude: -97.6656, city: "Austin", state: "TX", zip: "78719", tankSize: 4000, lastDelivery: "2026-01-17", zone: "Airport" },
+
+  // Dwayne Johnson's Route 2 — 5 shiptos waiting to be added (Georgetown, Round Rock, Cedar Park, Pflugerville, Hutto)
+  { id: "st-gfh-r2", customerId: "c-gfh", customerName: "Georgetown Fuel Holdings", shipToName: "GFH - Industrial Depot", shipToAddress: "500 Industrial Ave Georgetown TX 78626", latitude: 30.6478, longitude: -97.6773, city: "Georgetown", state: "TX", zip: "78626", tankSize: 5000, lastDelivery: "2026-01-16", zone: "Georgetown" },
+  { id: "st-rrs-r2", customerId: "c-rrs", customerName: "Round Rock Storage Co.", shipToName: "RRS - Palm Valley Warehouse", shipToAddress: "3400 E Palm Valley Blvd Round Rock TX 78665", latitude: 30.5289, longitude: -97.6645, city: "Round Rock", state: "TX", zip: "78665", tankSize: 4000, lastDelivery: "2026-01-18", zone: "Round Rock" },
+  { id: "st-cpl-r2", customerId: "c-cpl", customerName: "Cedar Park Logistics", shipToName: "CPL - Whitestone DC", shipToAddress: "1400 E Whitestone Blvd Cedar Park TX 78613", latitude: 30.5156, longitude: -97.7934, city: "Cedar Park", state: "TX", zip: "78613", tankSize: 5000, lastDelivery: "2026-01-20", zone: "Cedar Park" },
+  { id: "st-pfs-r2", customerId: "c-pfs", customerName: "Pflugerville Fleet Services", shipToName: "PFS - FM 685 Depot", shipToAddress: "2301 FM 685 Pflugerville TX 78660", latitude: 30.4523, longitude: -97.5812, city: "Pflugerville", state: "TX", zip: "78660", tankSize: 3500, lastDelivery: "2026-01-19", zone: "Pflugerville" },
+  { id: "st-hutto-r2-1", customerId: "c-hutto", customerName: "Hutto Agricultural Cooperative", shipToName: "Hutto Farms - Ed Schmidt", shipToAddress: "200 Ed Schmidt Blvd Hutto TX 78634", latitude: 30.5378, longitude: -97.5456, city: "Hutto", state: "TX", zip: "78634", tankSize: 6000, lastDelivery: "2026-01-16", zone: "Hutto" },
+
+  // ── True 1-many examples: Hutto Co-op has 2 additional shiptos; Mueller Construction Group has 1 ──
+  { id: "st-hutto-2", customerId: "c-hutto", customerName: "Hutto Agricultural Cooperative", shipToName: "Hutto Farms - North Field", shipToAddress: "5400 CR 132 Hutto TX 78634", latitude: 30.5512, longitude: -97.5612, city: "Hutto", state: "TX", zip: "78634", tankSize: 4500, lastDelivery: "2026-01-12", zone: "Hutto" },
+  { id: "st-hutto-3", customerId: "c-hutto", customerName: "Hutto Agricultural Cooperative", shipToName: "Hutto Farms - Equipment Yard", shipToAddress: "100 CR 199 Hutto TX 78634", latitude: 30.5234, longitude: -97.5378, city: "Hutto", state: "TX", zip: "78634", tankSize: 3200, lastDelivery: "2026-01-14", zone: "Hutto" },
+  { id: "st-mueller-2", customerId: "c-mueller", customerName: "Mueller Construction Group", shipToName: "Mueller - Northeast Project Site", shipToAddress: "8200 N Lamar Blvd Austin TX 78753", latitude: 30.3445, longitude: -97.6989, city: "Austin", state: "TX", zip: "78753", tankSize: 4500, lastDelivery: "2026-01-23", zone: "North Austin" },
+
   // West/Left side of map
   { id: "st-1", customerId: "c-st-1", customerName: "Blanco Valley Ranch", shipToAddress: "4200 Ranch Rd 165, Blanco, TX 78606", latitude: 30.0912, longitude: -98.4234, city: "Blanco", state: "TX", zip: "78606", tankSize: 5000, lastDelivery: "2026-01-28", zone: "Blanco" },
   { id: "st-2", customerId: "c-st-2", customerName: "Johnson City Ag Supply", shipToAddress: "300 S Nugent Ave, Johnson City, TX 78636", latitude: 30.2767, longitude: -98.4112, city: "Johnson City", state: "TX", zip: "78636", tankSize: 4500, lastDelivery: "2026-01-25", zone: "Johnson City" },
@@ -3107,3 +3110,42 @@ export const mockRoutes: any[] = [
     truckName: null,
   },
 ]
+
+// ─── Filter coord lookups ─────────────────────────────────────────────────────
+// Used by page.tsx to resolve filter selections → lat/lng for map zoom.
+
+/** Maps ShipTo filter IDs → {lat, lng}.
+ *  IDs come in two shapes:
+ *  - `${customerId}__${shipToAddress}` for orders in mockExtractionOrders
+ *  - `s.id` for entries in shipTosWithoutOrders
+ */
+export function buildShipToCoordLookup(): Map<string, { lat: number; lng: number }> {
+  const m = new Map<string, { lat: number; lng: number }>()
+  for (const o of mockExtractionOrders) {
+    if (o.orderType && o.orderType !== "D") continue
+    const key = `${o.customerId}__${o.shipToAddress}`
+    if (!m.has(key)) m.set(key, { lat: o.latitude, lng: o.longitude })
+  }
+  for (const s of shipTosWithoutOrders) {
+    if (!m.has(s.id)) m.set(s.id, { lat: s.latitude, lng: s.longitude })
+  }
+  return m
+}
+
+/** Maps customerId → all {lat, lng} coords for that customer's shiptos. */
+export function buildCustomerCoordLookup(): Map<string, { lat: number; lng: number }[]> {
+  const m = new Map<string, { lat: number; lng: number }[]>()
+  const add = (customerId: string, lat: number, lng: number) => {
+    const list = m.get(customerId) ?? []
+    list.push({ lat, lng })
+    m.set(customerId, list)
+  }
+  for (const o of mockExtractionOrders) {
+    if (o.orderType && o.orderType !== "D") continue
+    add(o.customerId, o.latitude, o.longitude)
+  }
+  for (const s of shipTosWithoutOrders) {
+    add(s.customerId, s.latitude, s.longitude)
+  }
+  return m
+}

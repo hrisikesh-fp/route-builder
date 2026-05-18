@@ -1,8 +1,16 @@
 "use client"
 
 import { X } from "lucide-react"
-import type { TruckCapacityProfile } from "@/lib/truck-data"
-import { TruckSummaryContent } from "@/components/route-summary-sheet"
+import type { TruckCapacityProfile, FuelProduct } from "@/lib/truck-data"
+import { TruckInfoCard } from "@/components/truck-info-card"
+
+const PRODUCT_LABEL: Record<string, string> = {
+  "200*DIESEL-OFFROAD RED": "Diesel-Offroad RED",
+  "200*DIESEL-ONROAD CLEAR": "Diesel-Offroad CLR",
+  "87 OCT W/ 10% ETH": "Gas",
+  "ULSD CLEAR DIESEL": "ULSD",
+  "DEF PACKAGED": "DEF",
+}
 
 export interface TruckDetailsSheetProps {
   isOpen: boolean
@@ -25,7 +33,6 @@ export function TruckDetailsSheet({
 }: TruckDetailsSheetProps) {
   if (!isOpen) return null
 
-  // Dropdown-style anchoring (mirrors route-summary-sheet and breakdown-sheet)
   const SHEET_W = 640
   const SHEET_H_ESTIMATE = 280
   const VIEWPORT_GUTTER = 16
@@ -85,8 +92,85 @@ export function TruckDetailsSheet({
         </button>
       </div>
 
-      {/* Body — same content as route summary's Truck tab */}
-      <TruckSummaryContent truckName={truckName} truckProfile={truckProfile} />
+      {truckProfile && truckName ? (
+        <>
+          <TruckInfoCard truckName={truckName} truckProfile={truckProfile} />
+          <CompartmentBreakdown truckProfile={truckProfile} />
+        </>
+      ) : (
+        <div style={{ padding: "24px 0", color: "#737373", fontSize: 14 }}>
+          No truck selected for this route yet.
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CompartmentBreakdown({ truckProfile }: { truckProfile: TruckCapacityProfile }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span style={{ fontSize: 14, color: "#a3a3a3", lineHeight: "20px" }}>
+        Compartment breakdown
+      </span>
+      <div
+        style={{
+          border: "1px solid #282828",
+          borderRadius: 4,
+          display: "flex",
+          overflow: "hidden",
+        }}
+      >
+        {truckProfile.compartments.map((c, i) => {
+          const caps = Object.values(c.capacities).filter((v): v is number => typeof v === "number")
+          const maxCap = caps.length > 0 ? Math.max(...caps) : 0
+          const products = (Object.keys(c.capacities) as FuelProduct[])
+            .filter((p) => (c.capacities[p] ?? 0) > 0)
+            .map((p) => PRODUCT_LABEL[p] ?? p)
+            .join(", ")
+          const isLast = i === truckProfile.compartments.length - 1
+
+          return (
+            <div
+              key={c.id}
+              style={{
+                flex: "1 1 0",
+                borderRight: isLast ? "none" : "1px solid #282828",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <div
+                style={{
+                  padding: "8px 12px",
+                  borderBottom: "1px solid #282828",
+                  textAlign: "center",
+                  color: "#e5e5e5",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  lineHeight: "20px",
+                }}
+              >
+                {c.id}
+              </div>
+              <div
+                style={{
+                  padding: "8px 12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  textAlign: "center",
+                  color: "#a3a3a3",
+                  fontSize: 12,
+                  lineHeight: "16px",
+                }}
+              >
+                <span>{maxCap.toLocaleString()} gal max.</span>
+                <span>{products || "—"}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

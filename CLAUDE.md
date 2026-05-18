@@ -225,6 +225,49 @@ Single FAB adapts based on what's checked:
 ### `components/infrastructure-marker.tsx` — Hub/Terminal/Bulk Plant/Warehouse map markers
 ### `components/route-list-sheet.tsx` — **UNUSED** — do not re-add
 
+### `components/breakdown-sheet.tsx` — Per-stop product & compartment breakdown sheet
+- Opens as a floating sheet anchored to an order card stop row
+- **By Product chart:** bar chart of product balances at the selected stop; hover tooltip shows which compartments carry that product
+- **By Compartments chart:** only rendered when the route has a single product; shows fill per compartment with hover tooltip listing products
+- Bar chart: `168px` tall, custom Y-axis range (`2000 / 6000 / ceil-to-1000`), zero-line, animated tooltips with value label + card + triangle pointer
+- `selectedOrderId` drives which stop snapshot is shown; falls back to last stop if null
+- Compartment fill simulation: for single-product routes, fill/drain logic runs in sequence order (load orders add to earliest available compartment space, delivery orders drain from earliest filled)
+
+### `components/route-summary-sheet.tsx` — Product & Truck Summary sheet
+- Two-tab sheet: **Products (N)** and **Truck & Compartments**
+- Products tab: grid table — Product / Planned Qty / Compartments columns, one row per product on delivery orders, total row at bottom
+- Truck & Compartments tab: renders `TruckSummaryContent` — truck icon + name + specs, then compartment cards showing max gal per compartment (inline cards with `#1b1b1b` bg + `#333` border)
+- Exports `TruckSummaryContent` for use by other components
+- Anchored dropdown-style same as `breakdown-sheet.tsx`
+
+### `components/truck-details-sheet.tsx` — Truck Details floating sheet
+- Opens from the "View Truck Details" button on a route card (M6)
+- Header: "Truck Details" title + X close
+- Body: `TruckInfoCard` + `CompartmentBreakdown` grid
+- `CompartmentBreakdown`: bordered flex table — one column per compartment, header row (C1/C2...) separated by bottom border from data row (max gal + accepted products). Locked to Figma `YriCTfpkAvXhj0FkU02QLS` node 4254:181452
+- Falls back to "No truck selected" state when `truckProfile` is null
+- Anchors the same dropdown-style as other floating sheets
+
+### `components/truck-info-card.tsx` — Shared truck info card (reusable)
+- Standalone presentational component: `#282828` bg card with truck icon, truck name (white, 16px medium), and specs line (gal · Compartments · N Products: X, Y)
+- Used by `truck-details-sheet.tsx` and `initial-inventory-modal.tsx`
+- Props: `truckName: string`, `truckProfile: TruckCapacityProfile`
+
+### `components/initial-inventory-modal.tsx` — Initial Inventory modal
+- Centered overlay modal (720px wide, max 560px tall)
+- Shows `TruckInfoCard` at top, then a scrollable list of compartments — each with a Product dropdown (filtered to route demand ∩ compartment products) and a quantity input with `gal` suffix unit
+- `canUpdate` gate: at least one compartment must have product + qty > 0
+- Exports `aggregateCompartmentValues()` helper: collapses per-compartment values into per-product totals for callers
+- Resets state on every open via `useEffect` on `isOpen + initialValues`
+
+### `components/balance-table-modal.tsx` — Route Summary / Balance Table modal
+- Centered overlay modal titled "Route Summary"; width adapts: `800px` (1 product) → `1200px` (2+ products)
+- Table columns: Stops + one column per product
+- Rows in order: **Initial inventory** (with Pencil edit button → calls `onEditInitialInventory`), dashed separator, **Assumed starting load** (hidden when a Load order exists), numbered stop rows with L/D/T type badges, **Expected Retain** footer row
+- Negative balances: red `TriangleAlert` icon with fixed-position tooltip ("X will run out at this stop") — uses `position: fixed` so it escapes table `overflow: hidden`
+- `buildAssumedStartingLoad`: distributes truck capacity across products by demand proportion; shows helper text in grey (fully covered) or indigo (capacity-limited)
+- L/D/T badge colors: L = `#189FFC` (blue), D = `#25B8A7` (teal), T = `#737373` (grey)
+
 ---
 
 ## Design tokens
@@ -272,6 +315,12 @@ components/
   infrastructure-marker.tsx    ← Hub/Terminal/Bulk Plant/Warehouse markers
   merge-modal.tsx              ← Create Routes / Optimise Route modal (truck search, sort, loading)
   add-load-order-modal.tsx     ← Terminal + load order selection modal
+  breakdown-sheet.tsx          ← Per-stop product & compartment bar chart sheet
+  route-summary-sheet.tsx      ← Products + Truck & Compartments two-tab sheet
+  truck-details-sheet.tsx      ← Truck Details floating sheet (TruckInfoCard + CompartmentBreakdown grid)
+  truck-info-card.tsx          ← Shared truck info card component (#282828 card, reusable)
+  initial-inventory-modal.tsx  ← Initial inventory per-compartment input modal
+  balance-table-modal.tsx      ← Route Summary / per-stop running balance table modal
   map-stats.tsx                ← Bottom-left metrics display
   create-route-panel.tsx       ← Create route panel (incomplete)
   settings-modal.tsx           ← Settings modal
@@ -304,6 +353,7 @@ contexts/
 - Phase 1.2.1: `KIZz6xXZYrRPHarKEa7wXu`
 - Phase 1.2.1 Dev file: `Zvutylr6lxkxIuKMXEuSX6`
 - Phase 1.3: `tbb6l7lTDhlN0jFo7pYeJw`
+- Phase 1.3 (RB-1.3 active file): `YriCTfpkAvXhj0FkU02QLS` ← use this for current 1.3 work
 
 ---
 

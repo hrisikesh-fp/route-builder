@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from "react"
 import { useSettings } from "@/contexts/settings-context"
 import { base1Infrastructure } from "@/lib/infrastructure-data"
 import { AddLoadOrderModal } from "@/components/add-load-order-modal"
+import { CreateOrderModal, type CreateOrderSubmit } from "@/components/create-order-modal"
 import { validateRouteCapacity, getShortProductName, type ValidationResult } from "@/lib/capacity-validation"
 import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { MergeModal } from "@/components/merge-modal"
@@ -27,9 +28,13 @@ interface LassoWorkspaceSheetProps {
   onHoveredRouteChange: (routeId: string | null) => void
   onHoveredOrderChange?: (orderId: string | null) => void
   onAddedLoadOrdersChange?: (added: Record<string, ExtractionOrder[]>) => void
+  onAddedDeliveryOrdersChange?: (added: Record<string, ExtractionOrder[]>) => void
   onShowToast?: (driverName: string) => void
   onShowMessage?: (message: string) => void
   initialExpandedRouteIds?: string[]
+  /** When set (by the map-pin → Create Order flow), opens the modal prefilled to this shipto with no originating route. */
+  createOrderPrefillShipToId?: string | null
+  onClearCreateOrderPrefillShipToId?: () => void
 }
 
 type LoadOrderInfo = {
@@ -1460,6 +1465,7 @@ function ExpandedRouteCard({
   validation,
   hasLoadOrders,
   onOpenModal,
+  onOpenCreateOrderModal,
   onTruckChange,
   onReorder,
   routeId,
@@ -1481,6 +1487,7 @@ function ExpandedRouteCard({
   validation: ValidationResult | null
   hasLoadOrders: boolean
   onOpenModal: () => void
+  onOpenCreateOrderModal?: () => void
   onTruckChange?: (truck: TruckItem) => void
   onReorder?: (fromIdx: number, toIdx: number) => void
   routeId?: string
@@ -1496,6 +1503,32 @@ function ExpandedRouteCard({
   const { orderCardView } = useSettings()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+
+  // Inline "Create Order" + overlay — which gaps (keyed by the orderId above the gap) are currently active
+  const [activeGapIds, setActiveGapIds] = useState<Set<string>>(new Set())
+  const gapLeaveTimers = useRef<Map<string, number>>(new Map())
+  const activateGap = (orderId: string) => {
+    const existing = gapLeaveTimers.current.get(orderId)
+    if (existing) {
+      clearTimeout(existing)
+      gapLeaveTimers.current.delete(orderId)
+    }
+    setActiveGapIds((prev) => (prev.has(orderId) ? prev : new Set(prev).add(orderId)))
+  }
+  const deactivateGap = (orderId: string) => {
+    const existing = gapLeaveTimers.current.get(orderId)
+    if (existing) clearTimeout(existing)
+    const timeoutId = window.setTimeout(() => {
+      setActiveGapIds((prev) => {
+        if (!prev.has(orderId)) return prev
+        const next = new Set(prev)
+        next.delete(orderId)
+        return next
+      })
+      gapLeaveTimers.current.delete(orderId)
+    }, 120)
+    gapLeaveTimers.current.set(orderId, timeoutId)
+  }
 
   // Change 6: Build a map of delivery stop index → single warning string (comma-separated short names)
   const stopWarnings: Record<number, string> = {}
@@ -1553,13 +1586,32 @@ function ExpandedRouteCard({
             && currentStopIdx === validation.firstFailingStopIndex
             && orders.some((o) => o.orderType === "L") // only if there's already a load (otherwise the top banner handles it)
 
-          // Use MOCK_STOP_TIMES for ALL order types (load + delivery)
-          const stopTime = MOCK_STOP_TIMES[(order.routeSequence ?? idx + 1) - 1] || MOCK_STOP_TIMES[idx] || "—"
+          // Use MOCK_STOP_TIMES for ALL order types (load + delivery).
+          // Exception: orders added through the inline "Create Order" flow carry their picked
+          // time on `scheduledDate` as an "HH:MM AM/PM" string — surface that directly.
+          const explicitTime = /^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(order.scheduledDate ?? "")
+            ? order.scheduledDate
+            : null
+          const stopTime = explicitTime
+            || MOCK_STOP_TIMES[(Math.floor(order.routeSequence ?? idx + 1)) - 1]
+            || MOCK_STOP_TIMES[idx]
+            || "—"
 
           const warning = isDelivery ? stopWarnings[currentStopIdx] : undefined
 
+          // Only the hovered card lights its own bottom-edge + (the gap below it).
+          // The + between cards N and N+1 lives at the bottom of card N — so reach it via card N's hover.
+          const handleCardEnter = () => activateGap(order.id)
+          const handleCardLeave = () => deactivateGap(order.id)
+          const gapVisible = activeGapIds.has(order.id)
+
           return (
-            <div key={order.id}>
+            <div
+              key={order.id}
+              style={{ position: "relative" }}
+              onMouseEnter={handleCardEnter}
+              onMouseLeave={handleCardLeave}
+            >
               {showMidRouteCTA && (
                 <MidRouteAddLoadCTA onOpenModal={onOpenModal} />
               )}
@@ -1591,6 +1643,14 @@ function ExpandedRouteCard({
                   ? <OrderStopRowDetailed {...sharedProps} />
                   : <OrderStopRow {...sharedProps} />
               })()}
+              {onOpenCreateOrderModal && (
+                <InsertOrderOverlay
+                  visible={gapVisible}
+                  onActivate={() => activateGap(order.id)}
+                  onDeactivate={() => deactivateGap(order.id)}
+                  onClick={onOpenCreateOrderModal}
+                />
+              )}
             </div>
           )
         })}
@@ -1599,8 +1659,111 @@ function ExpandedRouteCard({
       {/* Bridge gap between orders and ending hub */}
       <SeqLineBridge />
 
-      {/* Ending hub: arm → up only */}
-      <EndHubRow hubName={hubName} />
+      {/* Ending hub: arm → up only. Hovering the hub also reveals the + overlay below the LAST order. */}
+      {(() => {
+        const lastOrderId = orders[orders.length - 1]?.id
+        if (!lastOrderId) {
+          return <EndHubRow hubName={hubName} />
+        }
+        return (
+          <div
+            onMouseEnter={() => activateGap(lastOrderId)}
+            onMouseLeave={() => deactivateGap(lastOrderId)}
+          >
+            <EndHubRow hubName={hubName} />
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
+/** Inline + overlay rendered below an order card. Visible on hover; click → open Create Order modal. */
+function InsertOrderOverlay({
+  visible,
+  onActivate,
+  onDeactivate,
+  onClick,
+}: {
+  visible: boolean
+  onActivate: () => void
+  onDeactivate: () => void
+  onClick: () => void
+}) {
+  const [showTooltip, setShowTooltip] = useState(false)
+  return (
+    <div
+      onMouseEnter={onActivate}
+      onMouseLeave={() => {
+        onDeactivate()
+        setShowTooltip(false)
+      }}
+      style={{
+        position: "absolute",
+        left: SEQ_COL_W + SEQ_TO_CARD_GAP,
+        right: 0,
+        bottom: -12,
+        display: "flex",
+        justifyContent: "center",
+        pointerEvents: visible ? "auto" : "none",
+        zIndex: 20,
+      }}
+    >
+      <div style={{ position: "relative" }}>
+        <button
+          type="button"
+          aria-label="Create Order"
+          onClick={(e) => {
+            e.stopPropagation()
+            onClick()
+          }}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          style={{
+            width: 24,
+            height: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#282828",
+            border: "1px solid #333",
+            borderRadius: 4,
+            color: "#E5E5E5",
+            cursor: "pointer",
+            opacity: visible ? 1 : 0,
+            transition: "opacity 120ms ease, background-color 120ms ease",
+            padding: 0,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+            fontFamily: "inherit",
+          }}
+          onFocus={(e) => (e.currentTarget.style.backgroundColor = "#333")}
+          onBlur={(e) => (e.currentTarget.style.backgroundColor = "#282828")}
+        >
+          <Plus size={14} />
+        </button>
+        {visible && showTooltip && (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              transform: "translateX(-50%)",
+              bottom: "calc(100% + 6px)",
+              padding: "4px 8px",
+              backgroundColor: "#171717",
+              border: "1px solid #282828",
+              borderRadius: 4,
+              color: "#E5E5E5",
+              fontSize: 12,
+              fontWeight: 400,
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+              fontFamily: "inherit",
+            }}
+          >
+            Create Order
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -1910,7 +2073,7 @@ function OrderStopRow({
                 whiteSpace: "nowrap",
               }}
             >
-              {order.customerName}
+              {order.shipToName ?? order.customerName}
             </span>
           </div>
 
@@ -2279,7 +2442,7 @@ function OrderStopRowDetailed({
                   textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}
               >
-                {order.customerName}
+                {order.shipToName ?? order.customerName}
               </span>
             </div>
 
@@ -2659,14 +2822,48 @@ export function LassoWorkspaceSheet({
   onHoveredRouteChange,
   onHoveredOrderChange,
   onAddedLoadOrdersChange,
+  onAddedDeliveryOrdersChange,
   onShowToast,
   onShowMessage,
+  createOrderPrefillShipToId,
+  onClearCreateOrderPrefillShipToId,
   initialExpandedRouteIds = [],
 }: LassoWorkspaceSheetProps) {
   const { orderCardView } = useSettings()
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
   const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>(initialExpandedRouteIds)
+
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
+  const [addedDeliveryOrders, setAddedDeliveryOrders] = useState<Record<string, ExtractionOrder[]>>({})
+  // Create Order modal. Two entry points:
+  //  - Inline + on a route card → opens with createOrderRouteId set
+  //  - Map shipto-no-order pin → opens with createOrderRouteId null + a prefillShipToId
+  const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState(false)
+  const [createOrderRouteId, setCreateOrderRouteId] = useState<string | null>(null)
+  // Unassigned orders added through the shipto-pin → Create Order flow (no originating route)
+  const [addedUnassignedOrders, setAddedUnassignedOrders] = useState<ExtractionOrder[]>([])
+
+  // Map-pin entry point: when parent sets createOrderPrefillShipToId, open the modal.
+  useEffect(() => {
+    if (createOrderPrefillShipToId) {
+      setCreateOrderRouteId(null)
+      setIsCreateOrderModalOpen(true)
+    }
+  }, [createOrderPrefillShipToId])
+
+  // Route focus while the Create Order modal is open: expand that route's card so it stays
+  // visible behind the modal backdrop, and pull the map zoom back one notch (maxZoom 12 vs
+  // the default 13) so the route is fully in view. See DESIGN_JOURNAL: "Route focus while modal is open".
+  useEffect(() => {
+    if (!isCreateOrderModalOpen || !createOrderRouteId) return
+    setExpandedRouteIds((prev) => (prev.includes(createOrderRouteId) ? prev : [...prev, createOrderRouteId]))
+    if (typeof window !== "undefined") {
+      const zoomFn = (window as any).__zoomToRoute as
+        | ((id: string, opts?: { maxZoom?: number }) => void)
+        | undefined
+      zoomFn?.(createOrderRouteId, { maxZoom: 12 })
+    }
+  }, [isCreateOrderModalOpen, createOrderRouteId])
   const [reorderedRoutes, setReorderedRoutes] = useState<Record<string, string[]>>({}) // routeId → ordered order IDs
   const [recentlyAddedOrderId, setRecentlyAddedOrderId] = useState<string | null>(null)
   // Selected trucks per route: { [routeId]: TruckItem }
@@ -2965,7 +3162,7 @@ export function LassoWorkspaceSheet({
     }
   }
 
-  const unassignedOrders = selectedOrders.filter((o) => !o.routeId)
+  const unassignedOrders = [...selectedOrders.filter((o) => !o.routeId), ...addedUnassignedOrders]
 
   // Unassigned order checkbox logic
   const unassignedOrderIds = unassignedOrders.map(o => o.id)
@@ -3190,9 +3387,10 @@ export function LassoWorkspaceSheet({
                     const isExpanded = expandedRouteIds.includes(routeId)
                     const isChecked = checkedRouteIds.includes(routeId)
 
-                    // Merge in any added load orders for this route
-                    const extraOrders = addedLoadOrders[routeId] ?? []
-                    const defaultSorted = [...orders, ...extraOrders].sort(
+                    // Merge in any added load orders + create-order additions for this route
+                    const extraLoads = addedLoadOrders[routeId] ?? []
+                    const extraDeliveries = addedDeliveryOrders[routeId] ?? []
+                    const defaultSorted = [...orders, ...extraLoads, ...extraDeliveries].sort(
                       (a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0)
                     )
                     // Apply reorder if user has dragged — stamp new routeSequence so validation engine respects drag order
@@ -3911,6 +4109,10 @@ export function LassoWorkspaceSheet({
                               setActiveRouteIdForModal(routeId)
                               setIsAddLoadModalOpen(true)
                             }}
+                            onOpenCreateOrderModal={() => {
+                              setCreateOrderRouteId(routeId)
+                              setIsCreateOrderModalOpen(true)
+                            }}
                             onReorder={(fromIdx, toIdx) => {
                               const ids = sortedOrders.map((o) => o.id)
                               const [moved] = ids.splice(fromIdx, 1)
@@ -4042,7 +4244,7 @@ export function LassoWorkspaceSheet({
                                 {type}
                               </div>
                               <span style={{ flex: 1, fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {order.customerName}
+                                {order.shipToName ?? order.customerName}
                               </span>
                             </div>
                             {/* Planned qty + time row */}
@@ -4115,7 +4317,7 @@ export function LassoWorkspaceSheet({
                       {/* Header: name + address */}
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px" }}>
-                          {order.customerName}
+                          {order.shipToName ?? order.customerName}
                         </span>
                         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#737373" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -4484,6 +4686,148 @@ export function LassoWorkspaceSheet({
 
             setIsAddLoadModalOpen(false)
             setActiveRouteIdForModal(null)
+          }}
+        />
+      )}
+
+      {/* Create Order Modal — two entry paths:
+         • inline + on a route card (createOrderRouteId set) → splices into that route
+         • map shipto-pin tooltip (createOrderRouteId null + prefill) → lands in Unassigned */}
+      {isCreateOrderModalOpen && (
+        <CreateOrderModal
+          isOpen={isCreateOrderModalOpen}
+          prefillShipToId={createOrderPrefillShipToId ?? null}
+          prefillDriverName={
+            createOrderRouteId
+              ? (mockRoutes.find((r) => r.id === createOrderRouteId)?.driverName ?? null)
+              : null
+          }
+          onClose={() => {
+            setIsCreateOrderModalOpen(false)
+            setCreateOrderRouteId(null)
+            onClearCreateOrderPrefillShipToId?.()
+          }}
+          onSubmit={(data: CreateOrderSubmit) => {
+            const routeId = createOrderRouteId
+
+            if (!routeId) {
+              // No-route entry (shipto-pin) → land in Unassigned.
+              const newOrder: ExtractionOrder = {
+                id: `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                customerId: data.customerId,
+                customerName: data.customerName,
+                shipToName: data.shipToName,
+                shipToAddress: data.shipToAddress,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                status: "pending",
+                volume: data.volume,
+                scheduledDate: data.scheduledTimeLabel,
+                zoneId: "",
+                hubId: "",
+                city: data.city,
+                state: data.state,
+                zip: data.zip,
+                tankSize: 0,
+                currentLevel: 0,
+                daysUntilEmpty: 0,
+                priority: "Medium",
+                lastDelivery: "",
+                zone: data.zone,
+                orderType: "D",
+              }
+              setAddedUnassignedOrders((prev) => [...prev, newOrder])
+              setRecentlyAddedOrderId(newOrder.id)
+              setTimeout(() => setRecentlyAddedOrderId(null), 4500)
+              onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
+              setIsCreateOrderModalOpen(false)
+              setCreateOrderRouteId(null)
+              onClearCreateOrderPrefillShipToId?.()
+              return
+            }
+
+            const baseRouteOrders = selectedOrders.filter((o) => o.routeId === routeId)
+            const existing = [
+              ...baseRouteOrders,
+              ...(addedLoadOrders[routeId] ?? []),
+              ...(addedDeliveryOrders[routeId] ?? []),
+            ]
+            const route = mockRoutes.find((r) => r.id === routeId)
+            const hubId = existing[0]?.hubId ?? route?.hubId ?? ""
+
+            // Use time-of-day (minutes since midnight) for insertion.
+            // Existing orders show their time via MOCK_STOP_TIMES[routeSequence-1]; new
+            // create-order entries carry an explicit "HH:MM AM/PM" string on scheduledDate.
+            const orderMins = (o: ExtractionOrder, fallbackIdx: number) => {
+              if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(o.scheduledDate ?? "")) {
+                return timeStrToMins(o.scheduledDate)
+              }
+              const seqIdx = Math.floor(o.routeSequence ?? fallbackIdx + 1) - 1
+              const slot = MOCK_STOP_TIMES[seqIdx] ?? MOCK_STOP_TIMES[fallbackIdx]
+              return slot ? timeStrToMins(slot) : 0
+            }
+            const newMins = timeStrToMins(data.scheduledTimeLabel)
+            // Sort existing by time-of-day to find the slot the new order goes into.
+            const indexed = existing.map((o, i) => ({ o, mins: orderMins(o, i) }))
+            indexed.sort((a, b) => a.mins - b.mins)
+            let insertAfterIdx = -1
+            for (let i = 0; i < indexed.length; i++) {
+              if (indexed[i].mins <= newMins) insertAfterIdx = i
+              else break
+            }
+            const prevSeq = insertAfterIdx >= 0
+              ? (indexed[insertAfterIdx].o.routeSequence ?? insertAfterIdx + 1)
+              : 0
+            const nextIdx = insertAfterIdx + 1
+            const nextSeq = nextIdx < indexed.length
+              ? (indexed[nextIdx].o.routeSequence ?? nextIdx + 1)
+              : prevSeq + 1
+            const newSeq = (prevSeq + nextSeq) / 2
+
+            const newOrder: ExtractionOrder = {
+              id: `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              customerId: data.customerId,
+              customerName: data.customerName,
+              shipToName: data.shipToName,
+              shipToAddress: data.shipToAddress,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              status: "assigned",
+              volume: data.volume,
+              // Carry the picked time as "HH:MM AM/PM" so the seq column displays it directly.
+              scheduledDate: data.scheduledTimeLabel,
+              zoneId: "",
+              hubId,
+              city: data.city,
+              state: data.state,
+              zip: data.zip,
+              tankSize: 0,
+              currentLevel: 0,
+              daysUntilEmpty: 0,
+              priority: "Medium",
+              lastDelivery: "",
+              zone: data.zone,
+              routeId,
+              routeSequence: newSeq,
+              orderType: "D",
+            }
+
+            const updated = {
+              ...addedDeliveryOrders,
+              [routeId]: [...(addedDeliveryOrders[routeId] ?? []), newOrder],
+            }
+            setAddedDeliveryOrders(updated)
+            onAddedDeliveryOrdersChange?.(updated)
+
+            setRecentlyAddedOrderId(newOrder.id)
+            setTimeout(() => setRecentlyAddedOrderId(null), 4500)
+
+            const driverFirstName = (route?.driverName ?? "Driver").split(" ")[0]
+            onShowMessage?.(`Delivery Order added to ${driverFirstName}'s Route successfully`)
+
+            setIsCreateOrderModalOpen(false)
+            setCreateOrderRouteId(null)
+            onClearCreateOrderPrefillShipToId?.()
           }}
         />
       )}

@@ -17,7 +17,7 @@ import { LassoCanvas } from "@/components/lasso-canvas"
 import { SettingsModal } from "@/components/settings-modal"
 import { SettingsProvider } from "@/contexts/settings-context"
 import type { ExtractionOrder } from "@/lib/mock-data"
-import { mockExtractionOrders, mockRoutes, shipTosWithoutOrders } from "@/lib/mock-data"
+import { mockExtractionOrders, mockRoutes, shipTosWithoutOrders, buildShipToCoordLookup, buildCustomerCoordLookup } from "@/lib/mock-data"
 import { CheckCircle2 } from "lucide-react"
 
 export default function Home() {
@@ -34,6 +34,53 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [hoveredWorkspaceRouteId, setHoveredWorkspaceRouteId] = useState<string | null>(null)
   const [hoveredWorkspaceOrderId, setHoveredWorkspaceOrderId] = useState<string | null>(null)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
+  const [addedDeliveryOrders, setAddedDeliveryOrders] = useState<Record<string, ExtractionOrder[]>>({})
+  // When a shipto-no-order pin's "Create Order" button is clicked, the route-map fires a
+  // window global. We translate that into a state value here, and pass it down to the workspace
+  // sheet so the modal can open prefilled with this shipto. Cleared when the modal closes.
+  const [createOrderPrefillShipToId, setCreateOrderPrefillShipToId] = useState<string | null>(null)
+
+  // Filter-driven map zoom — Customer and ShipTo selections
+  const [appliedFilterCustomers, setAppliedFilterCustomers] = useState<Set<string>>(new Set())
+  const [appliedFilterShipTos, setAppliedFilterShipTos] = useState<Set<string>>(new Set())
+
+  const shipToCoordLookup = useMemo(() => buildShipToCoordLookup(), [])
+  const customerCoordLookup = useMemo(() => buildCustomerCoordLookup(), [])
+
+  useEffect(() => {
+    const fitFn = (window as any).__fitToShipTos
+    if (typeof fitFn !== "function") return
+
+    // ShipTo selection takes priority — zoom to exactly those shiptos.
+    if (appliedFilterShipTos.size > 0) {
+      const coords = Array.from(appliedFilterShipTos)
+        .map((id) => shipToCoordLookup.get(id))
+        .filter((c): c is { lat: number; lng: number } => !!c)
+      if (coords.length > 0) fitFn(coords)
+      return
+    }
+
+    // Customer selection — collect all shiptos for the selected customers.
+    if (appliedFilterCustomers.size > 0) {
+      const coords: { lat: number; lng: number }[] = []
+      for (const cId of appliedFilterCustomers) {
+        const pts = customerCoordLookup.get(cId) ?? []
+        coords.push(...pts)
+      }
+      if (coords.length > 0) fitFn(coords)
+    }
+  }, [appliedFilterCustomers, appliedFilterShipTos, shipToCoordLookup, customerCoordLookup])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    ;(window as any).__openCreateOrderForShipTo = (shipToId: string) => {
+      setCreateOrderPrefillShipToId(shipToId)
+      setIsWorkspaceOpen(true)
+    }
+    return () => {
+      delete (window as any).__openCreateOrderForShipTo
+    }
+  }, [])
   const [entityVisibility, setEntityVisibility] = useState<MapEntityVisibility>({
     shipTosWithOrders: true,
     routeSequence: true,
@@ -339,6 +386,9 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onHoveredRouteChange={setHoveredWorkspaceRouteId}
         onHoveredOrderChange={setHoveredWorkspaceOrderId}
         onAddedLoadOrdersChange={setAddedLoadOrders}
+        onAddedDeliveryOrdersChange={setAddedDeliveryOrders}
+        createOrderPrefillShipToId={createOrderPrefillShipToId}
+        onClearCreateOrderPrefillShipToId={() => setCreateOrderPrefillShipToId(null)}
         initialExpandedRouteIds={[]}
         onShowToast={(driverName) => {
           setToastMessage(`Load Order added to ${driverName}'s Route successfully`)
@@ -387,6 +437,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         showAllRoutes={showAllRoutes}
         onShowAllRoutesChange={setShowAllRoutes}
         onCitySelectionChange={handleCitySelectionChange}
+        onCustomerSelectionChange={setAppliedFilterCustomers}
+        onShipToSelectionChange={setAppliedFilterShipTos}
       />
 
 
