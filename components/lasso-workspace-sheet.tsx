@@ -281,7 +281,7 @@ function RouteCardCollapsed({
   isTruckDropdownOpen?: boolean
   onAddTrailer?: () => void
   isTrailerDropdownOpen?: boolean
-  onDriverClick?: () => void
+  onDriverClick?: (rect: DOMRect) => void
   isDriverDropdownOpen?: boolean
   onMenuClick?: () => void
   isMenuOpen?: boolean
@@ -489,7 +489,7 @@ function RouteCardCollapsed({
           {driverName ? (
             <button
               data-driver-dropdown
-              onClick={(e) => { e.stopPropagation(); onDriverClick?.() }}
+              onClick={(e) => { e.stopPropagation(); onDriverClick?.(e.currentTarget.getBoundingClientRect()) }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -516,7 +516,7 @@ function RouteCardCollapsed({
           ) : (
             <button
               data-driver-dropdown
-              onClick={(e) => { e.stopPropagation(); onDriverClick?.() }}
+              onClick={(e) => { e.stopPropagation(); onDriverClick?.(e.currentTarget.getBoundingClientRect()) }}
               style={{
                 width: 28,
                 height: 28,
@@ -2997,6 +2997,7 @@ export function LassoWorkspaceSheet({
 
   // Driver dropdown state
   const [driverDropdownRouteId, setDriverDropdownRouteId] = useState<string | null>(null)
+  const [driverDropdownRect, setDriverDropdownRect] = useState<DOMRect | null>(null)
   const [driverSearch, setDriverSearch] = useState("")
   // Selected drivers per route — pre-populate from mockRoutes
   const [selectedDrivers, setSelectedDrivers] = useState<Record<string, DriverItem>>(() => {
@@ -3537,8 +3538,9 @@ export function LassoWorkspaceSheet({
                                 setMenuRouteId(null)
                               }}
                               isTrailerDropdownOpen={trailerDropdownRouteId === routeId}
-                              onDriverClick={() => {
+                              onDriverClick={(rect) => {
                                 setDriverDropdownRouteId(driverDropdownRouteId === routeId ? null : routeId)
+                                setDriverDropdownRect(driverDropdownRouteId === routeId ? null : rect)
                                 setDriverSearch("")
                                 setTruckDropdownRouteId(null)
                                 setTrailerDropdownRouteId(null)
@@ -3667,17 +3669,16 @@ export function LassoWorkspaceSheet({
                               </div>
                             )}
 
-                            {/* Driver dropdown — floating popover anchored below card */}
-                            {driverDropdownRouteId === routeId && (
+                            {/* Driver dropdown — floating popover anchored to button via fixed positioning */}
+                            {driverDropdownRouteId === routeId && driverDropdownRect && (
                               <div
                                 data-driver-dropdown
                                 style={{
-                                  position: "absolute",
-                                  bottom: 12,
-                                  left: 20,
-                                  transform: "translateY(calc(100% + 4px))",
-                                  width: 260,
-                                  zIndex: 999,
+                                  position: "fixed",
+                                  top: driverDropdownRect.bottom + 4,
+                                  left: driverDropdownRect.left,
+                                  width: Math.max(driverDropdownRect.width, 260),
+                                  zIndex: 9999,
                                   backgroundColor: "#1A1A1A",
                                   border: "1px solid #333",
                                   borderRadius: 4,
@@ -4189,6 +4190,9 @@ export function LassoWorkspaceSheet({
                     const totalAssets = order.totalAssets ?? 0
                     const totalTopOffs = order.totalTopOffs ?? 0
                     const urgency = order.urgency ?? { red: 0, yellow: 0, green: 0, blue: 0 }
+                    const unassignedTime = /^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(order.scheduledDate ?? "")
+                      ? order.scheduledDate
+                      : new Date(order.scheduledDate ?? "").toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
 
                     if (orderCardView === "condensed") {
                       return (
@@ -4340,7 +4344,7 @@ export function LassoWorkspaceSheet({
                               <polyline points="12 6 12 12 16 14" />
                             </svg>
                             <span style={{ fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px" }}>
-                              Planned at: <strong>05:30 AM</strong>
+                              Planned at: <strong>{unassignedTime}</strong>
                             </span>
                           </div>
                           <div style={{
@@ -4822,12 +4826,27 @@ export function LassoWorkspaceSheet({
             setRecentlyAddedOrderId(newOrder.id)
             setTimeout(() => setRecentlyAddedOrderId(null), 4500)
 
+            // Expand the route card so the new order is immediately visible
+            setExpandedRouteIds((prev) => prev.includes(routeId) ? prev : [...prev, routeId])
+
             const driverFirstName = (route?.driverName ?? "Driver").split(" ")[0]
             onShowMessage?.(`Delivery Order added to ${driverFirstName}'s Route successfully`)
 
             setIsCreateOrderModalOpen(false)
             setCreateOrderRouteId(null)
             onClearCreateOrderPrefillShipToId?.()
+
+            // Zoom map to fit all existing route stops + the new order
+            setTimeout(() => {
+              const existingCoords = selectedOrders
+                .filter((o) => o.routeId === routeId)
+                .map((o) => ({ lat: o.latitude, lng: o.longitude }))
+              const addedCoords = (updated[routeId] ?? []).map((o) => ({ lat: o.latitude, lng: o.longitude }))
+              const allCoords = [...existingCoords, ...addedCoords]
+              if (allCoords.length > 0) {
+                ;(window as any).__fitToShipTos?.(allCoords)
+              }
+            }, 150)
           }}
         />
       )}

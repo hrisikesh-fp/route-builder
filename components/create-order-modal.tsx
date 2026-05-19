@@ -260,18 +260,22 @@ function Dropdown({
   onChange: (id: string) => void
 }) {
   const [open, setOpen] = useState(false)
-  const [openUpward, setOpenUpward] = useState(false)
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({})
   const [query, setQuery] = useState("")
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) { setQuery(""); return }
-    // Detect if there's enough space below; if not, flip upward.
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
       const spaceBelow = window.innerHeight - rect.bottom
-      setOpenUpward(spaceBelow < 300)
+      if (spaceBelow < 300) {
+        // open upward — anchor to top of trigger
+        setPanelStyle({ top: "auto", bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width })
+      } else {
+        setPanelStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+      }
     }
   }, [open])
 
@@ -326,17 +330,13 @@ function Dropdown({
       {open && (
         <div
           style={{
-            position: "absolute",
-            ...(openUpward
-              ? { bottom: "calc(100% + 4px)" }
-              : { top: "calc(100% + 4px)" }),
-            left: 0,
-            right: 0,
+            position: "fixed",
+            ...panelStyle,
             backgroundColor: "#1B1B1B",
             border: "1px solid #333",
             borderRadius: 4,
             boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-            zIndex: 50,
+            zIndex: 9999,
             maxHeight: 240,
             display: "flex",
             flexDirection: "column",
@@ -782,7 +782,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
             <div style={{ border: "1px solid #282828", borderRadius: 4, overflow: "hidden" }}>
               {/* Table header */}
               <div style={{ display: "grid", gridTemplateColumns: TABLE_GRID, backgroundColor: "#222", height: 40, alignItems: "center", borderBottom: "1px solid #282828" }}>
-                <div style={{ padding: "0 12px" }}><FauxCheckbox /></div>
+                <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}><FauxCheckbox /></div>
                 <div style={{ padding: "0 12px", display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ ...colHeaderStyle, whiteSpace: "nowrap" }}>Top Off</span>
                   <Toggle
@@ -820,19 +820,12 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
                     style={{ display: "grid", gridTemplateColumns: TABLE_GRID, borderBottom: "1px solid #282828", minHeight: 64, alignItems: "center" }}
                   >
                     {/* Checkbox */}
-                    <div style={{ padding: "0 12px" }}><FauxCheckbox /></div>
+                    <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}><FauxCheckbox /></div>
 
-                    {/* Asset name + product + top-off toggle */}
-                    <div style={{ padding: "0 12px", display: "flex", alignItems: "center", gap: 12 }}>
-                      <Toggle
-                        on={isTopOff}
-                        onChange={() => setTopOffRows((prev) => ({ ...prev, [row.id]: !prev[row.id] }))}
-                        size="sm"
-                      />
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                        <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
-                        <span style={{ fontSize: 12, color: "#737373" }}>Product</span>
-                      </div>
+                    {/* Asset name + product */}
+                    <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                      <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
+                      <span style={{ fontSize: 12, color: "#737373" }}>Product</span>
                     </div>
 
                     {/* Ullage + % fill */}

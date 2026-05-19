@@ -5,6 +5,7 @@ interface MapPinTooltipProps {
   state: string
   zip: string
   scheduledDate: string
+  plannedTime?: string
   driverId?: string
   currentLevel: number
   volume: number
@@ -57,6 +58,7 @@ export function renderMapPinTooltip(props: MapPinTooltipProps): string {
     state,
     zip,
     scheduledDate,
+    plannedTime,
     driverId,
     volume,
     orderType = "delivery",
@@ -66,7 +68,7 @@ export function renderMapPinTooltip(props: MapPinTooltipProps): string {
     thresholdCounts = { red: 0, yellow: 0, green: 0, blue: 0 },
   } = props
 
-  const time = new Date(scheduledDate).toLocaleTimeString("en-US", {
+  const time = plannedTime ?? new Date(scheduledDate).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,

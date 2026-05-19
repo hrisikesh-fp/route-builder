@@ -3,6 +3,20 @@
 import { useEffect, useRef, useState } from "react"
 import type { ExtractionOrder, ShipTo } from "@/lib/mock-data"
 import { mockRoutes } from "@/lib/mock-data"
+
+// Mirror of MOCK_STOP_TIMES in lasso-workspace-sheet — used to derive display times from routeSequence
+const STOP_TIMES = [
+  "5:45 AM", "06:30 AM", "7:15 AM", "8:00 AM", "8:45 AM",
+  "9:30 AM", "10:15 AM", "11:00 AM", "11:45 AM", "12:30 PM",
+]
+
+function getStopDisplayTime(order: ExtractionOrder): string | undefined {
+  // New orders carry an explicit "HH:MM AM/PM" string on scheduledDate
+  if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(order.scheduledDate ?? "")) return order.scheduledDate
+  const seq = Math.floor(order.routeSequence ?? 0)
+  if (seq > 0 && seq <= STOP_TIMES.length) return STOP_TIMES[seq - 1]
+  return undefined
+}
 import { renderMapPinToHTML } from "@/components/map-pin"
 import { base1Infrastructure, clusterInfrastructure } from "@/lib/infrastructure-data"
 import { renderInfrastructureMarkerHTML, buildTerminalTooltipHTML, type TerminalLoadInfo, type TerminalTooltipInfo } from "@/components/infrastructure-marker"
@@ -194,6 +208,8 @@ export function RouteMap({
   const orderMarkerMapRef = useRef<Map<string, any>>(new Map())
   // order id → order data (stable, avoids recreating on selectedRouteIds change)
   const orderDataMapRef = useRef<Map<string, { order: ExtractionOrder; tankThreshold: TankThreshold }>>(new Map())
+  // order id → 1-based sequential position within its route's delivery stop list
+  const routePositionMapRef = useRef<Map<string, number>>(new Map())
 
   const shipToMarkersRef = useRef<any[]>([])
   const hubMarkersRef = useRef<any[]>([])
@@ -402,6 +418,21 @@ export function RouteMap({
 
     if (!entityVisibility.shipTosWithOrders) return
 
+    // Build sequential list-position lookup per route (matches workspace card numbering)
+    routePositionMapRef.current.clear()
+    const byRoute = new Map<string, ExtractionOrder[]>()
+    for (const o of orders) {
+      if (o.routeId && o.orderType !== "L" && o.orderType !== "T") {
+        const arr = byRoute.get(o.routeId) ?? []
+        arr.push(o)
+        byRoute.set(o.routeId, arr)
+      }
+    }
+    for (const routeOrders of byRoute.values()) {
+      routeOrders.sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
+      routeOrders.forEach((o, idx) => routePositionMapRef.current.set(o.id, idx + 1))
+    }
+
     // Skip load (L) and transfer (T) orders — they're co-located with infrastructure markers
     orders.filter((order) => order.orderType !== "L" && order.orderType !== "T").forEach((order) => {
       const threshold = getTankThreshold(order.currentLevel)
@@ -414,7 +445,7 @@ export function RouteMap({
       el.setAttribute("data-order-id", order.id)
       el.innerHTML = renderMapPinToHTML(
         threshold,
-        showSeq ? order.routeSequence : undefined,
+        showSeq ? (routePositionMapRef.current.get(order.id) ?? order.routeSequence) : undefined,
         showBadges && !order.routeId && order.status === "pending",
         false, false, false, isActive,
       )
@@ -429,6 +460,7 @@ export function RouteMap({
           state: order.state,
           zip: order.zip,
           scheduledDate: order.scheduledDate,
+          plannedTime: getStopDisplayTime(order),
           driverId: order.driverId,
           currentLevel: order.currentLevel,
           volume: order.volume,
@@ -504,7 +536,7 @@ export function RouteMap({
       const showSeq = showBadges && entityVisibility.routeSequence
       el.innerHTML = renderMapPinToHTML(
         tankThreshold,
-        showSeq ? order.routeSequence : undefined,
+        showSeq ? (routePositionMapRef.current.get(order.id) ?? order.routeSequence) : undefined,
         showBadges && !order.routeId && order.status === "pending",
         false, false, false, isActive,
       )

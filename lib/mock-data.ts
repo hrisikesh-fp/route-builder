@@ -188,14 +188,12 @@ export const mockHubs: Hub[] = [
 ]
 
 export const mockDrivers: Driver[] = [
-  { id: "driver-1", name: "John Smith", vehicle: "Tanker-101", status: "available", hubId: "hub-1" },
-  { id: "driver-2", name: "Sarah Johnson", vehicle: "Tanker-102", status: "on-route", hubId: "hub-1" },
-  { id: "driver-3", name: "Mike Williams", vehicle: "Tanker-103", status: "available", hubId: "hub-2" },
-  { id: "driver-4", name: "Emily Davis", vehicle: "Tanker-104", status: "on-route", hubId: "hub-2" },
-  { id: "driver-5", name: "Robert Brown", vehicle: "Tanker-105", status: "available", hubId: "hub-1" },
-  { id: "driver-6", name: "Amanda Torres", vehicle: "Tanker-106", status: "on-route", hubId: "hub-5" },
-  { id: "driver-7", name: "Chris Parker", vehicle: "Tanker-107", status: "on-route", hubId: "hub-5" },
-  { id: "driver-8", name: "Nicole Martinez", vehicle: "Tanker-108", status: "on-route", hubId: "hub-5" },
+  { id: "driver-1", name: "Mark Ruffalo", vehicle: "Tanker-101", status: "available", hubId: "hub-1" },
+  { id: "driver-2", name: "Dwayne Johnson", vehicle: "Tanker-102", status: "on-route", hubId: "hub-1" },
+  { id: "driver-3", name: "Jessica Harper", vehicle: "Tanker-103", status: "available", hubId: "hub-2" },
+  { id: "driver-4", name: "Kyle Reese", vehicle: "Tanker-104", status: "on-route", hubId: "hub-2" },
+  { id: "driver-5", name: "Benedict Cumberbatch", vehicle: "Tanker-105", status: "available", hubId: "hub-1" },
+  { id: "driver-6", name: "Valerie Thomas", vehicle: "Tanker-106", status: "on-route", hubId: "hub-3" },
 ]
 
 export const syracuseCustomers: ExtractionOrder[] = [
