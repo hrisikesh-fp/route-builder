@@ -35,6 +35,8 @@ interface LassoWorkspaceSheetProps {
   /** When set (by the map-pin → Create Order flow), opens the modal prefilled to this shipto with no originating route. */
   createOrderPrefillShipToId?: string | null
   onClearCreateOrderPrefillShipToId?: () => void
+  /** Called when a new synthetic route is created (driver-from-modal flow) so page.tsx can register it. */
+  onAddSelectedRouteId?: (routeId: string) => void
 }
 
 type LoadOrderInfo = {
@@ -2827,6 +2829,7 @@ export function LassoWorkspaceSheet({
   onShowMessage,
   createOrderPrefillShipToId,
   onClearCreateOrderPrefillShipToId,
+  onAddSelectedRouteId,
   initialExpandedRouteIds = [],
 }: LassoWorkspaceSheetProps) {
   const { orderCardView } = useSettings()
@@ -3011,6 +3014,9 @@ export function LassoWorkspaceSheet({
     return initial
   })
 
+  // Synthetic routes created via "Create Order → select driver" (no base orders in selectedOrders)
+  const [addedRouteInfo, setAddedRouteInfo] = useState<Record<string, { driverName: string; driverId: string; color: string }>>({})
+
   // Scroll container ref for chip scroll-to-stop
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const unassignedSectionRef = useRef<HTMLDivElement>(null)
@@ -3145,7 +3151,11 @@ export function LassoWorkspaceSheet({
     {} as Record<string, ExtractionOrder[]>
   )
 
-  const allRouteIds = Object.keys(routeGroups)
+  // Include synthetic routes (driver-created, no base orders) at the end of the list
+  const syntheticRouteIds = Object.keys(addedRouteInfo).filter(
+    (id) => !Object.keys(routeGroups).includes(id) && (addedDeliveryOrders[id]?.length ?? 0) > 0
+  )
+  const allRouteIds = [...Object.keys(routeGroups), ...syntheticRouteIds]
   const allChecked = allRouteIds.length > 0 && allRouteIds.every((id) => checkedRouteIds.includes(id))
   const someChecked = checkedRouteIds.length > 0 && !allChecked
 
@@ -3381,10 +3391,11 @@ export function LassoWorkspaceSheet({
                   }}
                 >
                   {allRouteIds.map((routeId) => {
-                    const orders = routeGroups[routeId]
+                    const orders = routeGroups[routeId] ?? []
                     const route = mockRoutes.find((r) => r.id === routeId)
-                    const driverName = route?.driverName ?? `Route ${routeId.replace("route-", "")}`
-                    const color = route?.color ?? "#A3A3A3"
+                    const syntheticInfo = addedRouteInfo[routeId]
+                    const driverName = route?.driverName ?? syntheticInfo?.driverName ?? `Route ${routeId.replace("route-", "")}`
+                    const color = route?.color ?? syntheticInfo?.color ?? "#A3A3A3"
                     const isExpanded = expandedRouteIds.includes(routeId)
                     const isChecked = checkedRouteIds.includes(routeId)
 
@@ -3424,7 +3435,7 @@ export function LassoWorkspaceSheet({
                     const validation = validateRouteCapacity(sortedOrders, truckProfile, retainedFuel)
 
                     // Hub name
-                    const hubId = orders[0]?.hubId
+                    const hubId = (orders[0] ?? extraDeliveries[0])?.hubId
                     const hub = mockHubs.find((h) => h.id === hubId)
                     const hubName = hub?.name ?? "Austin HUB"
 
@@ -4715,35 +4726,89 @@ export function LassoWorkspaceSheet({
             const routeId = createOrderRouteId
 
             if (!routeId) {
-              // No-route entry (shipto-pin) → land in Unassigned.
-              const newOrder: ExtractionOrder = {
-                id: `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                customerId: data.customerId,
-                customerName: data.customerName,
-                shipToName: data.shipToName,
-                shipToAddress: data.shipToAddress,
-                latitude: data.latitude,
-                longitude: data.longitude,
-                status: "pending",
-                volume: data.volume,
-                scheduledDate: data.scheduledTimeLabel,
-                zoneId: "",
-                hubId: "",
-                city: data.city,
-                state: data.state,
-                zip: data.zip,
-                tankSize: 0,
-                currentLevel: 0,
-                daysUntilEmpty: 0,
-                priority: "Medium",
-                lastDelivery: "",
-                zone: data.zone,
-                orderType: "D",
+              const orderId = `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+
+              if (data.driverId && data.driverName) {
+                // Driver selected → create a new route for them
+                const newRouteId = `new-route-${Date.now()}`
+                const newOrder: ExtractionOrder = {
+                  id: orderId,
+                  customerId: data.customerId,
+                  customerName: data.customerName,
+                  shipToName: data.shipToName,
+                  shipToAddress: data.shipToAddress,
+                  latitude: data.latitude,
+                  longitude: data.longitude,
+                  status: "assigned",
+                  volume: data.volume,
+                  scheduledDate: data.scheduledTimeLabel,
+                  zoneId: "",
+                  hubId: "",
+                  city: data.city,
+                  state: data.state,
+                  zip: data.zip,
+                  tankSize: 0,
+                  currentLevel: 0,
+                  daysUntilEmpty: 0,
+                  priority: "Medium",
+                  lastDelivery: "",
+                  zone: data.zone,
+                  orderType: "D",
+                  routeId: newRouteId,
+                  routeSequence: 1,
+                }
+                // Register the synthetic route metadata
+                setAddedRouteInfo((prev) => ({
+                  ...prev,
+                  [newRouteId]: { driverName: data.driverName!, driverId: data.driverId!, color: "#FDBA74" },
+                }))
+                // Pre-populate driver selection for the new card
+                const driver = DRIVERS.find((d) => d.id === data.driverId)
+                if (driver) setSelectedDrivers((prev) => ({ ...prev, [newRouteId]: driver }))
+                // Add the order to addedDeliveryOrders
+                const updated = { ...addedDeliveryOrders, [newRouteId]: [newOrder] }
+                setAddedDeliveryOrders(updated)
+                onAddedDeliveryOrdersChange?.(updated)
+                // Register the routeId in page.tsx so the map picks it up
+                onAddSelectedRouteId?.(newRouteId)
+                // Expand the new card immediately
+                setExpandedRouteIds((prev) => [...prev, newRouteId])
+                setRecentlyAddedOrderId(orderId)
+                setTimeout(() => setRecentlyAddedOrderId(null), 4500)
+                const firstName = data.driverName.split(" ")[0]
+                onShowMessage?.(`New route created for ${firstName}`)
+              } else {
+                // No driver → land in Unassigned
+                const newOrder: ExtractionOrder = {
+                  id: orderId,
+                  customerId: data.customerId,
+                  customerName: data.customerName,
+                  shipToName: data.shipToName,
+                  shipToAddress: data.shipToAddress,
+                  latitude: data.latitude,
+                  longitude: data.longitude,
+                  status: "pending",
+                  volume: data.volume,
+                  scheduledDate: data.scheduledTimeLabel,
+                  zoneId: "",
+                  hubId: "",
+                  city: data.city,
+                  state: data.state,
+                  zip: data.zip,
+                  tankSize: 0,
+                  currentLevel: 0,
+                  daysUntilEmpty: 0,
+                  priority: "Medium",
+                  lastDelivery: "",
+                  zone: data.zone,
+                  orderType: "D",
+                }
+                setAddedUnassignedOrders((prev) => [...prev, newOrder])
+                setRecentlyAddedOrderId(orderId)
+                setTimeout(() => setRecentlyAddedOrderId(null), 4500)
+                onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
               }
-              setAddedUnassignedOrders((prev) => [...prev, newOrder])
-              setRecentlyAddedOrderId(newOrder.id)
-              setTimeout(() => setRecentlyAddedOrderId(null), 4500)
-              onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
+
               setIsCreateOrderModalOpen(false)
               setCreateOrderRouteId(null)
               onClearCreateOrderPrefillShipToId?.()

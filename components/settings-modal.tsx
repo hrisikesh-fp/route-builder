@@ -15,10 +15,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     showBadgesValue,
     reducedOpacityValue,
     orderCardView,
+    createOrderModalView,
     updateRouteLineDisplay,
     updateShowBadges,
     updateReducedOpacity,
     updateOrderCardView,
+    updateCreateOrderModalView,
   } = useSettings()
 
   if (!isOpen) return null
@@ -163,6 +165,77 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </span>
                     <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
                       Assets, per-product breakdown, top-offs, urgency indicators.
+                    </span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* ── CREATE ORDER MODAL ── */}
+          <div>
+            <h3
+              className="mb-4"
+              style={{ color: "#A3A3A3", fontSize: "12px", fontWeight: 500, lineHeight: "16px", textTransform: "uppercase", letterSpacing: "0.05em" }}
+            >
+              Create Order Modal
+            </h3>
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{ backgroundColor: "#1A1A1A", border: "1px solid #282828" }}
+            >
+              {/* Modal 1 option */}
+              <button
+                onClick={() => updateCreateOrderModalView("modal1")}
+                className="w-full text-left"
+                style={{ borderBottom: "1px solid #282828" }}
+              >
+                <div className="flex items-start gap-3 p-4">
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      border: createOrderModalView === "modal1" ? "6px solid #6366F1" : "2px solid #404040",
+                      backgroundColor: createOrderModalView === "modal1" ? "#111" : "transparent",
+                      flexShrink: 0,
+                      marginTop: 2,
+                    }}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                      Modal 1: Full Scroll
+                    </span>
+                    <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                      Single scrollable column. Current default.
+                    </span>
+                  </div>
+                </div>
+              </button>
+
+              {/* Modal 2 option */}
+              <button
+                onClick={() => updateCreateOrderModalView("modal2")}
+                className="w-full text-left"
+              >
+                <div className="flex items-start gap-3 p-4">
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      border: createOrderModalView === "modal2" ? "6px solid #6366F1" : "2px solid #404040",
+                      backgroundColor: createOrderModalView === "modal2" ? "#111" : "transparent",
+                      flexShrink: 0,
+                      marginTop: 2,
+                    }}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                      Modal 2: 2 Panel
+                    </span>
+                    <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                      Left form panel + right delivery table, side by side.
                     </span>
                   </div>
                 </div>

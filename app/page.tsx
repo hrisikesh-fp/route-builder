@@ -387,6 +387,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onHoveredOrderChange={setHoveredWorkspaceOrderId}
         onAddedLoadOrdersChange={setAddedLoadOrders}
         onAddedDeliveryOrdersChange={setAddedDeliveryOrders}
+        onAddSelectedRouteId={(id) => setSelectedRouteIds((prev) => [...new Set([...prev, id])])}
         createOrderPrefillShipToId={createOrderPrefillShipToId}
         onClearCreateOrderPrefillShipToId={() => setCreateOrderPrefillShipToId(null)}
         initialExpandedRouteIds={[]}

@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { X, ChevronDown, Plus, RotateCw, Search, Package } from "lucide-react"
+import { useSettings } from "@/contexts/settings-context"
+import { X, ChevronDown, ChevronLeft, ChevronRight, Plus, RotateCw, Search, Package, Calendar, Clock } from "lucide-react"
 import { mockExtractionOrders, shipTosWithoutOrders, mockHubs, mockDrivers } from "@/lib/mock-data"
 
 // ─── Derived customer + shipTo data ──────────────────────────────────────────
@@ -147,6 +148,8 @@ export type CreateOrderSubmit = {
   scheduledDateTimeISO: string
   scheduledTimeLabel: string
   volume: number
+  driverId?: string
+  driverName?: string
 }
 
 interface Props {
@@ -332,7 +335,7 @@ function Dropdown({
           style={{
             position: "fixed",
             ...panelStyle,
-            backgroundColor: "#1B1B1B",
+            backgroundColor: "#282828",
             border: "1px solid #333",
             borderRadius: 4,
             boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
@@ -444,6 +447,324 @@ function TextInput({ value, onChange, placeholder }: { value: string; onChange: 
   )
 }
 
+// ─── DatePicker + TimePicker constants ───────────────────────────────────────
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+]
+const DAY_HEADERS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+const TP_ITEM_H = 32
+
+// ─── DatePicker ───────────────────────────────────────────────────────────────
+
+function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({})
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`
+
+  const [viewYear, setViewYear] = useState(() =>
+    value ? parseInt(value.split("-")[0], 10) : today.getFullYear()
+  )
+  const [viewMonth, setViewMonth] = useState(() =>
+    value ? parseInt(value.split("-")[1], 10) - 1 : today.getMonth()
+  )
+
+  const displayLabel = useMemo(() => {
+    if (!value) return "Select Date"
+    const [y, mo, d] = value.split("-").map(Number)
+    return `${MONTH_NAMES[mo - 1].slice(0, 3)} ${d}, ${y}`
+  }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (rect) {
+      if (window.innerHeight - rect.bottom < 320) {
+        setPanelStyle({ bottom: window.innerHeight - rect.top + 4, left: rect.left })
+      } else {
+        setPanelStyle({ top: rect.bottom + 4, left: rect.left })
+      }
+    }
+    if (value) {
+      setViewYear(parseInt(value.split("-")[0], 10))
+      setViewMonth(parseInt(value.split("-")[1], 10) - 1)
+    }
+  }, [open, value])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay()
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+    const prevDays = new Date(viewYear, viewMonth, 0).getDate()
+    const cells: { date: string; day: number; inMonth: boolean }[] = []
+
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const d = prevDays - i
+      const m = viewMonth === 0 ? 11 : viewMonth - 1
+      const y = viewMonth === 0 ? viewYear - 1 : viewYear
+      cells.push({ date: `${y}-${pad2(m + 1)}-${pad2(d)}`, day: d, inMonth: false })
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      cells.push({ date: `${viewYear}-${pad2(viewMonth + 1)}-${pad2(d)}`, day: d, inMonth: true })
+    }
+    for (let d = 1; cells.length < 42; d++) {
+      const m = viewMonth === 11 ? 0 : viewMonth + 1
+      const y = viewMonth === 11 ? viewYear + 1 : viewYear
+      cells.push({ date: `${y}-${pad2(m + 1)}-${pad2(d)}`, day: d, inMonth: false })
+    }
+    return cells
+  }, [viewYear, viewMonth])
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11) }
+    else setViewMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0) }
+    else setViewMonth(m => m + 1)
+  }
+
+  return (
+    <div ref={rootRef} style={{ position: "relative", width: "100%" }}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 8,
+          padding: "8px 12px", backgroundColor: "transparent", border: "1px solid #333",
+          borderRadius: 4, color: value ? "#E5E5E5" : "#737373", fontSize: 14,
+          textAlign: "left", cursor: "pointer", fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+        }}
+      >
+        <Calendar size={14} color="#A3A3A3" style={{ flexShrink: 0 }} />
+        <span style={{ flex: 1 }}>{displayLabel}</span>
+        <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "fixed", ...panelStyle,
+            backgroundColor: "#282828", border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 4, padding: 12, zIndex: 9999, width: 252,
+          }}
+        >
+          {/* Month nav */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <button type="button" onClick={prevMonth}
+              style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#A3A3A3", borderRadius: 2, padding: 0 }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            ><ChevronLeft size={14} /></button>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#E5E5E5" }}>{MONTH_NAMES[viewMonth]} {viewYear}</span>
+            <button type="button" onClick={nextMonth}
+              style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#A3A3A3", borderRadius: 2, padding: 0 }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            ><ChevronRight size={14} /></button>
+          </div>
+
+          {/* Day headers */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 2 }}>
+            {DAY_HEADERS.map(h => (
+              <div key={h} style={{ height: 24, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500, color: "#737373" }}>{h}</div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+            {calendarDays.map(cell => {
+              const isSelected = cell.date === value
+              const isToday = cell.date === todayStr
+              return (
+                <button
+                  key={cell.date}
+                  type="button"
+                  onClick={() => { onChange(cell.date); setOpen(false) }}
+                  style={{
+                    height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: isSelected ? 500 : 400,
+                    color: isSelected ? "#171717" : !cell.inMonth ? "#A3A3A3" : "#FAFAFA",
+                    backgroundColor: isSelected ? "#E5E5E5" : "transparent",
+                    border: isToday && !isSelected ? "1px solid rgba(255,255,255,0.2)" : "1px solid transparent",
+                    borderRadius: 4, cursor: "pointer", fontFamily: "inherit", padding: 0,
+                  }}
+                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? "#E5E5E5" : "transparent" }}
+                >
+                  {cell.day}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── TimePicker ───────────────────────────────────────────────────────────────
+
+function TimePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({})
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const hourScrollRef = useRef<HTMLDivElement>(null)
+  const minScrollRef = useRef<HTMLDivElement>(null)
+
+  const [draftH, setDraftH] = useState(() => value ? parseInt(value.split(":")[0], 10) : new Date().getHours())
+  const [draftM, setDraftM] = useState(() => value ? parseInt(value.split(":")[1], 10) : new Date().getMinutes())
+
+  const draftStr = `${pad2(draftH)}:${pad2(draftM)}`
+  const hasChange = !value || value !== draftStr
+
+  const displayLabel = useMemo(() => {
+    if (!value) return "Select Time"
+    return formatTimeLabel(value)
+  }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (rect) {
+      if (window.innerHeight - rect.bottom < 280) {
+        setPanelStyle({ bottom: window.innerHeight - rect.top + 4, left: rect.left })
+      } else {
+        setPanelStyle({ top: rect.bottom + 4, left: rect.left })
+      }
+    }
+    const h = value ? parseInt(value.split(":")[0], 10) : new Date().getHours()
+    const m = value ? parseInt(value.split(":")[1], 10) : new Date().getMinutes()
+    setDraftH(h)
+    setDraftM(m)
+    requestAnimationFrame(() => {
+      if (hourScrollRef.current) hourScrollRef.current.scrollTop = h * TP_ITEM_H
+      if (minScrollRef.current) minScrollRef.current.scrollTop = m * TP_ITEM_H
+    })
+  }, [open, value])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  const colScrollStyle: React.CSSProperties = { maxHeight: 160, overflowY: "auto", scrollbarWidth: "none" }
+
+  const colLabelStyle: React.CSSProperties = {
+    height: 32, display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 12, fontWeight: 500, color: "#A3A3A3",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+  }
+
+  function renderScrollItem(n: number, selected: boolean, onClick: () => void) {
+    return (
+      <button key={n} type="button" onClick={onClick}
+        style={{
+          width: "100%", height: TP_ITEM_H, display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 14, fontWeight: selected ? 500 : 400,
+          color: selected ? "#E5E5E5" : "#FAFAFA",
+          backgroundColor: selected ? "#333" : "transparent",
+          border: "none", borderRadius: 2, cursor: "pointer", fontFamily: "inherit",
+        }}
+        onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)" }}
+        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "#333" : "transparent" }}
+      >
+        {pad2(n)}
+      </button>
+    )
+  }
+
+  return (
+    <div ref={rootRef} style={{ position: "relative", width: "100%" }}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 8,
+          padding: "8px 12px", backgroundColor: "transparent", border: "1px solid #333",
+          borderRadius: 4, color: value ? "#E5E5E5" : "#737373", fontSize: 14,
+          textAlign: "left", cursor: "pointer", fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+        }}
+      >
+        <Clock size={14} color="#A3A3A3" style={{ flexShrink: 0 }} />
+        <span style={{ flex: 1 }}>{displayLabel}</span>
+        <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "fixed", ...panelStyle,
+            backgroundColor: "#282828", border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 4, zIndex: 9999, width: 200, overflow: "hidden",
+          }}
+        >
+          <div style={{ display: "flex" }}>
+            {/* Hours */}
+            <div style={{ flex: 1 }}>
+              <div style={colLabelStyle}>Hours</div>
+              <div ref={hourScrollRef} className="tp-col" style={colScrollStyle}>
+                {Array.from({ length: 24 }, (_, h) => renderScrollItem(h, h === draftH, () => setDraftH(h)))}
+              </div>
+            </div>
+            <div style={{ width: 1, backgroundColor: "rgba(255,255,255,0.06)" }} />
+            {/* Minutes */}
+            <div style={{ flex: 1 }}>
+              <div style={colLabelStyle}>Minutes</div>
+              <div ref={minScrollRef} className="tp-col" style={colScrollStyle}>
+                {Array.from({ length: 60 }, (_, m) => renderScrollItem(m, m === draftM, () => setDraftM(m)))}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{ display: "flex", gap: 8, padding: 8, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <button type="button"
+              onClick={() => { onChange(""); setOpen(false) }}
+              style={{
+                flex: 1, height: 32, fontSize: 13, fontWeight: 500, color: "#E5E5E5",
+                backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4,
+                cursor: "pointer", fontFamily: "inherit",
+                opacity: hasChange ? 1 : 0, pointerEvents: hasChange ? "auto" : "none",
+                transition: "opacity 150ms",
+              }}
+            >Clear</button>
+            <button type="button"
+              onClick={() => { onChange(draftStr); setOpen(false) }}
+              style={{
+                flex: 1, height: 32, fontSize: 13, fontWeight: 500, color: "#171717",
+                backgroundColor: "#E5E5E5", border: "none", borderRadius: 4,
+                cursor: hasChange ? "pointer" : "default", fontFamily: "inherit",
+                opacity: hasChange ? 1 : 0.5, transition: "opacity 150ms",
+              }}
+            >Apply</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Faux checkbox (non-interactive, table header / row) ──────────────────────
 
 function FauxCheckbox() {
@@ -472,6 +793,7 @@ const PO_TYPE_OPTIONS = [
 
 export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, prefillDriverName }: Props) {
   const { customers, shipTosByCustomer } = useMemo(buildCustomerAndShipToIndex, [])
+  const { createOrderModalView } = useSettings()
 
   // ── Customer / ShipTo
   const [customerId, setCustomerId] = useState<string | null>(null)
@@ -583,6 +905,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     const shipTo = allShipTos.find((s) => s.id === shipToKey)
     if (!customer || !shipTo) return
     const iso = new Date(`${plannedDate}T${plannedTime}:00`).toISOString()
+    const selectedDriver = driverId ? mockDrivers.find((d) => d.id === driverId) : undefined
     onSubmit({
       customerId: customer.id,
       customerName: customer.name,
@@ -597,6 +920,8 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
       scheduledDateTimeISO: iso,
       scheduledTimeLabel: formatTimeLabel(plannedTime),
       volume: totalQty,
+      driverId: selectedDriver?.id,
+      driverName: selectedDriver?.name,
     })
     onClose()
   }
@@ -607,6 +932,201 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
 
   const TABLE_GRID = "44px 1fr 160px 160px"
   const colHeaderStyle = { padding: "0 12px", fontSize: 13, fontWeight: 500, color: "#A3A3A3" }
+
+  // ── Sections extracted so both Modal 1 and Modal 2 layouts can share them
+  const customerDetailsSection = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <SectionTitle>Customer Details</SectionTitle>
+      <div style={{ display: "flex", gap: 20 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>Customer</FieldLabel>
+          <Dropdown
+            value={customerId}
+            placeholder="Select Customer"
+            options={customerOptions}
+            onChange={(id) => { setCustomerId(id); setShipToKey(null) }}
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>ShipTo</FieldLabel>
+          <Dropdown
+            value={shipToKey}
+            placeholder="Select ShipTo"
+            options={shipToOptions}
+            onChange={(id) => {
+              setShipToKey(id)
+              const owningCustomerId = shipToCustomerByKey.get(id)
+              if (owningCustomerId && owningCustomerId !== customerId) setCustomerId(owningCustomerId)
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+
+  const scheduleDetailsSection = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <SectionTitle>Schedule Details</SectionTitle>
+      <div style={{ display: "flex", gap: 20 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>Planned Date</FieldLabel>
+          <DatePicker value={plannedDate} onChange={setPlannedDate} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>Planned Time</FieldLabel>
+          <TimePicker value={plannedTime} onChange={setPlannedTime} />
+        </div>
+      </div>
+      <div style={{ paddingTop: 4 }}>
+        <Checkbox checked={markUrgent} onChange={() => setMarkUrgent((v) => !v)} label="Mark As Urgent" />
+      </div>
+    </div>
+  )
+
+  const deliveryOrderSection = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <SectionTitle>Delivery Order</SectionTitle>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            style={{ display: "flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", backgroundColor: "transparent", border: "none", borderRadius: 4, color: "#E5E5E5", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            <Plus size={14} />
+            Add Asset
+          </button>
+          <button
+            type="button"
+            style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "transparent", border: "none", borderRadius: 4, color: "#A3A3A3", cursor: "pointer" }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            <RotateCw size={14} />
+          </button>
+        </div>
+      </div>
+      <div style={{ border: "1px solid #282828", borderRadius: 4, overflow: "hidden" }}>
+        {/* Table header */}
+        <div style={{ display: "grid", gridTemplateColumns: TABLE_GRID, backgroundColor: "#222", height: 40, alignItems: "center", borderBottom: "1px solid #282828" }}>
+          <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}><FauxCheckbox /></div>
+          <div style={{ padding: "0 12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ ...colHeaderStyle, whiteSpace: "nowrap" }}>Top Off</span>
+            <Toggle
+              on={topOffMaster}
+              onChange={() => {
+                const next = !topOffMaster
+                setTopOffMaster(next)
+                const newRows: Record<string, boolean> = {}
+                for (const row of assetRows) newRows[row.id] = next
+                setTopOffRows(newRows)
+              }}
+              size="sm"
+            />
+          </div>
+          <div style={colHeaderStyle}>Ullage</div>
+          <div style={colHeaderStyle}>Quantity</div>
+        </div>
+        {/* Empty state */}
+        {assetRows.length === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "32px 24px" }}>
+            <Package size={24} color="#737373" />
+            <span style={{ fontSize: 14, color: "#737373" }}>Select a customer and ShipTo to view assets</span>
+          </div>
+        )}
+        {/* Data rows */}
+        {assetRows.map((row) => {
+          const qty = tankQuantities[row.id] ?? "0"
+          const isTopOff = topOffRows[row.id] ?? false
+          const invColor = inventoryColor(row.tmInventory)
+          return (
+            <div
+              key={row.id}
+              style={{ display: "grid", gridTemplateColumns: TABLE_GRID, borderBottom: "1px solid #282828", minHeight: 64, alignItems: "center" }}
+            >
+              <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}><FauxCheckbox /></div>
+              <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
+                <span style={{ fontSize: 12, color: "#737373" }}>Product</span>
+              </div>
+              <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 4 }}>
+                <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.ullage.toLocaleString()}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ display: "inline-block", width: 16, height: 8, borderRadius: 2, backgroundColor: invColor, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: invColor, fontWeight: 500 }}>{row.tmInventory}%</span>
+                </div>
+              </div>
+              <div style={{ padding: "0 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={qty}
+                    onChange={(e) => setTankQuantities((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                    style={{ flex: 1, minWidth: 0, padding: "6px 8px", backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, color: "#E5E5E5", fontSize: 14, outline: "none", fontFamily: "inherit" }}
+                  />
+                  <span style={{ fontSize: 12, color: "#737373", flexShrink: 0 }}>gal</span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  const deliveryInstructionsSection = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <SectionTitle>Delivery Instructions</SectionTitle>
+      <textarea
+        value={instructions}
+        onChange={(e) => setInstructions(e.target.value)}
+        placeholder="Enter any delivery instructions here"
+        style={{ width: "100%", minHeight: 64, padding: 12, backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, color: "#E5E5E5", fontSize: 14, outline: "none", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
+      />
+    </div>
+  )
+
+  const othersSection = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <SectionTitle>Others</SectionTitle>
+      {/* Row 1: PO Number, PO Type, Carrier Number (always 3 cols) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>PO Number</FieldLabel>
+          <TextInput value={poNumber} onChange={setPoNumber} placeholder="Enter PO number" />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>PO Type</FieldLabel>
+          <Dropdown value={poType} placeholder="Select" options={PO_TYPE_OPTIONS} onChange={setPoType} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>Carrier Number</FieldLabel>
+          <TextInput value={carrierNumber} onChange={setCarrierNumber} placeholder="Enter Carrier number" />
+        </div>
+      </div>
+      {/* Row 2: Hub, Driver */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>Hub</FieldLabel>
+          <Dropdown value={hubId} placeholder="Select" options={hubOptions} onChange={setHubId} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <FieldLabel>Driver</FieldLabel>
+          {prefillDriverName ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "1px solid #333", borderRadius: 4, backgroundColor: "transparent", color: "#E5E5E5", fontSize: 14, opacity: 0.6, cursor: "not-allowed" }}>
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prefillDriverName}</span>
+              <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+            </div>
+          ) : (
+            <Dropdown value={driverId} placeholder="Select Driver" options={driverOptions} onChange={setDriverId} />
+          )}
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div
@@ -695,214 +1215,31 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 24 }}>
-
-          {/* ─── Customer Details ──────────────────────────────────────── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>Customer Details</SectionTitle>
-            <div style={{ display: "flex", gap: 20 }}>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>Customer</FieldLabel>
-                <Dropdown
-                  value={customerId}
-                  placeholder="Select Customer"
-                  options={customerOptions}
-                  onChange={(id) => { setCustomerId(id); setShipToKey(null) }}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>ShipTo</FieldLabel>
-                <Dropdown
-                  value={shipToKey}
-                  placeholder="Select ShipTo"
-                  options={shipToOptions}
-                  onChange={(id) => {
-                    setShipToKey(id)
-                    const owningCustomerId = shipToCustomerByKey.get(id)
-                    if (owningCustomerId && owningCustomerId !== customerId) setCustomerId(owningCustomerId)
-                  }}
-                />
-              </div>
+        {createOrderModalView === "modal2" ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "stretch", overflow: "hidden" }}>
+            {/* Left: 480px fixed — Customer, Schedule, Others */}
+            <div style={{ width: 480, flexShrink: 0, display: "flex", flexDirection: "column", gap: 24, overflowY: "auto", padding: 24 }}>
+              {customerDetailsSection}
+              {scheduleDetailsSection}
+              {othersSection}
+            </div>
+            {/* Divider */}
+            <div style={{ width: 1, flexShrink: 0, backgroundColor: "#282828" }} />
+            {/* Right: fills remaining space — Delivery Order, Instructions */}
+            <div style={{ flex: "1 0 0", display: "flex", flexDirection: "column", gap: 24, overflowY: "auto", padding: 24 }}>
+              {deliveryOrderSection}
+              {deliveryInstructionsSection}
             </div>
           </div>
-
-          {/* ─── Schedule Details ──────────────────────────────────────── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>Schedule Details</SectionTitle>
-            <div style={{ display: "flex", gap: 20 }}>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>Planned Date</FieldLabel>
-                <input
-                  type="date"
-                  value={plannedDate}
-                  onChange={(e) => setPlannedDate(e.target.value)}
-                  style={{ width: "100%", padding: "8px 12px", backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, color: "#E5E5E5", fontSize: 14, outline: "none", fontFamily: "inherit", colorScheme: "dark" }}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>Planned Time</FieldLabel>
-                <input
-                  type="time"
-                  value={plannedTime}
-                  onChange={(e) => setPlannedTime(e.target.value)}
-                  style={{ width: "100%", padding: "8px 12px", backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, color: "#E5E5E5", fontSize: 14, outline: "none", fontFamily: "inherit", colorScheme: "dark" }}
-                />
-              </div>
-            </div>
-            <div style={{ paddingTop: 4 }}>
-              <Checkbox checked={markUrgent} onChange={() => setMarkUrgent((v) => !v)} label="Mark As Urgent" />
-            </div>
+        ) : (
+          <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 24 }}>
+            {customerDetailsSection}
+            {scheduleDetailsSection}
+            {deliveryOrderSection}
+            {deliveryInstructionsSection}
+            {othersSection}
           </div>
-
-          {/* ─── Delivery Order ────────────────────────────────────────── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <SectionTitle>Delivery Order</SectionTitle>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  type="button"
-                  style={{ display: "flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", backgroundColor: "transparent", border: "none", borderRadius: 4, color: "#E5E5E5", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  <Plus size={14} />
-                  Add Asset
-                </button>
-                <button
-                  type="button"
-                  style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "transparent", border: "none", borderRadius: 4, color: "#A3A3A3", cursor: "pointer" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  <RotateCw size={14} />
-                </button>
-              </div>
-            </div>
-
-            <div style={{ border: "1px solid #282828", borderRadius: 4, overflow: "hidden" }}>
-              {/* Table header */}
-              <div style={{ display: "grid", gridTemplateColumns: TABLE_GRID, backgroundColor: "#222", height: 40, alignItems: "center", borderBottom: "1px solid #282828" }}>
-                <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}><FauxCheckbox /></div>
-                <div style={{ padding: "0 12px", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ ...colHeaderStyle, whiteSpace: "nowrap" }}>Top Off</span>
-                  <Toggle
-                    on={topOffMaster}
-                    onChange={() => {
-                      const next = !topOffMaster
-                      setTopOffMaster(next)
-                      const newRows: Record<string, boolean> = {}
-                      for (const row of assetRows) newRows[row.id] = next
-                      setTopOffRows(newRows)
-                    }}
-                    size="sm"
-                  />
-                </div>
-                <div style={colHeaderStyle}>Ullage</div>
-                <div style={colHeaderStyle}>Quantity</div>
-              </div>
-
-              {/* Empty state */}
-              {assetRows.length === 0 && (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "32px 24px" }}>
-                  <Package size={24} color="#737373" />
-                  <span style={{ fontSize: 14, color: "#737373" }}>Select a customer and ShipTo to view assets</span>
-                </div>
-              )}
-
-              {/* Data rows */}
-              {assetRows.map((row) => {
-                const qty = tankQuantities[row.id] ?? "0"
-                const isTopOff = topOffRows[row.id] ?? false
-                const invColor = inventoryColor(row.tmInventory)
-                return (
-                  <div
-                    key={row.id}
-                    style={{ display: "grid", gridTemplateColumns: TABLE_GRID, borderBottom: "1px solid #282828", minHeight: 64, alignItems: "center" }}
-                  >
-                    {/* Checkbox */}
-                    <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}><FauxCheckbox /></div>
-
-                    {/* Asset name + product */}
-                    <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                      <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
-                      <span style={{ fontSize: 12, color: "#737373" }}>Product</span>
-                    </div>
-
-                    {/* Ullage + % fill */}
-                    <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 4 }}>
-                      <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.ullage.toLocaleString()}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ display: "inline-block", width: 16, height: 8, borderRadius: 2, backgroundColor: invColor, flexShrink: 0 }} />
-                        <span style={{ fontSize: 12, color: invColor, fontWeight: 500 }}>{row.tmInventory}%</span>
-                      </div>
-                    </div>
-
-                    {/* Quantity input */}
-                    <div style={{ padding: "0 12px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <input
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          value={qty}
-                          onChange={(e) => setTankQuantities((prev) => ({ ...prev, [row.id]: e.target.value }))}
-                          style={{ flex: 1, minWidth: 0, padding: "6px 8px", backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, color: "#E5E5E5", fontSize: 14, outline: "none", fontFamily: "inherit" }}
-                        />
-                        <span style={{ fontSize: 12, color: "#737373", flexShrink: 0 }}>gal</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* ─── Delivery Instructions ─────────────────────────────────── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>Delivery Instructions</SectionTitle>
-            <textarea
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Enter any delivery instructions here"
-              style={{ width: "100%", minHeight: 64, padding: 12, backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, color: "#E5E5E5", fontSize: 14, outline: "none", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
-            />
-          </div>
-
-          {/* ─── Others ────────────────────────────────────────────────── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SectionTitle>Others</SectionTitle>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>PO Number</FieldLabel>
-                <TextInput value={poNumber} onChange={setPoNumber} placeholder="Enter PO #" />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>PO Type</FieldLabel>
-                <Dropdown value={poType} placeholder="Select type" options={PO_TYPE_OPTIONS} onChange={setPoType} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>Carrier Number</FieldLabel>
-                <TextInput value={carrierNumber} onChange={setCarrierNumber} placeholder="Enter carrier #" />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>Hub</FieldLabel>
-                <Dropdown value={hubId} placeholder="Select Hub" options={hubOptions} onChange={setHubId} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <FieldLabel>Driver</FieldLabel>
-                {prefillDriverName ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "1px solid #333", borderRadius: 4, backgroundColor: "transparent", color: "#E5E5E5", fontSize: 14, opacity: 0.6, cursor: "not-allowed" }}>
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prefillDriverName}</span>
-                    <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                  </div>
-                ) : (
-                  <Dropdown value={driverId} placeholder="Select Driver" options={driverOptions} onChange={setDriverId} />
-                )}
-              </div>
-            </div>
-          </div>
-
-        </div>
+        )}
 
         {/* Footer */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", flexShrink: 0, borderTop: "1px solid #282828" }}>
