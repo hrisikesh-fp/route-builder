@@ -40,6 +40,10 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // sheet so the modal can open prefilled with this shipto. Cleared when the modal closes.
   const [createOrderPrefillShipToId, setCreateOrderPrefillShipToId] = useState<string | null>(null)
 
+  // Modal 3 (side sheet) state — workspace is collapsed, Create Order floats to the right.
+  const [isCreateOrderSideSheetOpen, setIsCreateOrderSideSheetOpen] = useState(false)
+  const [modal3UnassignedOrders, setModal3UnassignedOrders] = useState<ExtractionOrder[]>([])
+
   // Filter-driven map zoom — Customer and ShipTo selections
   const [appliedFilterCustomers, setAppliedFilterCustomers] = useState<Set<string>>(new Set())
   const [appliedFilterShipTos, setAppliedFilterShipTos] = useState<Set<string>>(new Set())
@@ -362,6 +366,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
   isWorkspaceOpen={isWorkspaceOpen}
   workspaceWidth={560}
+  isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
   addedLoadOrders={addedLoadOrders}
   selectedUnassignedOrderIds={selectedUnassignedIds}
   />
@@ -376,6 +381,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           isLassoActive={isLassoDrawing}
           onLassoToggle={handleLassoToggle}
           isWorkspaceOpen={isWorkspaceOpen}
+          isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
           entityVisibility={entityVisibility}
           onEntityVisibilityChange={setEntityVisibility}
         />
@@ -401,6 +407,9 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         createOrderPrefillShipToId={createOrderPrefillShipToId}
         onClearCreateOrderPrefillShipToId={() => setCreateOrderPrefillShipToId(null)}
         initialExpandedRouteIds={[]}
+        onCreateOrderSideSheetOpen={() => { setIsWorkspaceOpen(false); setIsCreateOrderSideSheetOpen(true) }}
+        onCreateOrderSideSheetClose={() => { setIsCreateOrderSideSheetOpen(false); setIsWorkspaceOpen(true) }}
+        externalUnassignedOrders={modal3UnassignedOrders}
         onShowToast={(driverName) => {
           setToastMessage(`Load Order added to ${driverName}'s Route successfully`)
           setTimeout(() => setToastMessage(null), 5000)
@@ -455,7 +464,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
       {/* Collapsed tab — clicking opens workspace with empty state */}
       {!isWorkspaceOpen && (
-        <RouteSheetCollapsed onExpand={() => setIsWorkspaceOpen(true)} />
+        <RouteSheetCollapsed onExpand={() => setIsWorkspaceOpen(true)} hideExpandButton={isCreateOrderSideSheetOpen} />
       )}
 
       <CreateRoutePanel isOpen={isCreatePanelOpen} onClose={() => setIsCreatePanelOpen(false)} />

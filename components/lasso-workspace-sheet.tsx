@@ -37,6 +37,12 @@ interface LassoWorkspaceSheetProps {
   onClearCreateOrderPrefillShipToId?: () => void
   /** Called when a new synthetic route is created (driver-from-modal flow) so page.tsx can register it. */
   onAddSelectedRouteId?: (routeId: string) => void
+  /** Modal 3 (side sheet): called when Create Order opens so page.tsx can collapse the workspace. */
+  onCreateOrderSideSheetOpen?: () => void
+  /** Modal 3 (side sheet): called when Create Order closes so page.tsx can revert map controls. */
+  onCreateOrderSideSheetClose?: () => void
+  /** Modal 3: orders created via the side sheet flow (owned by page.tsx, merged into unassigned list). */
+  externalUnassignedOrders?: ExtractionOrder[]
 }
 
 type LoadOrderInfo = {
@@ -2831,8 +2837,11 @@ export function LassoWorkspaceSheet({
   onClearCreateOrderPrefillShipToId,
   onAddSelectedRouteId,
   initialExpandedRouteIds = [],
+  onCreateOrderSideSheetOpen,
+  onCreateOrderSideSheetClose,
+  externalUnassignedOrders = [],
 }: LassoWorkspaceSheetProps) {
-  const { orderCardView } = useSettings()
+  const { orderCardView, createOrderModalView, updateCreateOrderModalView } = useSettings()
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
   const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>(initialExpandedRouteIds)
 
@@ -2851,6 +2860,7 @@ export function LassoWorkspaceSheet({
     if (createOrderPrefillShipToId) {
       setCreateOrderRouteId(null)
       setIsCreateOrderModalOpen(true)
+      if (createOrderModalView === "modal3") onCreateOrderSideSheetOpen?.()
     }
   }, [createOrderPrefillShipToId])
 
@@ -3173,7 +3183,7 @@ export function LassoWorkspaceSheet({
     }
   }
 
-  const unassignedOrders = [...selectedOrders.filter((o) => !o.routeId), ...addedUnassignedOrders]
+  const unassignedOrders = [...selectedOrders.filter((o) => !o.routeId), ...addedUnassignedOrders, ...externalUnassignedOrders]
 
   // Unassigned order checkbox logic
   const unassignedOrderIds = unassignedOrders.map(o => o.id)
@@ -3196,7 +3206,61 @@ export function LassoWorkspaceSheet({
     return "#69BF88"
   }
 
-  if (!isOpen) return null
+  if (!isOpen) {
+    // Modal 3 side sheet: workspace is collapsed but the Create Order modal must stay rendered.
+    // Component stays mounted (never conditionally removed from page.tsx), so state is preserved.
+    if (createOrderModalView === "modal3" && isCreateOrderModalOpen) {
+      const closeModal3 = () => {
+        setIsCreateOrderModalOpen(false)
+        setCreateOrderRouteId(null)
+        onClearCreateOrderPrefillShipToId?.()
+        onCreateOrderSideSheetClose?.()
+      }
+      return (
+        <CreateOrderModal
+          isOpen={true}
+          prefillShipToId={createOrderPrefillShipToId ?? null}
+          prefillDriverName={null}
+          onClose={closeModal3}
+          onExpandToModal={() => {
+            updateCreateOrderModalView("modal1")
+            onCreateOrderSideSheetClose?.()
+          }}
+          onSubmit={(data: CreateOrderSubmit) => {
+            const orderId = `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+            const newOrder: ExtractionOrder = {
+              id: orderId,
+              customerId: data.customerId,
+              customerName: data.customerName,
+              shipToName: data.shipToName,
+              shipToAddress: data.shipToAddress,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              status: "pending",
+              volume: data.volume,
+              scheduledDate: data.scheduledTimeLabel,
+              zoneId: "",
+              hubId: "",
+              city: data.city,
+              state: data.state,
+              zip: data.zip,
+              tankSize: 0,
+              currentLevel: 0,
+              daysUntilEmpty: 0,
+              priority: "Medium",
+              lastDelivery: "",
+              zone: data.zone,
+              orderType: "D",
+            }
+            setAddedUnassignedOrders((prev) => [...prev, newOrder])
+            onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
+            closeModal3()
+          }}
+        />
+      )
+    }
+    return null
+  }
 
   const hasSelection = selectedOrders.length > 0
 
@@ -3207,6 +3271,7 @@ export function LassoWorkspaceSheet({
         width: 560,
         backgroundColor: "#111111",
         borderLeft: "1px solid #282828",
+        animation: "rb-co-drawer-in 320ms cubic-bezier(0.32, 0.72, 0, 1)",
       }}
     >
       {/* Inline optimise overlay keyframes */}
@@ -4124,6 +4189,7 @@ export function LassoWorkspaceSheet({
                             onOpenCreateOrderModal={() => {
                               setCreateOrderRouteId(routeId)
                               setIsCreateOrderModalOpen(true)
+                              if (createOrderModalView === "modal3") onCreateOrderSideSheetOpen?.()
                             }}
                             onReorder={(fromIdx, toIdx) => {
                               const ids = sortedOrders.map((o) => o.id)
@@ -4721,6 +4787,10 @@ export function LassoWorkspaceSheet({
             setIsCreateOrderModalOpen(false)
             setCreateOrderRouteId(null)
             onClearCreateOrderPrefillShipToId?.()
+          }}
+          onCollapseToDrawer={() => {
+            updateCreateOrderModalView("modal3")
+            onCreateOrderSideSheetOpen?.()
           }}
           onSubmit={(data: CreateOrderSubmit) => {
             const routeId = createOrderRouteId

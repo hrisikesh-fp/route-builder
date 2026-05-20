@@ -26,6 +26,7 @@ interface MapControlsProps {
   isLassoActive?: boolean
   onLassoToggle?: () => void
   isWorkspaceOpen?: boolean
+  isCreateOrderSideSheetOpen?: boolean
   entityVisibility?: MapEntityVisibility
   onEntityVisibilityChange?: (visibility: MapEntityVisibility) => void
 }
@@ -128,6 +129,7 @@ export function MapControls({
   isLassoActive = false,
   onLassoToggle,
   isWorkspaceOpen = false,
+  isCreateOrderSideSheetOpen = false,
   entityVisibility = {
     shipTosWithOrders: true,
     routeSequence: true,
@@ -165,6 +167,9 @@ export function MapControls({
     if (isWorkspaceOpen) {
       return "572px" // 560px workspace width + 12px gap
     }
+    if (isCreateOrderSideSheetOpen) {
+      return "544px" // 480px side sheet + 52px right offset + 12px gap
+    }
     if (isCreatePanelOpen || isRouteListOpen) {
       return "462px" // 450px sheet width + 12px gap
     }
@@ -173,7 +178,7 @@ export function MapControls({
 
   return (
     <div
-      className="absolute z-[1000] flex flex-col gap-2 transition-all duration-300 ease-in-out"
+      className="absolute z-[1000] flex flex-col gap-2 rb-map-controls-shift"
       style={{
         top: "78px",
         right: getRightPosition(),

@@ -160,6 +160,7 @@ export interface RouteMapProps {
   workspaceWidth?: number
   addedLoadOrders?: Record<string, ExtractionOrder[]>
   selectedUnassignedOrderIds?: string[]
+  isCreateOrderSideSheetOpen?: boolean
 }
 
 // Fallback route colors if route not found in mockRoutes
@@ -199,6 +200,7 @@ export function RouteMap({
   workspaceWidth = 560,
   addedLoadOrders = {},
   selectedUnassignedOrderIds = [],
+  isCreateOrderSideSheetOpen = false,
 }: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null) // mapboxgl.Map
@@ -253,10 +255,12 @@ export function RouteMap({
     }
     if (prevWorkspaceOpenRef.current === isWorkspaceOpen) return
     prevWorkspaceOpenRef.current = isWorkspaceOpen
-    // Shift camera by half the workspace width so content re-centres in the visible area
+    // Skip pan when modal3 side sheet is involved — the drawer replaces the workspace
+    // panel visually so the map should stay still during that transition
+    if (isCreateOrderSideSheetOpen) return
     const panAmount = workspaceWidth / 2
     mapRef.current.panBy(isWorkspaceOpen ? [panAmount, 0] : [-panAmount, 0], { duration: 400 })
-  }, [isWorkspaceOpen, workspaceWidth, mapReady])
+  }, [isWorkspaceOpen, workspaceWidth, mapReady, isCreateOrderSideSheetOpen])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -791,6 +795,87 @@ export function RouteMap({
       shipToMarkersRef.current.push(marker)
     })
   }, [mapReady, currentZoom, shipTosWithoutOrders, entityVisibility.shipTosWithoutOrders])
+
+  // ── global: show shipTo tooltip for 2s then fade (called from CreateOrderModal) ──
+  useEffect(() => {
+    if (!mapReady) return
+    ;(window as any).__showShipToTooltipFor2Sec = (shipToId: string) => {
+      if (!mapRef.current || !mbRef.current) return
+
+      let lat: number | undefined
+      let lng: number | undefined
+      let html: string | undefined
+
+      const sto = shipTosWithoutOrders.find((s) => s.id === shipToId)
+      if (sto) {
+        lat = sto.latitude; lng = sto.longitude
+        const thresholds = { red: 3, yellow: 8, green: 4, blue: 2 }
+        let nextOrderISO: string | undefined
+        if (sto.lastDelivery) {
+          const d = new Date(sto.lastDelivery)
+          if (!isNaN(d.getTime())) { d.setDate(d.getDate() + 14); nextOrderISO = d.toISOString() }
+        }
+        html = renderShipToNoOrderTooltip({
+          shipToId: sto.id,
+          shipToName: sto.shipToName ?? sto.customerName,
+          address: sto.shipToAddress,
+          thresholds,
+          lastOrderedISO: sto.lastDelivery,
+          nextOrderISO,
+        })
+      } else {
+        const order = orders.find((o) => `${o.customerId}__${o.shipToAddress}` === shipToId)
+        if (order) {
+          lat = order.latitude; lng = order.longitude
+          html = renderMapPinTooltip({
+            customerName: order.customerName,
+            address: order.shipToAddress,
+            city: order.city,
+            state: order.state,
+            zip: order.zip,
+            scheduledDate: order.scheduledDate,
+            plannedTime: getStopDisplayTime(order),
+            driverId: order.driverId,
+            currentLevel: order.currentLevel,
+            volume: order.volume,
+            tankSize: order.tankSize,
+          })
+        }
+      }
+
+      if (lat === undefined || lng === undefined || !html) return
+
+      activePopupRef.current?.remove()
+      const popup = new mbRef.current.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 10,
+        className: "rb-pin-popup",
+        maxWidth: "320px",
+      })
+        .setLngLat([lng, lat])
+        .setHTML(html)
+        .addTo(mapRef.current!)
+      activePopupRef.current = popup
+
+      const fadeTimer = window.setTimeout(() => {
+        const el = popup.getElement?.()
+        if (el) {
+          el.style.transition = "opacity 600ms ease"
+          el.style.opacity = "0"
+          window.setTimeout(() => {
+            popup.remove()
+            if (activePopupRef.current === popup) activePopupRef.current = null
+          }, 600)
+        } else {
+          popup.remove()
+          if (activePopupRef.current === popup) activePopupRef.current = null
+        }
+      }, 2000)
+      ;(popup as any).__autoFadeTimer = fadeTimer
+    }
+    return () => { delete (window as any).__showShipToTooltipFor2Sec }
+  }, [mapReady, orders, shipTosWithoutOrders])
 
   // ── route polylines ──────────────────────────────────────────────────────
   useEffect(() => {

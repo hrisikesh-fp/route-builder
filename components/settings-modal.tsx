@@ -217,6 +217,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <button
                 onClick={() => updateCreateOrderModalView("modal2")}
                 className="w-full text-left"
+                style={{ borderBottom: "1px solid #282828" }}
               >
                 <div className="flex items-start gap-3 p-4">
                   <div
@@ -236,6 +237,34 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </span>
                     <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
                       Left form panel + right delivery table, side by side.
+                    </span>
+                  </div>
+                </div>
+              </button>
+
+              {/* Modal 3 option */}
+              <button
+                onClick={() => updateCreateOrderModalView("modal3")}
+                className="w-full text-left"
+              >
+                <div className="flex items-start gap-3 p-4">
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      border: createOrderModalView === "modal3" ? "6px solid #6366F1" : "2px solid #404040",
+                      backgroundColor: createOrderModalView === "modal3" ? "#111" : "transparent",
+                      flexShrink: 0,
+                      marginTop: 2,
+                    }}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                      Modal 3: Side Sheet
+                    </span>
+                    <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                      Floating panel pinned to the right. Map stays live behind it.
                     </span>
                   </div>
                 </div>

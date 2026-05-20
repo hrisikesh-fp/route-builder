@@ -11,7 +11,7 @@ const DEFAULT_CREATE_ORDER_MODAL_VIEW = "modal1" as const
 
 type RouteLineDisplayType = "grayscale" | "colored"
 type OrderCardViewType = "condensed" | "detailed"
-export type CreateOrderModalViewType = "modal1" | "modal2"
+export type CreateOrderModalViewType = "modal1" | "modal2" | "modal3"
 
 interface SettingsContextType {
   routeLineDisplayValue: RouteLineDisplayType
@@ -42,7 +42,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setOrderCardView(storedCardView)
     }
     const storedModalView = localStorage.getItem("createOrderModalView")
-    if (storedModalView === "modal1" || storedModalView === "modal2") {
+    if (storedModalView === "modal1" || storedModalView === "modal2" || storedModalView === "modal3") {
       setCreateOrderModalView(storedModalView)
     }
   }, [])

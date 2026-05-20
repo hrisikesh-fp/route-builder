@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSettings } from "@/contexts/settings-context"
-import { X, ChevronDown, ChevronLeft, ChevronRight, Plus, RotateCw, Search, Package, Calendar, Clock } from "lucide-react"
+import { X, ChevronDown, ChevronLeft, ChevronRight, Plus, RotateCw, Search, Package, Calendar, Clock, Maximize2, Minimize2 } from "lucide-react"
 import { mockExtractionOrders, shipTosWithoutOrders, mockHubs, mockDrivers } from "@/lib/mock-data"
 
 // ─── Derived customer + shipTo data ──────────────────────────────────────────
@@ -159,6 +159,10 @@ interface Props {
   prefillShipToId?: string | null
   /** When set (route entry point), Driver field shows as read-only. */
   prefillDriverName?: string | null
+  /** Expand icon: modal3 → modal1. Shown only when createOrderModalView === "modal3". */
+  onExpandToModal?: () => void
+  /** Collapse icon: modal1/2 → modal3. Shown only when createOrderModalView !== "modal3". */
+  onCollapseToDrawer?: () => void
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -791,7 +795,7 @@ const PO_TYPE_OPTIONS = [
   { id: "spot", label: "Spot" },
 ]
 
-export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, prefillDriverName }: Props) {
+export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, prefillDriverName, onExpandToModal, onCollapseToDrawer }: Props) {
   const { customers, shipTosByCustomer } = useMemo(buildCustomerAndShipToIndex, [])
   const { createOrderModalView } = useSettings()
 
@@ -862,7 +866,26 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     setTopOffMaster(false)
   }, [shipToKey])
 
-  if (!isOpen) return null
+  // ── Enter/exit animation state — keeps DOM mounted briefly during exit so the
+  // close animation can play before unmount. Emil-style: enter slower (settling),
+  // exit snappier (decisive).
+  const [isMounted, setIsMounted] = useState(false)
+  const [isExiting, setIsExiting] = useState(false)
+  useEffect(() => {
+    if (isOpen) {
+      setIsMounted(true)
+      setIsExiting(false)
+      return
+    }
+    if (isMounted) {
+      setIsExiting(true)
+      const t = window.setTimeout(() => {
+        setIsMounted(false)
+        setIsExiting(false)
+      }, 200)
+      return () => window.clearTimeout(t)
+    }
+  }, [isOpen, isMounted])
 
   // ── Dropdown options
   const customerOptions = customers.map((c) => ({ id: c.id, label: c.name }))
@@ -894,6 +917,9 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
 
   // ── Asset rows — dynamic from ShipTo data
   const assetRows = useMemo(() => buildAssetRows(shipToKey), [shipToKey])
+
+  // Early return AFTER all hooks (Rules of Hooks: hooks must run in same order every render)
+  if (!isMounted) return null
 
   // ── Submit
   const totalQty = Object.values(tankQuantities).reduce((sum, v) => sum + (parseInt(v, 10) || 0), 0)
@@ -927,6 +953,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
   }
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (createOrderModalView === "modal3") return
     if (e.target === e.currentTarget) onClose()
   }
 
@@ -957,6 +984,13 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
               setShipToKey(id)
               const owningCustomerId = shipToCustomerByKey.get(id)
               if (owningCustomerId && owningCustomerId !== customerId) setCustomerId(owningCustomerId)
+              // Zoom map to selected ShipTo
+              const st = allShipTos.find((s) => s.id === id)
+              if (st?.latitude && st?.longitude && typeof window !== "undefined") {
+                const fitFn = (window as any).__fitToShipTos as ((coords: {lat:number;lng:number}[]) => void) | undefined
+                fitFn?.([{ lat: st.latitude, lng: st.longitude }])
+                ;(window as any).__showShipToTooltipFor2Sec?.(id)
+              }
             }}
           />
         </div>
@@ -1131,35 +1165,63 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
   */
   const othersSection = null
 
+  const EASE = "cubic-bezier(0.32, 0.72, 0, 1)"
+  const backdropAnimation = createOrderModalView === "modal3"
+    ? undefined
+    : isExiting
+      ? `rb-co-backdrop-out 180ms ${EASE} forwards`
+      : `rb-co-backdrop-in 200ms ${EASE} forwards`
+  const panelAnimation = createOrderModalView === "modal3"
+    ? isExiting
+      ? `rb-co-drawer-out 200ms ${EASE} forwards`
+      : `rb-co-drawer-in 320ms ${EASE} forwards`
+    : isExiting
+      ? `rb-co-center-out 180ms ${EASE} forwards`
+      : `rb-co-center-in 260ms ${EASE} forwards`
+
   return (
     <div
       onClick={handleBackdropClick}
       style={{
         position: "fixed",
-        top: 68,   // start below the 68px TopNav so the modal never overlaps it
+        top: 68,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.6)",
+        backgroundColor: createOrderModalView === "modal3" ? "transparent" : "rgba(0,0,0,0.6)",
         zIndex: 200,
-        display: "flex",
+        display: createOrderModalView === "modal3" ? "block" : "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "24px 24px",
+        padding: createOrderModalView === "modal3" ? 0 : "24px 24px",
         fontFamily: "Geist, system-ui, sans-serif",
+        pointerEvents: createOrderModalView === "modal3" ? "none" : "auto",
+        animation: backdropAnimation,
       }}
     >
       <div
         style={{
           display: "flex",
           flexDirection: "column",
-          backgroundColor: "#1B1B1B",
-          borderRadius: 8,
+          backgroundColor: createOrderModalView === "modal3" ? "#111111" : "#1B1B1B",
+          borderRadius: createOrderModalView === "modal3" ? 12 : 8,
           overflow: "hidden",
-          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.7)",
-          width: createOrderModalView === "modal2" ? 1200 : 960,
-          maxWidth: "100%",
-          maxHeight: "calc(100vh - 68px - 48px)",  // nav + 24px top + 24px bottom padding
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)",
+          willChange: "transform, opacity",
+          animation: panelAnimation,
+          ...(createOrderModalView === "modal3" ? {
+            position: "absolute",
+            top: 8,
+            right: 52,
+            bottom: 8,
+            width: 480,
+            pointerEvents: "auto",
+            border: "1px solid #282828",
+          } : {
+            width: createOrderModalView === "modal2" ? 1200 : 960,
+            maxWidth: "100%",
+            maxHeight: "calc(100vh - 68px - 48px)",
+          }),
         }}
       >
         {/* Header */}
@@ -1206,9 +1268,34 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
             })}
           </div>
           <div style={{ flex: 1 }} />
+          {createOrderModalView === "modal3" && onExpandToModal && (
+            <button
+              type="button"
+              onClick={onExpandToModal}
+              className="rb-icon-btn"
+              style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "#A3A3A3", background: "none", border: "none", cursor: "pointer", padding: 0, outline: "none" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#E5E5E5")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#A3A3A3")}
+            >
+              <Maximize2 size={18} />
+            </button>
+          )}
+          {createOrderModalView !== "modal3" && onCollapseToDrawer && (
+            <button
+              type="button"
+              onClick={onCollapseToDrawer}
+              className="rb-icon-btn"
+              style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "#A3A3A3", background: "none", border: "none", cursor: "pointer", padding: 0, outline: "none" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#E5E5E5")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#A3A3A3")}
+            >
+              <Minimize2 size={18} />
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
+            className="rb-icon-btn"
             style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "#A3A3A3", background: "none", border: "none", cursor: "pointer", padding: 0, outline: "none" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#E5E5E5")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#A3A3A3")}

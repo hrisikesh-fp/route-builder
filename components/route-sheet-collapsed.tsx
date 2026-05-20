@@ -4,9 +4,10 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 
 interface RouteSheetCollapsedProps {
   onExpand: () => void
+  hideExpandButton?: boolean
 }
 
-export function RouteSheetCollapsed({ onExpand }: RouteSheetCollapsedProps) {
+export function RouteSheetCollapsed({ onExpand, hideExpandButton = false }: RouteSheetCollapsedProps) {
   return (
     <TooltipProvider>
       <div
@@ -21,6 +22,8 @@ export function RouteSheetCollapsed({ onExpand }: RouteSheetCollapsedProps) {
             <button
               onClick={onExpand}
               className="expand-trigger-button flex items-center justify-center gap-2"
+              aria-hidden={hideExpandButton}
+              tabIndex={hideExpandButton ? -1 : 0}
               style={{
                 width: "36px",
                 height: "36px",
@@ -32,7 +35,11 @@ export function RouteSheetCollapsed({ onExpand }: RouteSheetCollapsedProps) {
                 borderRight: "none",
                 boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
                 color: "white",
-                cursor: "pointer",
+                cursor: hideExpandButton ? "default" : "pointer",
+                opacity: hideExpandButton ? 0 : 1,
+                transform: hideExpandButton ? "translateX(12px)" : "translateX(0)",
+                pointerEvents: hideExpandButton ? "none" : "auto",
+                transition: "opacity 220ms cubic-bezier(0.32, 0.72, 0, 1), transform 240ms cubic-bezier(0.32, 0.72, 0, 1)",
               }}
             >
               <svg
