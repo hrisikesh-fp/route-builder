@@ -70,6 +70,7 @@ The **Lasso Workspace Sheet** (560px) appears on the right when orders are selec
 - Clicking opens Workspace sheet in empty state
 
 ### `components/lasso-workspace-sheet.tsx` — Main workspace (right panel, 560px)
+> **Dead code (not yet cleaned up):** `addedRouteInfo`, `onAddSelectedRouteId`, `syntheticRouteIds`, `prefillDriverName` wiring and the driver-creates-route branch in the submit handler were removed from active use but variable declarations remain. The `!routeId` submit path now always creates an Unassigned order — no synthetic route creation.
 This is the largest component. Contains collapsed route cards, expanded route cards, truck/trailer/driver selection, capacity validation, and order management.
 
 **Key internals:**
@@ -184,6 +185,20 @@ Single FAB adapts based on what's checked:
 - `hoveredWorkspaceOrderId` — order card hover → map pin highlight
 - `hoveredWorkspaceRouteId` — route card hover → route line highlight
 - `isWorkspaceOpen`, `addedLoadOrders`
+- `workspaceWidth?: number` (default `560`) — used to compute pan amount when workspace opens/closes
+
+**Workspace pan on open/close:**
+- `useEffect` watches `isWorkspaceOpen`, `workspaceWidth`, `mapReady`
+- `prevWorkspaceOpenRef` (useRef) skips the initial mount so the map doesn't pan on first load
+- On open: `mapRef.current.panBy([workspaceWidth / 2, 0], { duration: 400 })` — camera moves right, so content shifts left into visible area
+- On close: `panBy([-workspaceWidth / 2, 0])` — reverses
+- Dynamic so it adapts if panel width ever changes — update `workspaceWidth` prop in page.tsx
+
+**Route line opacity:**
+- `applyRouteStyle` function controls opacity based on workspace state:
+  - Routes in workspace: `opacity: 0.8` (fully visible)
+  - Routes outside workspace when panel is open: `opacity: 0.25` (dimmed)
+  - All routes when workspace is closed: `opacity: 0.8`
 
 **Unassigned order badges:**
 - `isActive` for unassigned orders = `selectedUnassignedOrderIds.includes(order.id)`
@@ -222,6 +237,9 @@ Single FAB adapts based on what's checked:
 - Needs full truck/trailer combobox + order list + time estimates
 
 ### `components/settings-modal.tsx` — Settings modal (from profile dropdown)
+- **Order Card View** section: "Condensed" / "Detailed" radio buttons — controls unassigned order card style
+- **Create Order Modal** section: "Modal 1: Full Scroll" / "Modal 2: 2 Panel" radio buttons — controls create-order-modal layout
+- Radio button style: 20×20px custom circles, `6px solid #6366F1` + `#111` bg when selected, `2px solid #404040` unselected
 ### `components/infrastructure-marker.tsx` — Hub/Terminal/Bulk Plant/Warehouse map markers
 ### `components/route-list-sheet.tsx` — **UNUSED** — do not re-add
 
@@ -259,6 +277,24 @@ Single FAB adapts based on what's checked:
 - `canUpdate` gate: at least one compartment must have product + qty > 0
 - Exports `aggregateCompartmentValues()` helper: collapses per-compartment values into per-product totals for callers
 - Resets state on every open via `useEffect` on `isOpen + initialValues`
+
+### `components/create-order-modal.tsx` — Create Order modal
+- Centered overlay modal; width is **960px (Modal 1)** or **1200px (Modal 2)**, controlled by `createOrderModalView` setting
+- Sections: Customer Details, Schedule Details, Delivery Order (product table), Delivery Instructions, Others (commented out — not needed currently)
+- **Custom DatePicker and TimePicker** — built in-file, use `position: fixed` + `getBoundingClientRect()` to escape modal's `overflow: hidden` wrapper
+- **Orders created are always Unassigned** — no driver/route assignment in this flow; submitted order gets `status: "pending"` and goes to Unassigned section of workspace
+
+**Modal 1 vs Modal 2 layout** — controlled by `const { createOrderModalView } = useSettings()`:
+- **Modal 1 (full scroll, 960px):** all sections in a single `overflowY: auto` column
+- **Modal 2 (2-panel, 1200px):** left 480px fixed panel (`overflowY: auto`) with Customer Details + Schedule Details; 1px `#282828` vertical divider; right `flex: 1` panel with Delivery Order table + Delivery Instructions. Both panels scroll independently.
+
+**Section extraction pattern** — each section is defined as a `const xyzSection = (...)` JSX variable before `return` so both layouts reference the same JSX without duplication. `othersSection = null` stub keeps layouts compilable while Others is hidden.
+
+**Pump Out / Top Off** — `{orderType === "extraction" ? "Pump Out" : "Top Off"}` — label in the Delivery Order table header changes based on order type.
+
+**Section header style** — `SectionTitle` component: `fontWeight: 300, color: "#E5E5E5"` (matches other modals).
+
+**Side-by-side field rows** — `gap: 12` between paired fields.
 
 ### `components/balance-table-modal.tsx` — Route Summary / Balance Table modal
 - Centered overlay modal titled "Route Summary"; width adapts: `800px` (1 product) → `1200px` (2+ products)
@@ -323,7 +359,8 @@ components/
   balance-table-modal.tsx      ← Route Summary / per-stop running balance table modal
   map-stats.tsx                ← Bottom-left metrics display
   create-route-panel.tsx       ← Create route panel (incomplete)
-  settings-modal.tsx           ← Settings modal
+  create-order-modal.tsx       ← Create Order modal (Modal 1: 960px single scroll / Modal 2: 1200px 2-panel)
+  settings-modal.tsx           ← Settings modal (Order Card View + Create Order Modal radio sections)
   route-list-sheet.tsx         ← UNUSED — do not re-add
   ui/                          ← shadcn/ui component library
 
@@ -336,7 +373,7 @@ lib/
   utils.ts                     ← cn() utility
 
 contexts/
-  settings-context.tsx         ← App settings: routeLineDisplay, showBadges, reducedOpacity, orderCardView (condensed/detailed)
+  settings-context.tsx         ← App settings: routeLineDisplay, showBadges, reducedOpacity, orderCardView (condensed/detailed), createOrderModalView (modal1/modal2 — extensible for modal3)
 ```
 
 ---
@@ -364,3 +401,12 @@ contexts/
 - **Terminal tooltip:** Detached DOM element appended to mapContainer (not inside marker)
 - **Infrastructure markers:** No `position: relative` or `zIndex` on outer element
 - **Hot reload cache bug:** Browser sometimes caches stale webpack modules → `__webpack_modules__[moduleId] is not a function`. Fix: clear `.next` + restart dev server + hard refresh (`Cmd+Shift+R`). Prevention: enable "Disable cache" in Chrome DevTools → Network tab.
+
+---
+
+## Current branch / active work
+
+- **Branch:** `iter/create-order-side-sheet`
+- **Next:** Modal 3 — Side Sheet variant of the Create Order modal (planned, not started)
+- `CreateOrderModalViewType` is already typed as `"modal1" | "modal2"` — add `"modal3"` when ready
+- See `3-resources/token-efficiency.md` for guidance on avoiding expensive agent spawns during research steps
