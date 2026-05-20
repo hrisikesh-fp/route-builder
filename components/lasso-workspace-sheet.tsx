@@ -4727,87 +4727,35 @@ export function LassoWorkspaceSheet({
 
             if (!routeId) {
               const orderId = `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-
-              if (data.driverId && data.driverName) {
-                // Driver selected → create a new route for them
-                const newRouteId = `new-route-${Date.now()}`
-                const newOrder: ExtractionOrder = {
-                  id: orderId,
-                  customerId: data.customerId,
-                  customerName: data.customerName,
-                  shipToName: data.shipToName,
-                  shipToAddress: data.shipToAddress,
-                  latitude: data.latitude,
-                  longitude: data.longitude,
-                  status: "assigned",
-                  volume: data.volume,
-                  scheduledDate: data.scheduledTimeLabel,
-                  zoneId: "",
-                  hubId: "",
-                  city: data.city,
-                  state: data.state,
-                  zip: data.zip,
-                  tankSize: 0,
-                  currentLevel: 0,
-                  daysUntilEmpty: 0,
-                  priority: "Medium",
-                  lastDelivery: "",
-                  zone: data.zone,
-                  orderType: "D",
-                  routeId: newRouteId,
-                  routeSequence: 1,
-                }
-                // Register the synthetic route metadata
-                setAddedRouteInfo((prev) => ({
-                  ...prev,
-                  [newRouteId]: { driverName: data.driverName!, driverId: data.driverId!, color: "#FDBA74" },
-                }))
-                // Pre-populate driver selection for the new card
-                const driver = DRIVERS.find((d) => d.id === data.driverId)
-                if (driver) setSelectedDrivers((prev) => ({ ...prev, [newRouteId]: driver }))
-                // Add the order to addedDeliveryOrders
-                const updated = { ...addedDeliveryOrders, [newRouteId]: [newOrder] }
-                setAddedDeliveryOrders(updated)
-                onAddedDeliveryOrdersChange?.(updated)
-                // Register the routeId in page.tsx so the map picks it up
-                onAddSelectedRouteId?.(newRouteId)
-                // Expand the new card immediately
-                setExpandedRouteIds((prev) => [...prev, newRouteId])
-                setRecentlyAddedOrderId(orderId)
-                setTimeout(() => setRecentlyAddedOrderId(null), 4500)
-                const firstName = data.driverName.split(" ")[0]
-                onShowMessage?.(`New route created for ${firstName}`)
-              } else {
-                // No driver → land in Unassigned
-                const newOrder: ExtractionOrder = {
-                  id: orderId,
-                  customerId: data.customerId,
-                  customerName: data.customerName,
-                  shipToName: data.shipToName,
-                  shipToAddress: data.shipToAddress,
-                  latitude: data.latitude,
-                  longitude: data.longitude,
-                  status: "pending",
-                  volume: data.volume,
-                  scheduledDate: data.scheduledTimeLabel,
-                  zoneId: "",
-                  hubId: "",
-                  city: data.city,
-                  state: data.state,
-                  zip: data.zip,
-                  tankSize: 0,
-                  currentLevel: 0,
-                  daysUntilEmpty: 0,
-                  priority: "Medium",
-                  lastDelivery: "",
-                  zone: data.zone,
-                  orderType: "D",
-                }
-                setAddedUnassignedOrders((prev) => [...prev, newOrder])
-                setRecentlyAddedOrderId(orderId)
-                setTimeout(() => setRecentlyAddedOrderId(null), 4500)
-                onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
+              // Orders created from the map UI always land in Unassigned
+              const newOrder: ExtractionOrder = {
+                id: orderId,
+                customerId: data.customerId,
+                customerName: data.customerName,
+                shipToName: data.shipToName,
+                shipToAddress: data.shipToAddress,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                status: "pending",
+                volume: data.volume,
+                scheduledDate: data.scheduledTimeLabel,
+                zoneId: "",
+                hubId: "",
+                city: data.city,
+                state: data.state,
+                zip: data.zip,
+                tankSize: 0,
+                currentLevel: 0,
+                daysUntilEmpty: 0,
+                priority: "Medium",
+                lastDelivery: "",
+                zone: data.zone,
+                orderType: "D",
               }
+              setAddedUnassignedOrders((prev) => [...prev, newOrder])
+              setRecentlyAddedOrderId(orderId)
+              setTimeout(() => setRecentlyAddedOrderId(null), 4500)
+              onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
 
               setIsCreateOrderModalOpen(false)
               setCreateOrderRouteId(null)

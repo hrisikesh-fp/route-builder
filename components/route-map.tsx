@@ -157,6 +157,7 @@ export interface RouteMapProps {
   hoveredWorkspaceRouteId?: string | null
   hoveredWorkspaceOrderId?: string | null
   isWorkspaceOpen?: boolean
+  workspaceWidth?: number
   addedLoadOrders?: Record<string, ExtractionOrder[]>
   selectedUnassignedOrderIds?: string[]
 }
@@ -195,6 +196,7 @@ export function RouteMap({
   hoveredWorkspaceRouteId = null,
   hoveredWorkspaceOrderId = null,
   isWorkspaceOpen = false,
+  workspaceWidth = 560,
   addedLoadOrders = {},
   selectedUnassignedOrderIds = [],
 }: RouteMapProps) {
@@ -240,6 +242,21 @@ export function RouteMap({
   useEffect(() => { selectedRouteIdsRef.current = selectedRouteIds }, [selectedRouteIds])
   useEffect(() => { onRouteClickRef.current = onRouteClick }, [onRouteClick])
   useEffect(() => { onOrderPinClickRef.current = onOrderPinClick }, [onOrderPinClick])
+
+  // ── shift map when workspace panel opens / closes ─────────────────────────
+  const prevWorkspaceOpenRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return
+    if (prevWorkspaceOpenRef.current === null) {
+      prevWorkspaceOpenRef.current = isWorkspaceOpen
+      return
+    }
+    if (prevWorkspaceOpenRef.current === isWorkspaceOpen) return
+    prevWorkspaceOpenRef.current = isWorkspaceOpen
+    // Shift camera by half the workspace width so content re-centres in the visible area
+    const panAmount = workspaceWidth / 2
+    mapRef.current.panBy(isWorkspaceOpen ? [panAmount, 0] : [-panAmount, 0], { duration: 400 })
+  }, [isWorkspaceOpen, workspaceWidth, mapReady])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -1182,9 +1199,14 @@ function applyRouteStyle(
 
   if (routeLineDisplay === "grayscale") {
     if (isWorkspaceOpen && isInWorkspace) {
+      // In workspace → full color, clearly visible
       color = originalColor
-      opacity = isHighlighted ? 1 : 0.3
+      opacity = isHighlighted ? 1 : 0.8
       weight = isHighlighted ? 3.5 : 3
+    } else if (isWorkspaceOpen) {
+      // Workspace open but this route is not in it → dim
+      color = DEFAULT_GREY
+      opacity = 0.25
     } else {
       color = DEFAULT_GREY
       opacity = 0.8
@@ -1193,8 +1215,12 @@ function applyRouteStyle(
     // colored
     color = originalColor
     if (isWorkspaceOpen && isInWorkspace) {
-      opacity = isHighlighted ? 1 : 0.3
+      // In workspace → full color, clearly visible
+      opacity = isHighlighted ? 1 : 0.8
       weight = isHighlighted ? 3.5 : 3
+    } else if (isWorkspaceOpen) {
+      // Not in workspace → dim
+      opacity = reducedOpacity ? 0.15 : 0.25
     } else {
       opacity = reducedOpacity ? 0.3 : 1
     }

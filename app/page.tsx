@@ -230,6 +230,15 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
     setSelectedOrders([...selectedOrders, ...ordersToAdd])
     setSelectedRouteIds(Array.from(new Set([...selectedRouteIds, ...Array.from(selectedRoutes)])))
+
+    // Refit the map so the selected orders are visible alongside the 560px workspace sheet
+    const allSelectedOrders = [...selectedOrders, ...ordersToAdd]
+    const coords = allSelectedOrders
+      .filter((o) => o.latitude && o.longitude)
+      .map((o) => ({ lat: o.latitude, lng: o.longitude }))
+    if (coords.length > 0 && (window as any).__fitToShipTos) {
+      setTimeout(() => (window as any).__fitToShipTos(coords), 100)
+    }
   }
 
   const handleWorkspaceClose = () => {
@@ -352,6 +361,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   hoveredWorkspaceRouteId={hoveredWorkspaceRouteId}
   hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
   isWorkspaceOpen={isWorkspaceOpen}
+  workspaceWidth={560}
   addedLoadOrders={addedLoadOrders}
   selectedUnassignedOrderIds={selectedUnassignedIds}
   />

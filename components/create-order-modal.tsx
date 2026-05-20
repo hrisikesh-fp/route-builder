@@ -195,7 +195,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px" }}>
+    <span style={{ fontSize: 16, fontWeight: 300, color: "#E5E5E5", lineHeight: "24px" }}>
       {children}
     </span>
   )
@@ -815,12 +815,12 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
   // ── Delivery Instructions
   const [instructions, setInstructions] = useState("")
 
-  // ── Others
-  const [poNumber, setPoNumber] = useState("")
-  const [poType, setPoType] = useState<string | null>(null)
-  const [carrierNumber, setCarrierNumber] = useState("")
-  const [hubId, setHubId] = useState<string | null>(null)
-  const [driverId, setDriverId] = useState<string | null>(null)
+  // ── Others (commented out — scope reduced, Others section removed for now)
+  // const [poNumber, setPoNumber] = useState("")
+  // const [poType, setPoType] = useState<string | null>(null)
+  // const [carrierNumber, setCarrierNumber] = useState("")
+  // const [hubId, setHubId] = useState<string | null>(null)
+  // const [driverId, setDriverId] = useState<string | null>(null)
 
   // Reset on open
   useEffect(() => {
@@ -833,11 +833,11 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     setTopOffMaster(false)
     setTopOffRows({})
     setInstructions("")
-    setPoNumber("")
-    setPoType(null)
-    setCarrierNumber("")
-    setHubId(null)
-    setDriverId(null)
+    // setPoNumber("")
+    // setPoType(null)
+    // setCarrierNumber("")
+    // setHubId(null)
+    // setDriverId(null)
 
     if (prefillShipToId) {
       let owningCustomerId: string | null = null
@@ -889,8 +889,8 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     return map
   }, [allShipTos])
 
-  const hubOptions = useMemo(() => mockHubs.map((h) => ({ id: h.id, label: h.name })), [])
-  const driverOptions = useMemo(() => mockDrivers.map((d) => ({ id: d.id, label: d.name })), [])
+  // const hubOptions = useMemo(() => mockHubs.map((h) => ({ id: h.id, label: h.name })), [])
+  // const driverOptions = useMemo(() => mockDrivers.map((d) => ({ id: d.id, label: d.name })), [])
 
   // ── Asset rows — dynamic from ShipTo data
   const assetRows = useMemo(() => buildAssetRows(shipToKey), [shipToKey])
@@ -905,7 +905,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     const shipTo = allShipTos.find((s) => s.id === shipToKey)
     if (!customer || !shipTo) return
     const iso = new Date(`${plannedDate}T${plannedTime}:00`).toISOString()
-    const selectedDriver = driverId ? mockDrivers.find((d) => d.id === driverId) : undefined
+    // const selectedDriver = driverId ? mockDrivers.find((d) => d.id === driverId) : undefined
     onSubmit({
       customerId: customer.id,
       customerName: customer.name,
@@ -920,8 +920,8 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
       scheduledDateTimeISO: iso,
       scheduledTimeLabel: formatTimeLabel(plannedTime),
       volume: totalQty,
-      driverId: selectedDriver?.id,
-      driverName: selectedDriver?.name,
+      // driverId: selectedDriver?.id,
+      // driverName: selectedDriver?.name,
     })
     onClose()
   }
@@ -937,7 +937,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
   const customerDetailsSection = (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <SectionTitle>Customer Details</SectionTitle>
-      <div style={{ display: "flex", gap: 20 }}>
+      <div style={{ display: "flex", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           <FieldLabel>Customer</FieldLabel>
           <Dropdown
@@ -967,7 +967,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
   const scheduleDetailsSection = (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <SectionTitle>Schedule Details</SectionTitle>
-      <div style={{ display: "flex", gap: 20 }}>
+      <div style={{ display: "flex", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           <FieldLabel>Planned Date</FieldLabel>
           <DatePicker value={plannedDate} onChange={setPlannedDate} />
@@ -1012,7 +1012,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
         <div style={{ display: "grid", gridTemplateColumns: TABLE_GRID, backgroundColor: "#222", height: 40, alignItems: "center", borderBottom: "1px solid #282828" }}>
           <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}><FauxCheckbox /></div>
           <div style={{ padding: "0 12px", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ ...colHeaderStyle, whiteSpace: "nowrap" }}>Top Off</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#A3A3A3", whiteSpace: "nowrap" }}>{orderType === "extraction" ? "Pump Out" : "Top Off"}</span>
             <Toggle
               on={topOffMaster}
               onChange={() => {
@@ -1032,7 +1032,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
         {assetRows.length === 0 && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "32px 24px" }}>
             <Package size={24} color="#737373" />
-            <span style={{ fontSize: 14, color: "#737373" }}>Select a customer and ShipTo to view assets</span>
+            <span style={{ fontSize: 14, color: "#737373" }}>Please select a Customer and ShipTo to view available assets</span>
           </div>
         )}
         {/* Data rows */}
@@ -1089,10 +1089,11 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     </div>
   )
 
+  /* Others section — removed from scope, restore when needed
   const othersSection = (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <SectionTitle>Others</SectionTitle>
-      {/* Row 1: PO Number, PO Type, Carrier Number (always 3 cols) */}
+      {/* Row 1: PO Number, PO Type, Carrier Number (always 3 cols) * /}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <FieldLabel>PO Number</FieldLabel>
@@ -1107,7 +1108,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
           <TextInput value={carrierNumber} onChange={setCarrierNumber} placeholder="Enter Carrier number" />
         </div>
       </div>
-      {/* Row 2: Hub, Driver */}
+      {/* Row 2: Hub, Driver * /}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <FieldLabel>Hub</FieldLabel>
@@ -1127,6 +1128,8 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
       </div>
     </div>
   )
+  */
+  const othersSection = null
 
   return (
     <div
@@ -1154,7 +1157,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
           borderRadius: 8,
           overflow: "hidden",
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.7)",
-          width: 960,
+          width: createOrderModalView === "modal2" ? 1200 : 960,
           maxWidth: "100%",
           maxHeight: "calc(100vh - 68px - 48px)",  // nav + 24px top + 24px bottom padding
         }}
