@@ -168,7 +168,7 @@ export function MapControls({
       return "572px" // 560px workspace width + 12px gap
     }
     if (isCreateOrderSideSheetOpen) {
-      return "544px" // 480px side sheet + 52px right offset + 12px gap
+      return "624px" // 560px side sheet + 52px right offset + 12px gap
     }
     if (isCreatePanelOpen || isRouteListOpen) {
       return "462px" // 450px sheet width + 12px gap

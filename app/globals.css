@@ -388,3 +388,8 @@
 .rb-icon-btn:active {
   transform: scale(0.9);
 }
+
+/* Secondary button on map-pin tooltip — shadcn secondary variant */
+.rb-tooltip-create-order-btn:hover {
+  background: #333333 !important;
+}

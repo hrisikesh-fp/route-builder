@@ -341,9 +341,10 @@ export function renderShipToNoOrderTooltip(props: ShipToNoOrderTooltipProps): st
             type="button"
             data-action="create-order"
             data-shipto-id="${shipToId}"
+            class="rb-tooltip-create-order-btn"
             style="
-              background: #E5E5E5;
-              color: #171717;
+              background: #262626;
+              color: #FAFAFA;
               border: none;
               border-radius: 4px;
               padding: 8px 12px;
@@ -353,6 +354,7 @@ export function renderShipToNoOrderTooltip(props: ShipToNoOrderTooltipProps): st
               line-height: 20px;
               cursor: pointer;
               font-family: inherit;
+              transition: background 160ms cubic-bezier(0.32, 0.72, 0, 1);
             "
           >Create Order</button>
         </div>

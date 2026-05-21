@@ -1,15 +1,18 @@
 "use client"
 
-import { Calendar, ChevronDown, SquarePen, Key, Shield, LogOut, Settings } from "lucide-react"
+import { Calendar, ChevronDown, SquarePen, Key, Shield, LogOut, Settings, Plus } from "lucide-react"
 import Image from "next/image"
 import { useMemo, useState, useRef, useEffect } from "react"
 
 interface MapHeaderProps {
   onFilterClick: () => void
   onSettingsClick: () => void
+  onCreateOrderClick?: () => void
+  /** True while a Create Order modal/drawer is open — button goes disabled to prevent double-open. */
+  isCreateOrderOpen?: boolean
 }
 
-export function MapHeader({ onFilterClick, onSettingsClick }: MapHeaderProps) {
+export function MapHeader({ onFilterClick, onSettingsClick, onCreateOrderClick, isCreateOrderOpen = false }: MapHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
@@ -70,8 +73,38 @@ export function MapHeader({ onFilterClick, onSettingsClick }: MapHeaderProps) {
         </div>
       </a>
 
-      {/* Right side - Date and Profile */}
+      {/* Right side - Create Order, Date, Profile */}
       <div className="flex items-center gap-3">
+        {/* Create Order */}
+        <button
+          type="button"
+          onClick={onCreateOrderClick}
+          disabled={isCreateOrderOpen}
+          className="rb-create-order-btn flex items-center gap-2 px-3 h-9"
+          style={{
+            backgroundColor: "transparent",
+            border: "1px solid #282828",
+            borderRadius: "4px",
+            color: "#FFF",
+            cursor: isCreateOrderOpen ? "not-allowed" : "pointer",
+            opacity: isCreateOrderOpen ? 0.4 : 1,
+            transition: "background-color 160ms cubic-bezier(0.32, 0.72, 0, 1), border-color 160ms cubic-bezier(0.32, 0.72, 0, 1), opacity 160ms cubic-bezier(0.32, 0.72, 0, 1)",
+            fontFamily: "inherit",
+          }}
+          onMouseEnter={(e) => {
+            if (isCreateOrderOpen) return
+            e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)"
+            e.currentTarget.style.borderColor = "#404040"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent"
+            e.currentTarget.style.borderColor = "#282828"
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          <span className="text-sm font-medium">Create Order</span>
+        </button>
+
         {/* Date Selector */}
         <div
           className="flex items-center gap-2 px-3 h-9 text-white"

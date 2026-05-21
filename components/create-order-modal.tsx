@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSettings } from "@/contexts/settings-context"
-import { X, ChevronDown, ChevronLeft, ChevronRight, Plus, RotateCw, Search, Package, Calendar, Clock, Maximize2, Minimize2 } from "lucide-react"
+import { X, ChevronDown, ChevronLeft, ChevronRight, RotateCw, Search, Package, Calendar, Clock, Maximize2, Minimize2 } from "lucide-react"
 import { mockExtractionOrders, shipTosWithoutOrders, mockHubs, mockDrivers } from "@/lib/mock-data"
 
 // ─── Derived customer + shipTo data ──────────────────────────────────────────
@@ -1023,35 +1023,54 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
           <TimePicker value={plannedTime} onChange={setPlannedTime} />
         </div>
       </div>
-      <div style={{ paddingTop: 4 }}>
-        <Checkbox checked={markUrgent} onChange={() => setMarkUrgent((v) => !v)} label="Mark As Urgent" />
-      </div>
     </div>
   )
 
   const deliveryOrderSection = (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <SectionTitle>Delivery Order</SectionTitle>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            type="button"
-            style={{ display: "flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", backgroundColor: "transparent", border: "none", borderRadius: 4, color: "#E5E5E5", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-          >
-            <Plus size={14} />
-            Add Asset
-          </button>
-          <button
-            type="button"
-            style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "transparent", border: "none", borderRadius: 4, color: "#A3A3A3", cursor: "pointer" }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-          >
-            <RotateCw size={14} />
-          </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <SectionTitle>Assets & Products</SectionTitle>
+        <div style={{ width: 1, height: 20, backgroundColor: "#333", flexShrink: 0 }} />
+        <div style={{ display: "inline-flex", alignItems: "center", height: 28, padding: 2, borderRadius: 4, backgroundColor: "#1B1B1B", border: "1px solid #282828", boxSizing: "border-box" }}>
+          {(["delivery", "extraction"] as const).map((t) => {
+            const isActive = orderType === t
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setOrderType(t)}
+                style={{
+                  padding: "0 16px",
+                  fontSize: 14,
+                  lineHeight: "20px",
+                  height: "100%",
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive ? "#E5E5E5" : "#A3A3A3",
+                  backgroundColor: isActive ? "#282828" : "transparent",
+                  border: isActive ? "1px solid #333" : "1px solid transparent",
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  outline: "none",
+                  boxShadow: isActive ? "0px 1px 3px rgba(0,0,0,0.1)" : "none",
+                  transition: "background-color 150ms, color 150ms",
+                }}
+              >
+                {t === "delivery" ? "Delivery" : "Extraction"}
+              </button>
+            )
+          })}
         </div>
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          style={{ display: "flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", backgroundColor: "transparent", border: "none", borderRadius: 4, color: "#E5E5E5", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+        >
+          <RotateCw size={14} />
+          Refresh
+        </button>
       </div>
       <div style={{ border: "1px solid #282828", borderRadius: 4, overflow: "hidden" }}>
         {/* Table header */}
@@ -1234,11 +1253,11 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
             top: 8,
             right: 52,
             bottom: 8,
-            width: 480,
+            width: 560,
             pointerEvents: "auto",
             border: "1px solid #282828",
           } : {
-            width: createOrderModalView === "modal2" ? 1200 : 960,
+            width: createOrderModalView === "modal2" ? 1200 : 800,
             maxWidth: "100%",
             maxHeight: "calc(100vh - 68px - 48px)",
           }),
@@ -1256,37 +1275,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
           }}
         >
           <span style={{ fontSize: 16, fontWeight: 500, color: "#E5E5E5" }}>Create Order</span>
-          <div style={{ width: 1, height: 20, backgroundColor: "#333", flexShrink: 0 }} />
-          <div style={{ display: "inline-flex", alignItems: "center", height: 28, padding: 2, borderRadius: 4, backgroundColor: "#1B1B1B", border: "1px solid #282828", boxSizing: "border-box" }}>
-            {(["delivery", "extraction"] as const).map((t) => {
-              const isActive = orderType === t
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setOrderType(t)}
-                  style={{
-                    padding: "0 16px",
-                    fontSize: 14,
-                    lineHeight: "20px",
-                    height: "100%",
-                    fontWeight: isActive ? 500 : 400,
-                    color: isActive ? "#E5E5E5" : "#A3A3A3",
-                    backgroundColor: isActive ? "#282828" : "transparent",
-                    border: isActive ? "1px solid #333" : "1px solid transparent",
-                    borderRadius: 2,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    outline: "none",
-                    boxShadow: isActive ? "0px 1px 3px rgba(0,0,0,0.1)" : "none",
-                    transition: "background-color 150ms, color 150ms",
-                  }}
-                >
-                  {t === "delivery" ? "Delivery" : "Extraction"}
-                </button>
-              )
-            })}
-          </div>
+          <Checkbox checked={markUrgent} onChange={() => setMarkUrgent((v) => !v)} label="Mark Order As Urgent" />
           <div style={{ flex: 1 }} />
           {createOrderModalView === "modal3" && onExpandToModal && (
             <button

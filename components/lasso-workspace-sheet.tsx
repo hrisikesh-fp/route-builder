@@ -35,6 +35,10 @@ interface LassoWorkspaceSheetProps {
   /** When set (by the map-pin → Create Order flow), opens the modal prefilled to this shipto with no originating route. */
   createOrderPrefillShipToId?: string | null
   onClearCreateOrderPrefillShipToId?: () => void
+  /** Top-nav Create Order trigger: parent increments this counter to open the modal with no prefill / no route. */
+  openCreateOrderTrigger?: number
+  /** Fires whenever the Create Order modal/drawer opens or closes — used to disable the top-nav button. */
+  onCreateOrderModalOpenChange?: (open: boolean) => void
   /** Called when a new synthetic route is created (driver-from-modal flow) so page.tsx can register it. */
   onAddSelectedRouteId?: (routeId: string) => void
   /** Modal 3 (side sheet): called when Create Order opens so page.tsx can collapse the workspace. */
@@ -2840,6 +2844,8 @@ export function LassoWorkspaceSheet({
   onCreateOrderSideSheetOpen,
   onCreateOrderSideSheetClose,
   externalUnassignedOrders = [],
+  openCreateOrderTrigger,
+  onCreateOrderModalOpenChange,
 }: LassoWorkspaceSheetProps) {
   const { orderCardView, createOrderModalView, updateCreateOrderModalView } = useSettings()
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
@@ -2863,6 +2869,20 @@ export function LassoWorkspaceSheet({
       if (createOrderModalView === "modal3") onCreateOrderSideSheetOpen?.()
     }
   }, [createOrderPrefillShipToId])
+
+  // Top-nav entry point: parent increments openCreateOrderTrigger to open the modal
+  // with no prefill, no originating route. Skip the initial mount (undefined / 0).
+  useEffect(() => {
+    if (!openCreateOrderTrigger) return
+    setCreateOrderRouteId(null)
+    setIsCreateOrderModalOpen(true)
+    if (createOrderModalView === "modal3") onCreateOrderSideSheetOpen?.()
+  }, [openCreateOrderTrigger])
+
+  // Surface modal open state to parent so the top-nav Create Order button can disable itself.
+  useEffect(() => {
+    onCreateOrderModalOpenChange?.(isCreateOrderModalOpen)
+  }, [isCreateOrderModalOpen])
 
   // Route focus while the Create Order modal is open: expand that route's card so it stays
   // visible behind the modal backdrop, and pull the map zoom back one notch (maxZoom 12 vs

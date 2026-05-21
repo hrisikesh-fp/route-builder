@@ -44,6 +44,11 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [isCreateOrderSideSheetOpen, setIsCreateOrderSideSheetOpen] = useState(false)
   const [modal3UnassignedOrders, setModal3UnassignedOrders] = useState<ExtractionOrder[]>([])
 
+  // Top-nav Create Order trigger — incrementing this counter opens the Create Order modal.
+  const [openCreateOrderTrigger, setOpenCreateOrderTrigger] = useState(0)
+  // Mirrors the workspace's isCreateOrderModalOpen — used to disable the top-nav button while open.
+  const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState(false)
+
   // Filter-driven map zoom — Customer and ShipTo selections
   const [appliedFilterCustomers, setAppliedFilterCustomers] = useState<Set<string>>(new Set())
   const [appliedFilterShipTos, setAppliedFilterShipTos] = useState<Set<string>>(new Set())
@@ -341,9 +346,14 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   return (
     <SettingsProvider>
     <main className="relative w-full h-screen overflow-hidden">
-      <MapHeader 
-        onFilterClick={() => setIsFilterOpen(!isFilterOpen)} 
+      <MapHeader
+        onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
         onSettingsClick={() => setIsSettingsOpen(true)}
+        onCreateOrderClick={() => {
+          setIsWorkspaceOpen(true)
+          setOpenCreateOrderTrigger((n) => n + 1)
+        }}
+        isCreateOrderOpen={isCreateOrderModalOpen}
       />
 
 <RouteMap
@@ -410,6 +420,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onCreateOrderSideSheetOpen={() => { setIsWorkspaceOpen(false); setIsCreateOrderSideSheetOpen(true) }}
         onCreateOrderSideSheetClose={() => { setIsCreateOrderSideSheetOpen(false); setIsWorkspaceOpen(true) }}
         externalUnassignedOrders={modal3UnassignedOrders}
+        openCreateOrderTrigger={openCreateOrderTrigger}
+        onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}
         onShowToast={(driverName) => {
           setToastMessage(`Load Order added to ${driverName}'s Route successfully`)
           setTimeout(() => setToastMessage(null), 5000)
