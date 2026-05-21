@@ -869,8 +869,14 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
   // ── Enter/exit animation state — keeps DOM mounted briefly during exit so the
   // close animation can play before unmount. Emil-style: enter slower (settling),
   // exit snappier (decisive).
+  // CRITICAL: `hasEntered` flips ON after entry animation completes. Once true,
+  // we remove the `animation` CSS so no residual `transform: scale(1)` sticks
+  // around — a non-identity OR identity transform on an ancestor makes it the
+  // containing block for `position: fixed` children, breaking dropdown
+  // positioning (DatePicker/TimePicker/ShipTo dropdown all use fixed + rects).
   const [isMounted, setIsMounted] = useState(false)
   const [isExiting, setIsExiting] = useState(false)
+  const [hasEntered, setHasEntered] = useState(false)
   useEffect(() => {
     if (isOpen) {
       setIsMounted(true)
@@ -879,6 +885,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     }
     if (isMounted) {
       setIsExiting(true)
+      setHasEntered(false)
       const t = window.setTimeout(() => {
         setIsMounted(false)
         setIsExiting(false)
@@ -886,6 +893,11 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
       return () => window.clearTimeout(t)
     }
   }, [isOpen, isMounted])
+  useEffect(() => {
+    if (!isMounted || isExiting) return
+    const t = window.setTimeout(() => setHasEntered(true), 340)
+    return () => window.clearTimeout(t)
+  }, [isMounted, isExiting])
 
   // ── Dropdown options
   const customerOptions = customers.map((c) => ({ id: c.id, label: c.name }))
@@ -1166,18 +1178,23 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
   const othersSection = null
 
   const EASE = "cubic-bezier(0.32, 0.72, 0, 1)"
+  // Backdrop can keep `forwards` — it only animates opacity, no transform residue.
   const backdropAnimation = createOrderModalView === "modal3"
     ? undefined
     : isExiting
       ? `rb-co-backdrop-out 180ms ${EASE} forwards`
       : `rb-co-backdrop-in 200ms ${EASE} forwards`
-  const panelAnimation = createOrderModalView === "modal3"
-    ? isExiting
-      ? `rb-co-drawer-out 200ms ${EASE} forwards`
-      : `rb-co-drawer-in 320ms ${EASE} forwards`
-    : isExiting
-      ? `rb-co-center-out 180ms ${EASE} forwards`
-      : `rb-co-center-in 260ms ${EASE} forwards`
+  // Panel: once hasEntered is true, drop the animation entirely so no residual
+  // transform sticks. Exit re-enables it.
+  const panelAnimation = isExiting
+    ? (createOrderModalView === "modal3"
+        ? `rb-co-drawer-out 200ms ${EASE} forwards`
+        : `rb-co-center-out 180ms ${EASE} forwards`)
+    : hasEntered
+      ? undefined
+      : (createOrderModalView === "modal3"
+          ? `rb-co-drawer-in 320ms ${EASE} both`
+          : `rb-co-center-in 260ms ${EASE} both`)
 
   return (
     <div
@@ -1207,7 +1224,10 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
           borderRadius: createOrderModalView === "modal3" ? 12 : 8,
           overflow: "hidden",
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)",
-          willChange: "transform, opacity",
+          // NOTE: do NOT set willChange: "transform" here. will-change creates
+          // a new containing block for position:fixed children — that breaks
+          // dropdown positioning (Customer/ShipTo/DatePicker/TimePicker all
+          // use fixed + getBoundingClientRect()).
           animation: panelAnimation,
           ...(createOrderModalView === "modal3" ? {
             position: "absolute",

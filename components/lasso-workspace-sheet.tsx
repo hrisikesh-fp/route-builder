@@ -2870,12 +2870,6 @@ export function LassoWorkspaceSheet({
   useEffect(() => {
     if (!isCreateOrderModalOpen || !createOrderRouteId) return
     setExpandedRouteIds((prev) => (prev.includes(createOrderRouteId) ? prev : [...prev, createOrderRouteId]))
-    if (typeof window !== "undefined") {
-      const zoomFn = (window as any).__zoomToRoute as
-        | ((id: string, opts?: { maxZoom?: number }) => void)
-        | undefined
-      zoomFn?.(createOrderRouteId, { maxZoom: 12 })
-    }
   }, [isCreateOrderModalOpen, createOrderRouteId])
   const [reorderedRoutes, setReorderedRoutes] = useState<Record<string, string[]>>({}) // routeId → ordered order IDs
   const [recentlyAddedOrderId, setRecentlyAddedOrderId] = useState<string | null>(null)
@@ -4918,18 +4912,6 @@ export function LassoWorkspaceSheet({
             setIsCreateOrderModalOpen(false)
             setCreateOrderRouteId(null)
             onClearCreateOrderPrefillShipToId?.()
-
-            // Zoom map to fit all existing route stops + the new order
-            setTimeout(() => {
-              const existingCoords = selectedOrders
-                .filter((o) => o.routeId === routeId)
-                .map((o) => ({ lat: o.latitude, lng: o.longitude }))
-              const addedCoords = (updated[routeId] ?? []).map((o) => ({ lat: o.latitude, lng: o.longitude }))
-              const allCoords = [...existingCoords, ...addedCoords]
-              if (allCoords.length > 0) {
-                ;(window as any).__fitToShipTos?.(allCoords)
-              }
-            }, 150)
           }}
         />
       )}
