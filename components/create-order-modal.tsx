@@ -905,10 +905,15 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
   const allShipTos = useMemo(() => {
     const flat: ShipToRef[] = []
     for (const list of shipTosByCustomer.values()) flat.push(...list)
-    return flat.sort((a, b) => a.shipToAddress.localeCompare(b.shipToAddress))
+    return flat.sort((a, b) => {
+      const byCust = a.customerName.localeCompare(b.customerName)
+      return byCust !== 0 ? byCust : a.shipToAddress.localeCompare(b.shipToAddress)
+    })
   }, [shipTosByCustomer])
 
-  const visibleShipTos = customerId ? (shipTosByCustomer.get(customerId) ?? []) : allShipTos
+  const visibleShipTos = customerId
+    ? [...(shipTosByCustomer.get(customerId) ?? [])].sort((a, b) => a.shipToAddress.localeCompare(b.shipToAddress))
+    : allShipTos
   const shipToOptions = visibleShipTos.map((s) => {
     const stName = s.shipToName ?? s.shipToAddress
     const tail = s.shipToName ? ` · ${s.shipToAddress}` : s.city ? ` - ${s.city}, ${s.state}` : ""

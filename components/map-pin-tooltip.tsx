@@ -254,6 +254,9 @@ interface ShipToNoOrderTooltipProps {
   thresholds: { red: number; yellow: number; green: number; blue: number }
   lastOrderedISO?: string
   nextOrderISO?: string
+  /** Set to false to omit the "Create Order" CTA — used for the 2-second auto-dismiss
+   *  tooltip that fires when a ShipTo is selected from the Create Order modal. */
+  showCreateOrderCta?: boolean
 }
 
 function formatShortDate(iso?: string): string {
@@ -264,7 +267,7 @@ function formatShortDate(iso?: string): string {
 }
 
 export function renderShipToNoOrderTooltip(props: ShipToNoOrderTooltipProps): string {
-  const { shipToId, shipToName, address, thresholds, lastOrderedISO, nextOrderISO } = props
+  const { shipToId, shipToName, address, thresholds, lastOrderedISO, nextOrderISO, showCreateOrderCta = true } = props
   const lastOrdered = formatShortDate(lastOrderedISO)
   const nextOrder = formatShortDate(nextOrderISO)
 
@@ -335,8 +338,8 @@ export function renderShipToNoOrderTooltip(props: ShipToNoOrderTooltipProps): st
           </div>
         </div>
 
-        <!-- CTA -->
-        <div style="display: flex; justify-content: flex-end;">
+        <!-- CTA — omitted when showCreateOrderCta is false (e.g. auto-dismiss tooltip during zoom) -->
+        ${showCreateOrderCta ? `<div style="display: flex; justify-content: flex-end;">
           <button
             type="button"
             data-action="create-order"
@@ -357,7 +360,7 @@ export function renderShipToNoOrderTooltip(props: ShipToNoOrderTooltipProps): st
               transition: background 160ms cubic-bezier(0.32, 0.72, 0, 1);
             "
           >Create Order</button>
-        </div>
+        </div>` : ""}
       </div>
     </div>
   `

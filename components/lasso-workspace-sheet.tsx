@@ -13,9 +13,10 @@ import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { MergeModal } from "@/components/merge-modal"
 import { BreakdownSheet } from "@/components/breakdown-sheet"
 import { RouteSummarySheet } from "@/components/route-summary-sheet"
-import { TruckDetailsSheet } from "@/components/truck-details-sheet"
+import { TruckDetailsSheet, truckProfileToVehicleInfo, synthesizeTrailerVehicleInfo, type VehicleInfo } from "@/components/truck-details-sheet"
 import { BalanceTableModal } from "@/components/balance-table-modal"
 import { InitialInventoryModal, aggregateCompartmentValues } from "@/components/initial-inventory-modal"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -29,9 +30,13 @@ interface LassoWorkspaceSheetProps {
   onHoveredOrderChange?: (orderId: string | null) => void
   onAddedLoadOrdersChange?: (added: Record<string, ExtractionOrder[]>) => void
   onAddedDeliveryOrdersChange?: (added: Record<string, ExtractionOrder[]>) => void
+  /** Surfaces unassigned orders created via Create Order modal so page.tsx can feed them into the map. */
+  onAddedUnassignedOrdersChange?: (orders: ExtractionOrder[]) => void
   onShowToast?: (driverName: string) => void
   onShowMessage?: (message: string) => void
   initialExpandedRouteIds?: string[]
+  /** Fires whenever expanded route cards change — used by route-map to highlight the right polylines. */
+  onExpandedRouteIdsChange?: (ids: string[]) => void
   /** When set (by the map-pin → Create Order flow), opens the modal prefilled to this shipto with no originating route. */
   createOrderPrefillShipToId?: string | null
   onClearCreateOrderPrefillShipToId?: () => void
@@ -1702,14 +1707,10 @@ function InsertOrderOverlay({
   onDeactivate: () => void
   onClick: () => void
 }) {
-  const [showTooltip, setShowTooltip] = useState(false)
   return (
     <div
       onMouseEnter={onActivate}
-      onMouseLeave={() => {
-        onDeactivate()
-        setShowTooltip(false)
-      }}
+      onMouseLeave={onDeactivate}
       style={{
         position: "absolute",
         left: SEQ_COL_W + SEQ_TO_CARD_GAP,
@@ -1721,61 +1722,41 @@ function InsertOrderOverlay({
         zIndex: 20,
       }}
     >
-      <div style={{ position: "relative" }}>
-        <button
-          type="button"
-          aria-label="Create Order"
-          onClick={(e) => {
-            e.stopPropagation()
-            onClick()
-          }}
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
-          style={{
-            width: 24,
-            height: 24,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#282828",
-            border: "1px solid #333",
-            borderRadius: 4,
-            color: "#E5E5E5",
-            cursor: "pointer",
-            opacity: visible ? 1 : 0,
-            transition: "opacity 120ms ease, background-color 120ms ease",
-            padding: 0,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
-            fontFamily: "inherit",
-          }}
-          onFocus={(e) => (e.currentTarget.style.backgroundColor = "#333")}
-          onBlur={(e) => (e.currentTarget.style.backgroundColor = "#282828")}
-        >
-          <Plus size={14} />
-        </button>
-        {visible && showTooltip && (
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              transform: "translateX(-50%)",
-              bottom: "calc(100% + 6px)",
-              padding: "4px 8px",
-              backgroundColor: "#171717",
-              border: "1px solid #282828",
-              borderRadius: 4,
-              color: "#E5E5E5",
-              fontSize: 12,
-              fontWeight: 400,
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-              fontFamily: "inherit",
-            }}
-          >
-            Create Order
-          </div>
-        )}
-      </div>
+      <TooltipProvider>
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+              }}
+              style={{
+                width: 24,
+                height: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#282828",
+                border: "1px solid #333",
+                borderRadius: 4,
+                color: "#E5E5E5",
+                cursor: "pointer",
+                opacity: visible ? 1 : 0,
+                transition: "opacity 120ms ease, background-color 120ms ease",
+                padding: 0,
+                boxShadow: "0 2px 6px rgba(0,0,0,0.4)",
+                fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#333")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#282828")}
+            >
+              <Plus size={14} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={6} className="z-[1200]">Create Order</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   )
 }
@@ -2835,12 +2816,14 @@ export function LassoWorkspaceSheet({
   onHoveredOrderChange,
   onAddedLoadOrdersChange,
   onAddedDeliveryOrdersChange,
+  onAddedUnassignedOrdersChange,
   onShowToast,
   onShowMessage,
   createOrderPrefillShipToId,
   onClearCreateOrderPrefillShipToId,
   onAddSelectedRouteId,
   initialExpandedRouteIds = [],
+  onExpandedRouteIdsChange,
   onCreateOrderSideSheetOpen,
   onCreateOrderSideSheetClose,
   externalUnassignedOrders = [],
@@ -2850,6 +2833,16 @@ export function LassoWorkspaceSheet({
   const { orderCardView, createOrderModalView, updateCreateOrderModalView } = useSettings()
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
   const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>(initialExpandedRouteIds)
+  // Surface expanded IDs to page.tsx so route-map can fully-highlight those polylines.
+  useEffect(() => { onExpandedRouteIdsChange?.(expandedRouteIds) }, [expandedRouteIds])
+  // Trigger memory: which route the user is currently "working on". Set whenever the user
+  // interacts with a route card (expand, click +). Read by the modal submit handlers so that
+  // map-pin / top-nav Create Order flows land the new stop in the user's focused route, not
+  // Unassigned. Multiple routes can be expanded simultaneously — only the most recently
+  // touched one wins.
+  const [focusedRouteId, setFocusedRouteId] = useState<string | null>(
+    initialExpandedRouteIds[initialExpandedRouteIds.length - 1] ?? null,
+  )
 
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
   const [addedDeliveryOrders, setAddedDeliveryOrders] = useState<Record<string, ExtractionOrder[]>>({})
@@ -3148,9 +3141,13 @@ export function LassoWorkspaceSheet({
   }
 
   const toggleExpanded = (routeId: string) => {
-    setExpandedRouteIds((prev) =>
-      prev.includes(routeId) ? prev.filter((id) => id !== routeId) : [...prev, routeId]
-    )
+    setExpandedRouteIds((prev) => {
+      const isExpanding = !prev.includes(routeId)
+      // Touching a route card focuses it. Collapsing it leaves focus alone (the user might
+      // still be "working on" it; only an explicit close-workspace clears focus).
+      if (isExpanding) setFocusedRouteId(routeId)
+      return isExpanding ? [...prev, routeId] : prev.filter((id) => id !== routeId)
+    })
   }
 
   const toggleRouteChecked = (routeId: string) => {
@@ -3197,7 +3194,20 @@ export function LassoWorkspaceSheet({
     }
   }
 
-  const unassignedOrders = [...selectedOrders.filter((o) => !o.routeId), ...addedUnassignedOrders, ...externalUnassignedOrders]
+  // Dedupe by ID — `addedUnassignedOrders` (local) and `externalUnassignedOrders` (page.tsx mirror,
+  // populated via onAddedUnassignedOrdersChange) currently track the same list. A lasso/click on
+  // the new pin could also surface it in `selectedOrders`. Without dedup all three sources would
+  // produce duplicate keys.
+  const _unassignedSeen = new Set<string>()
+  const unassignedOrders = [
+    ...selectedOrders.filter((o) => !o.routeId),
+    ...addedUnassignedOrders,
+    ...externalUnassignedOrders,
+  ].filter((o) => {
+    if (_unassignedSeen.has(o.id)) return false
+    _unassignedSeen.add(o.id)
+    return true
+  })
 
   // Unassigned order checkbox logic
   const unassignedOrderIds = unassignedOrders.map(o => o.id)
@@ -3242,7 +3252,7 @@ export function LassoWorkspaceSheet({
           }}
           onSubmit={(data: CreateOrderSubmit) => {
             const orderId = `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-            const newOrder: ExtractionOrder = {
+            const baseOrder: ExtractionOrder = {
               id: orderId,
               customerId: data.customerId,
               customerName: data.customerName,
@@ -3266,8 +3276,62 @@ export function LassoWorkspaceSheet({
               zone: data.zone,
               orderType: "D",
             }
-            setAddedUnassignedOrders((prev) => [...prev, newOrder])
-            onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
+            // Trigger memory: createOrderRouteId (from + FAB) takes precedence; otherwise fall
+            // back to focusedRouteId (the most recently touched route). Null = Unassigned.
+            const targetRouteId = createOrderRouteId ?? focusedRouteId ?? null
+            if (targetRouteId) {
+              const route = mockRoutes.find((r) => r.id === targetRouteId)
+              const existing = [
+                ...selectedOrders.filter((o) => o.routeId === targetRouteId),
+                ...(addedDeliveryOrders[targetRouteId] ?? []),
+              ]
+              const nextSeq = existing.length + 1
+              const routedOrder: ExtractionOrder = {
+                ...baseOrder,
+                routeId: targetRouteId,
+                routeSequence: nextSeq,
+                status: "assigned",
+              }
+              const updated = {
+                ...addedDeliveryOrders,
+                [targetRouteId]: [...(addedDeliveryOrders[targetRouteId] ?? []), routedOrder],
+              }
+              setAddedDeliveryOrders(updated)
+              onAddedDeliveryOrdersChange?.(updated)
+              setExpandedRouteIds((prev) => (prev.includes(targetRouteId) ? prev : [...prev, targetRouteId]))
+              // Flicker the new card (same animation as load orders)
+              setRecentlyAddedOrderId(routedOrder.id)
+              window.setTimeout(() => setRecentlyAddedOrderId(null), 4500)
+              // Scroll reveal: wait 200ms for React to render the expanded card, then scroll to it
+              window.setTimeout(() => {
+                const el = document.querySelector(`[data-order-id="${routedOrder.id}"]`)
+                if (el && scrollContainerRef.current) {
+                  const containerRect = scrollContainerRef.current.getBoundingClientRect()
+                  const elRect = el.getBoundingClientRect()
+                  scrollContainerRef.current.scrollBy({ top: elRect.top - containerRect.top - 100, behavior: "smooth" })
+                }
+              }, 200)
+              // Zoom to full route after workspace pan settles (400ms pan + buffer)
+              const allRouteCoords = [
+                ...selectedOrders.filter((o) => o.routeId === targetRouteId).map((o) => ({ lat: o.latitude, lng: o.longitude })),
+                ...(addedDeliveryOrders[targetRouteId] ?? []).map((o) => ({ lat: o.latitude, lng: o.longitude })),
+                { lat: routedOrder.latitude, lng: routedOrder.longitude },
+              ]
+              if (allRouteCoords.length > 1 && typeof window !== "undefined") {
+                window.setTimeout(() => {
+                  const fitFn = (window as any).__fitToShipTos as ((c: { lat: number; lng: number }[], opts?: { maxZoom?: number; padding?: { top: number; right: number; bottom: number; left: number }; duration?: number }) => void) | undefined
+                  // 1800ms gives the camera time to glide; pairs with the line-draw animation in the map
+                  fitFn?.(allRouteCoords, { maxZoom: 12, padding: { top: 250, right: 680, bottom: 250, left: 250 }, duration: 1800 })
+                }, 500)
+              }
+              const driverFirst = (route?.driverName ?? "Driver").split(" ")[0]
+              onShowMessage?.(`Order added to ${driverFirst}'s route as stop ${nextSeq}`)
+            } else {
+              const nextList = [...addedUnassignedOrders, baseOrder]
+              setAddedUnassignedOrders(nextList)
+              onAddedUnassignedOrdersChange?.(nextList)
+              onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
+            }
             closeModal3()
           }}
         />
@@ -3478,12 +3542,22 @@ export function LassoWorkspaceSheet({
                     const isExpanded = expandedRouteIds.includes(routeId)
                     const isChecked = checkedRouteIds.includes(routeId)
 
-                    // Merge in any added load orders + create-order additions for this route
+                    // Merge in any added load orders + create-order additions for this route.
+                    // Dedupe by ID: a freshly-created order is tracked in `addedDeliveryOrders`,
+                    // but page.tsx now also feeds it back into the map's `filteredOrders` so the
+                    // pin/polyline render — and a subsequent lasso/route-click could then put it
+                    // into `selectedOrders` too. Without this dedup, that order would render
+                    // twice in the route card and React would warn about duplicate keys.
                     const extraLoads = addedLoadOrders[routeId] ?? []
                     const extraDeliveries = addedDeliveryOrders[routeId] ?? []
-                    const defaultSorted = [...orders, ...extraLoads, ...extraDeliveries].sort(
-                      (a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0)
-                    )
+                    const seenIds = new Set<string>()
+                    const defaultSorted = [...orders, ...extraLoads, ...extraDeliveries]
+                      .filter((o) => {
+                        if (seenIds.has(o.id)) return false
+                        seenIds.add(o.id)
+                        return true
+                      })
+                      .sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
                     // Apply reorder if user has dragged — stamp new routeSequence so validation engine respects drag order
                     const reorderIds = reorderedRoutes[routeId]
                     const sortedOrders = reorderIds
@@ -4202,6 +4276,7 @@ export function LassoWorkspaceSheet({
                             }}
                             onOpenCreateOrderModal={() => {
                               setCreateOrderRouteId(routeId)
+                              setFocusedRouteId(routeId)
                               setIsCreateOrderModalOpen(true)
                               if (createOrderModalView === "modal3") onCreateOrderSideSheetOpen?.()
                             }}
@@ -4807,11 +4882,12 @@ export function LassoWorkspaceSheet({
             onCreateOrderSideSheetOpen?.()
           }}
           onSubmit={(data: CreateOrderSubmit) => {
-            const routeId = createOrderRouteId
+            // Trigger memory: createOrderRouteId (from + FAB) wins; fall back to focusedRouteId
+            // (most recently touched route). Null = Unassigned.
+            const routeId = createOrderRouteId ?? focusedRouteId ?? null
 
             if (!routeId) {
               const orderId = `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-              // Orders created from the map UI always land in Unassigned
               const newOrder: ExtractionOrder = {
                 id: orderId,
                 customerId: data.customerId,
@@ -4836,7 +4912,9 @@ export function LassoWorkspaceSheet({
                 zone: data.zone,
                 orderType: "D",
               }
-              setAddedUnassignedOrders((prev) => [...prev, newOrder])
+              const nextList = [...addedUnassignedOrders, newOrder]
+              setAddedUnassignedOrders(nextList)
+              onAddedUnassignedOrdersChange?.(nextList)
               setRecentlyAddedOrderId(orderId)
               setTimeout(() => setRecentlyAddedOrderId(null), 4500)
               onShowMessage?.("Order added to Unassigned. Move it to a route from there.")
@@ -4926,6 +5004,29 @@ export function LassoWorkspaceSheet({
             // Expand the route card so the new order is immediately visible
             setExpandedRouteIds((prev) => prev.includes(routeId) ? prev : [...prev, routeId])
 
+            // Scroll reveal
+            window.setTimeout(() => {
+              const el = document.querySelector(`[data-order-id="${newOrder.id}"]`)
+              if (el && scrollContainerRef.current) {
+                const containerRect = scrollContainerRef.current.getBoundingClientRect()
+                const elRect = el.getBoundingClientRect()
+                scrollContainerRef.current.scrollBy({ top: elRect.top - containerRect.top - 100, behavior: "smooth" })
+              }
+            }, 200)
+
+            // Zoom to full route (workspace is already open, no pan delay needed)
+            const allRouteCoords = [
+              ...existing.filter((o): o is ExtractionOrder => !!(o as ExtractionOrder).latitude)
+                .map((o) => ({ lat: (o as ExtractionOrder).latitude, lng: (o as ExtractionOrder).longitude })),
+              { lat: newOrder.latitude, lng: newOrder.longitude },
+            ]
+            if (allRouteCoords.length > 1 && typeof window !== "undefined") {
+              window.setTimeout(() => {
+                const fitFn = (window as any).__fitToShipTos as ((c: { lat: number; lng: number }[]) => void) | undefined
+                fitFn?.(allRouteCoords)
+              }, 300)
+            }
+
             const driverFirstName = (route?.driverName ?? "Driver").split(" ")[0]
             onShowMessage?.(`Delivery Order added to ${driverFirstName}'s Route successfully`)
 
@@ -4972,12 +5073,22 @@ export function LassoWorkspaceSheet({
         const truckId = truck?.id ?? route?.truckId
         const truckProfile = truckId ? TRUCK_CAPACITIES[truckId] ?? null : null
         const truckName = truck?.name ?? route?.truckName ?? null
+        // Build the vehicles array: 1 truck + 0/1/2 trailers
+        const vehicles: VehicleInfo[] = []
+        if (truckProfile && truckName) {
+          vehicles.push(truckProfileToVehicleInfo(truckProfile, truckName))
+        }
+        const trailers = selectedTrailers[truckDetailsRouteId] ?? { t1: null, t2: null }
+        for (const t of [trailers.t1, trailers.t2]) {
+          if (!t) continue
+          const v = synthesizeTrailerVehicleInfo(t.name, t.capacity, t.compartments)
+          if (v) vehicles.push(v)
+        }
         return (
           <TruckDetailsSheet
             isOpen={true}
             onClose={() => setTruckDetailsRouteId(null)}
-            truckProfile={truckProfile}
-            truckName={truckName}
+            vehicles={vehicles}
             anchorLeft={truckDetailsAnchorLeft}
             anchorRight={truckDetailsAnchorRight}
             anchorY={truckDetailsAnchorY}

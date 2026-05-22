@@ -32,6 +32,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([])
   const [checkedRouteIds, setCheckedRouteIds] = useState<string[]>([])
   const [hoveredWorkspaceRouteId, setHoveredWorkspaceRouteId] = useState<string | null>(null)
+  const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>([])
   const [hoveredWorkspaceOrderId, setHoveredWorkspaceOrderId] = useState<string | null>(null)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
   const [addedDeliveryOrders, setAddedDeliveryOrders] = useState<Record<string, ExtractionOrder[]>>({})
@@ -100,9 +101,13 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     terminals: true,
   })
 
+  // Merge static mock orders with workspace-created orders so the map sees freshly added
+  // pins + routes can redraw with the new stop. Routed adds carry routeId + routeSequence;
+  // unassigned adds don't, so they show as Unassigned pins on the map.
   const filteredOrders = useMemo(() => {
-    return mockExtractionOrders
-  }, [])
+    const routedAdds = Object.values(addedDeliveryOrders).flat()
+    return [...mockExtractionOrders, ...routedAdds, ...modal3UnassignedOrders]
+  }, [addedDeliveryOrders, modal3UnassignedOrders])
 
   const selectedUnassignedIds = useMemo(
     () => selectedOrders.filter(o => !o.routeId).map(o => o.id),
@@ -373,6 +378,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   selectedRouteIds={selectedRouteIds}
   checkedRouteIds={checkedRouteIds}
   hoveredWorkspaceRouteId={hoveredWorkspaceRouteId}
+  expandedRouteIds={expandedRouteIds}
   hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
   isWorkspaceOpen={isWorkspaceOpen}
   workspaceWidth={560}
@@ -413,10 +419,12 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onHoveredOrderChange={setHoveredWorkspaceOrderId}
         onAddedLoadOrdersChange={setAddedLoadOrders}
         onAddedDeliveryOrdersChange={setAddedDeliveryOrders}
+        onAddedUnassignedOrdersChange={setModal3UnassignedOrders}
         onAddSelectedRouteId={(id) => setSelectedRouteIds((prev) => [...new Set([...prev, id])])}
         createOrderPrefillShipToId={createOrderPrefillShipToId}
         onClearCreateOrderPrefillShipToId={() => setCreateOrderPrefillShipToId(null)}
         initialExpandedRouteIds={[]}
+        onExpandedRouteIdsChange={setExpandedRouteIds}
         onCreateOrderSideSheetOpen={() => { setIsWorkspaceOpen(false); setIsCreateOrderSideSheetOpen(true) }}
         onCreateOrderSideSheetClose={() => { setIsCreateOrderSideSheetOpen(false); setIsWorkspaceOpen(true) }}
         externalUnassignedOrders={modal3UnassignedOrders}

@@ -156,6 +156,7 @@ export interface RouteMapProps {
   checkedRouteIds?: string[]
   hoveredWorkspaceRouteId?: string | null
   hoveredWorkspaceOrderId?: string | null
+  expandedRouteIds?: string[]
   isWorkspaceOpen?: boolean
   workspaceWidth?: number
   addedLoadOrders?: Record<string, ExtractionOrder[]>
@@ -196,6 +197,7 @@ export function RouteMap({
   checkedRouteIds = [],
   hoveredWorkspaceRouteId = null,
   hoveredWorkspaceOrderId = null,
+  expandedRouteIds = [],
   isWorkspaceOpen = false,
   workspaceWidth = 560,
   addedLoadOrders = {},
@@ -227,6 +229,9 @@ export function RouteMap({
 
   const arrowMarkersRef = useRef<Map<string, any[]>>(new Map())
   const activePopupRef = useRef<any>(null) // mapboxgl.Popup
+  // Tracks the previous order count per route so we can detect "a stop was added" and run a
+  // line-draw animation instead of the polyline silently snapping into place.
+  const prevRouteOrderCountRef = useRef<Map<string, number>>(new Map())
 
   const selectedRouteIdsRef = useRef<string[]>(selectedRouteIds)
   const onRouteClickRef = useRef(onRouteClick)
@@ -270,9 +275,10 @@ export function RouteMap({
         isWorkspaceOpen,
         checkedRouteIds,
         hoveredWorkspaceRouteId,
+        expandedRouteIds,
       }
     }
-  }, [routeLineDisplay, reducedOpacity, isWorkspaceOpen, checkedRouteIds, hoveredWorkspaceRouteId])
+  }, [routeLineDisplay, reducedOpacity, isWorkspaceOpen, checkedRouteIds, hoveredWorkspaceRouteId, expandedRouteIds])
 
   // ── initialize map ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -373,10 +379,14 @@ export function RouteMap({
       }
     }
 
-    ;(window as any).__fitToShipTos = (coords: { lat: number; lng: number }[]) => {
+    ;(window as any).__fitToShipTos = (
+      coords: { lat: number; lng: number }[],
+      opts?: { maxZoom?: number; padding?: { top: number; right: number; bottom: number; left: number }; duration?: number }
+    ) => {
       if (!mapRef.current || coords.length === 0) return
+      const duration = opts?.duration ?? 800
       if (coords.length === 1) {
-        mapRef.current.flyTo({ center: [coords[0].lng, coords[0].lat], zoom: 14, duration: 800 })
+        mapRef.current.flyTo({ center: [coords[0].lng, coords[0].lat], zoom: opts?.maxZoom ?? 14, duration })
         return
       }
       const lngs = coords.map((c) => c.lng)
@@ -388,9 +398,11 @@ export function RouteMap({
         Math.max(...lats),
       ]
       mapRef.current.fitBounds(bounds, {
-        padding: { top: 80, right: 640, bottom: 80, left: 80 },
-        maxZoom: 14,
-        duration: 800,
+        padding: opts?.padding ?? { top: 80, right: 640, bottom: 80, left: 80 },
+        maxZoom: opts?.maxZoom ?? 14,
+        duration,
+        // Smooth ease-out so the camera lands gracefully instead of snapping
+        easing: (t: number) => 1 - Math.pow(1 - t, 3),
       })
     }
 
@@ -822,6 +834,7 @@ export function RouteMap({
           thresholds,
           lastOrderedISO: sto.lastDelivery,
           nextOrderISO,
+          showCreateOrderCta: false, // create order is already in progress; no duplicate CTA
         })
       } else {
         const order = orders.find((o) => `${o.customerId}__${o.shipToAddress}` === shipToId)
@@ -1015,7 +1028,8 @@ export function RouteMap({
             const isInWorkspace = selectedRouteIdsRef.current.includes(routeId)
             const isChecked = settings.checkedRouteIds?.includes(routeId) ?? false
             const isHovered = settings.hoveredWorkspaceRouteId === routeId
-            const isHighlighted = isChecked || isHovered
+            const isExpanded = settings.expandedRouteIds?.includes(routeId) ?? false
+            const isHighlighted = isChecked || isHovered || isExpanded
             applyRouteStyle(map, layerId, originalColor, {
               routeLineDisplay: settings.routeLineDisplay ?? "grayscale",
               reducedOpacity: settings.reducedOpacity ?? false,
@@ -1026,6 +1040,72 @@ export function RouteMap({
           })
 
           map.on("click", layerId, () => onRouteClickRef.current?.(routeId))
+
+          // Apply the correct highlight style immediately — the style-update useEffect may
+          // have already run while the OSRM fetch was in flight (layer didn't exist yet, so
+          // it silently skipped). Read __v0MapSettings fresh here instead of using the stale
+          // `mapSettings` closure captured at effect-start time.
+          {
+            const freshSettings = (window as any).__v0MapSettings ?? {}
+            const isInWs = selectedRouteIdsRef.current.includes(routeId)
+            const isFreshHighlighted =
+              (freshSettings.checkedRouteIds?.includes(routeId) ?? false) ||
+              freshSettings.hoveredWorkspaceRouteId === routeId ||
+              (freshSettings.expandedRouteIds?.includes(routeId) ?? false)
+            applyRouteStyle(map, layerId, originalColor, {
+              routeLineDisplay: freshSettings.routeLineDisplay ?? "grayscale",
+              reducedOpacity: freshSettings.reducedOpacity ?? false,
+              isWorkspaceOpen: freshSettings.isWorkspaceOpen ?? false,
+              isInWorkspace: isInWs,
+              isHighlighted: isFreshHighlighted,
+            })
+
+            // Draw-in animation: if this route just got a new stop, animate the line drawing
+            // using line-dasharray. Skip on initial render and when the order count is unchanged.
+            const prevCount = prevRouteOrderCountRef.current.get(routeId) ?? 0
+            const currCount = sorted.length
+            prevRouteOrderCountRef.current.set(routeId, currCount)
+            if (currCount > prevCount && prevCount > 0) {
+              // The dasharray "trick": [0, large] hides everything; [large, 0] shows everything.
+              // We progressively shift to grow the visible line from start to end.
+              const DRAW_MS = 1400
+              const start = performance.now()
+              // Use a smooth ease-out cubic so the head lands gently at the hub
+              const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+              const step = (now: number) => {
+                if (!map.getLayer(layerId)) return
+                const t = Math.min((now - start) / DRAW_MS, 1)
+                const eased = easeOutCubic(t)
+                // dash = visible portion (in line-width units); gap = hidden portion
+                // Use total = 200 line-widths to ensure clean draw across long routes
+                const total = 200
+                const dash = eased * total
+                const gap = total - dash
+                try {
+                  map.setPaintProperty(layerId, "line-dasharray", [dash, gap])
+                } catch { /* layer may have been removed */ }
+                if (t < 1) requestAnimationFrame(step)
+                else {
+                  // Clear the dasharray so the line returns to solid
+                  try { map.setPaintProperty(layerId, "line-dasharray", [1, 0]) } catch {}
+                }
+              }
+              // Set initial fully-hidden state, then start
+              try { map.setPaintProperty(layerId, "line-dasharray", [0, 200]) } catch {}
+              requestAnimationFrame(step)
+            }
+
+            // Always-on direction arrows for routes in the workspace. Recreated on every
+            // polyline build so they stay in sync after order changes (the arrow useEffect
+            // alone wouldn't refire because selectedRouteIds didn't change).
+            if (isInWs) {
+              const old = arrowMarkersRef.current.get(routeId)
+              if (old) old.forEach((m: any) => m.remove())
+              const arrows = createArrowMarkers(mbRef.current, coords, originalColor, map)
+              arrows.forEach((m: any) => m.addTo(map))
+              arrowMarkersRef.current.set(routeId, arrows)
+            }
+          }
 
           routeLayerIdsRef.current.add(layerId)
           routeBoundsRef.current.set(routeId, bounds)
@@ -1104,7 +1184,10 @@ export function RouteMap({
       if (!originalColor) return
 
       const isInWorkspace = selectedRouteIds.includes(routeId)
-      const isHighlighted = checkedRouteIds.includes(routeId) || hoveredWorkspaceRouteId === routeId
+      const isHighlighted =
+        checkedRouteIds.includes(routeId) ||
+        hoveredWorkspaceRouteId === routeId ||
+        expandedRouteIds.includes(routeId)
 
       applyRouteStyle(map, layerId, originalColor, {
         routeLineDisplay,
@@ -1114,7 +1197,7 @@ export function RouteMap({
         isHighlighted,
       })
     })
-  }, [selectedRouteIds, checkedRouteIds, hoveredWorkspaceRouteId, routeLineDisplay, reducedOpacity, isWorkspaceOpen, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedRouteIds, checkedRouteIds, hoveredWorkspaceRouteId, expandedRouteIds, routeLineDisplay, reducedOpacity, isWorkspaceOpen, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── order pin hover from workspace ────────────────────────────────────────
   useEffect(() => {
@@ -1284,28 +1367,28 @@ function applyRouteStyle(
 
   if (routeLineDisplay === "grayscale") {
     if (isWorkspaceOpen && isInWorkspace) {
-      // In workspace → full color, clearly visible
       color = originalColor
-      opacity = isHighlighted ? 1 : 0.8
-      weight = isHighlighted ? 3.5 : 3
+      // Highlighted (hover / expanded / checked) → full color + thicker line
+      // Idle → dim so hover is clearly visible
+      opacity = isHighlighted ? 1 : 0.25
+      weight = isHighlighted ? 5 : 3
     } else if (isWorkspaceOpen) {
-      // Workspace open but this route is not in it → dim
+      // In workspace but not this route → very dim grey
       color = DEFAULT_GREY
-      opacity = 0.25
+      opacity = 0.15
     } else {
       color = DEFAULT_GREY
       opacity = 0.8
     }
   } else {
-    // colored
+    // colored mode
     color = originalColor
     if (isWorkspaceOpen && isInWorkspace) {
-      // In workspace → full color, clearly visible
-      opacity = isHighlighted ? 1 : 0.8
-      weight = isHighlighted ? 3.5 : 3
+      // Highlighted → full opacity + thicker line; idle → dim
+      opacity = isHighlighted ? 1 : 0.25
+      weight = isHighlighted ? 5 : 3
     } else if (isWorkspaceOpen) {
-      // Not in workspace → dim
-      opacity = reducedOpacity ? 0.15 : 0.25
+      opacity = reducedOpacity ? 0.1 : 0.15
     } else {
       opacity = reducedOpacity ? 0.3 : 1
     }
