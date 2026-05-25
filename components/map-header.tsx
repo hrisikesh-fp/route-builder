@@ -3,7 +3,6 @@
 import { Calendar, ChevronDown, SquarePen, Key, Shield, LogOut, Settings, Plus } from "lucide-react"
 import Image from "next/image"
 import { useMemo, useState, useRef, useEffect } from "react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface MapHeaderProps {
   onFilterClick: () => void
@@ -76,38 +75,23 @@ export function MapHeader({ onFilterClick, onSettingsClick, onCreateOrderClick, 
 
       {/* Right side - Create Order, Date, Profile */}
       <div className="flex items-center gap-3">
-        {/* Create Order — icon-only, matches map-entities button style */}
-        <TooltipProvider>
-          <Tooltip delayDuration={200}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onCreateOrderClick}
-                disabled={isCreateOrderOpen}
-                className="h-10 w-10 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
-                style={{
-                  backgroundColor: "#18181B",
-                  border: "1px solid #27272A",
-                  color: "#FFF",
-                  cursor: isCreateOrderOpen ? "not-allowed" : "pointer",
-                  opacity: isCreateOrderOpen ? 0.4 : 1,
-                }}
-                onMouseEnter={(e) => {
-                  if (isCreateOrderOpen) return
-                  e.currentTarget.style.backgroundColor = "#27272A"
-                  e.currentTarget.style.borderColor = "#52525B"
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#18181B"
-                  e.currentTarget.style.borderColor = "#27272A"
-                }}
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="z-[1300]">Create Order</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {/* Create Order */}
+        <button
+          type="button"
+          onClick={onCreateOrderClick}
+          disabled={isCreateOrderOpen}
+          className="flex items-center gap-2 px-3 h-9 text-white transition-colors hover:bg-white/5"
+          style={{
+            backgroundColor: "transparent",
+            border: "1px solid #282828",
+            borderRadius: "4px",
+            cursor: isCreateOrderOpen ? "not-allowed" : "pointer",
+            opacity: isCreateOrderOpen ? 0.4 : 1,
+          }}
+        >
+          <Plus className="w-4 h-4" />
+          <span className="text-sm font-medium">Create Order</span>
+        </button>
 
         {/* Date Selector */}
         <div

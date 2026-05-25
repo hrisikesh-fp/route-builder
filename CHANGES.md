@@ -10,8 +10,14 @@
   - Direction arrows now stay permanently visible on any route that's in the workspace (they used to disappear or fall out of sync when a stop was added). They re-render in the route's own color every time the polyline rebuilds.
   - When a new stop is added to a route, the polyline now "draws in" with a 1.4s ease-out animation (line-dasharray growing from start to end). Previously the new polyline snapped into place silently.
   - Map zoom-out after submit is now 1.8s with a cubic ease-out, replacing the previous abrupt 800ms snap. Camera glides; pairs nicely with the draw-in animation.
-
-- **Route line highlight + zoom after adding a stop** *(planned, implementing next)*:
+- **Route line contrast**: idle workspace routes now sit at 0.25 opacity (was 0.8) and highlighted ones (hover / expanded / checked) pop at 1.0 with a thicker 5px stroke. Hover is now unmistakable.
+- **Expanded routes always highlighted**: the route polyline becomes fully colored whenever its card is expanded, not just on hover.
+- **InsertOrderOverlay "+" tooltip fixed**: the black browser tooltip is gone; now uses the shadcn Tooltip component (matches "More actions" / "Optimise" tooltips on route cards). `z-index: 1200` so it shows above the workspace panel.
+- **Top-nav Create Order button**: redesigned to icon-only (40×40), matches the map-entities button style with proper hover (#27272A bg, #52525B border). Tooltip "Create Order" via shadcn, `z-1300` so it shows above the nav.
+- **ShipTo dropdown sorted properly**: now sorts by customer name first, then ship-to address, matching how the labels read.
+- **2-sec auto-dismiss tooltip without Create Order CTA**: when the map zooms in after a ShipTo selection in the modal, the 2-second tooltip that flashes no longer shows a "Create Order" button — that action's already in progress.
+- **Route zoom-out 5-10% looser**: extra padding (250px around, 680px right for the workspace) so the full route has breathing room instead of being squished to edges.
+- **Route line highlight + zoom after adding a stop**:
   - Route polyline now immediately shows in full color after a new stop is created (was staying grey until close/reopen)
   - Map zooms out to fit the full route (all stops including the new one) after submit — 500ms after workspace pan settles
   - New order card flickers green (same as load orders) and the workspace scrolls to reveal it
