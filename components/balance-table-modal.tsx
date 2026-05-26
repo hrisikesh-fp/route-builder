@@ -352,7 +352,7 @@ export function BalanceTableModal({
           }}>
             <TriangleAlert size={20} color="#818cf8" style={{ flexShrink: 0 }} />
             <span style={{ fontSize: 14, fontWeight: 400, color: "#818cf8", lineHeight: "20px" }}>
-              No Load Order added yet. Add one to see product depletion stop by stop.
+              No Load Order added yet. Add one to see product depletion per stop.
             </span>
           </div>
         )}
