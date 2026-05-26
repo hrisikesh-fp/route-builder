@@ -4,6 +4,13 @@
 
 ---
 
+## 2026-05-26
+
+- **Validation banner - View to navigate (2+ issues)**: banner on expanded route cards with 2 or more failing stops now shows a ghost "View" button instead of auto-scrolling on expand. Click View to jump to the first issue and reveal the 1/N counter with up/down chevrons. Collapsing and re-expanding the card resets to "View" again.
+- **Validation banner - scroll fix**: chevron navigation now works correctly regardless of how far the user has manually scrolled within the route card before clicking a chevron.
+
+---
+
 ## 2026-05-25
 
 - **Validation banner - smarter runout copy**: banners on route cards now say "X will run out at this stop" at the exact stop where the product first goes negative, and "X already ran out before this stop" for any downstream stops carrying that shortfall. Previously all failing stops said the same thing regardless of whether they were the trigger or a downstream casualty.

@@ -246,14 +246,12 @@ function StopChip({ stopIndex, onClick }: { stopIndex: number; onClick: () => vo
   )
 }
 
-// ─── Stop Navigator (chevron up/down for N>1 issues) ────────────────────────────
-// Shows "Stop X/N" + up/down icon buttons. Used in the validation banner when a
-// route has 2+ failing stops. Per Figma:
-//   - Banner total height: 32px
-//   - "Stop X" white, "/" #E5E5E5, "N" #A3A3A3
-//   - Chevron icon buttons: 24×24 square, ghost variant
-//   - Chevron icon color: neutral #E5E5E5 (NOT banner red)
-function StopNav({
+// ─── Issue Counter (bordered box with X/N + chevrons for N>1 issues) ────────────
+// Shown in the validation banner after the user clicks "View". Per Figma node 6290-73316:
+//   - Outer box: 1px solid rgba(248,113,113,0.2), borderRadius 4px
+//   - Counter: "X/" in #e5e5e5, "N" in #a3a3a3, 14px regular
+//   - Chevrons: 24×24px ghost buttons, color #e5e5e5
+function IssueCounter({
   current,
   total,
   onPrev,
@@ -278,40 +276,36 @@ function StopNav({
     padding: 0,
     cursor: disabled ? "default" : "pointer",
     opacity: disabled ? 0.35 : 1,
-    color: "#E5E5E5",
-    transition: "background-color 120ms ease",
+    color: "#e5e5e5",
   })
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-      <span style={{ fontSize: 14, whiteSpace: "nowrap", lineHeight: "20px" }}>
-        <span style={{ fontWeight: 500, color: "#FFFFFF" }}>Stop {current + 1}</span>
-        <span style={{ color: "#E5E5E5" }}>/</span>
-        <span style={{ color: "#A3A3A3" }}>{total}</span>
+    <div style={{
+      display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
+      border: "1px solid rgba(248,113,113,0.2)", borderRadius: 4,
+      padding: "2px 2px 2px 4px",
+    }}>
+      <span style={{ fontSize: 14, whiteSpace: "nowrap" }}>
+        <span style={{ color: "#e5e5e5" }}>{current + 1}/</span>
+        <span style={{ color: "#a3a3a3" }}>{total}</span>
       </span>
-      <div style={{ display: "flex", gap: 0 }}>
-        <button
-          type="button"
-          disabled={prevDisabled}
-          onClick={onPrev}
-          aria-label="Previous issue"
-          style={btnStyle(prevDisabled)}
-          onMouseEnter={(e) => { if (!prevDisabled) e.currentTarget.style.backgroundColor = "rgba(10,10,10,0.5)" }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-        >
-          <ChevronUp size={16} />
-        </button>
-        <button
-          type="button"
-          disabled={nextDisabled}
-          onClick={onNext}
-          aria-label="Next issue"
-          style={btnStyle(nextDisabled)}
-          onMouseEnter={(e) => { if (!nextDisabled) e.currentTarget.style.backgroundColor = "rgba(10,10,10,0.5)" }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-        >
-          <ChevronDown size={16} />
-        </button>
-      </div>
+      <button
+        type="button"
+        disabled={prevDisabled}
+        onClick={onPrev}
+        aria-label="Previous issue"
+        style={btnStyle(prevDisabled)}
+      >
+        <ChevronUp size={16} />
+      </button>
+      <button
+        type="button"
+        disabled={nextDisabled}
+        onClick={onNext}
+        aria-label="Next issue"
+        style={btnStyle(nextDisabled)}
+      >
+        <ChevronDown size={16} />
+      </button>
     </div>
   )
 }
@@ -2964,32 +2958,36 @@ export function LassoWorkspaceSheet({
     setExpandedRouteIds((prev) => (prev.includes(createOrderRouteId) ? prev : [...prev, createOrderRouteId]))
   }, [isCreateOrderModalOpen, createOrderRouteId])
 
-  // Auto-focus the first issue stop when a route card with issues is expanded.
-  // Reads uniqueStops from routeUniqueStopsRef (populated in the route render loop).
-  // Cleanup: drop focus index for any route that just collapsed so the next expand resets.
+  // Reset focus index + viewed state when a route collapses so the next expand starts fresh.
   useEffect(() => {
     setFocusedIssueIdxByRoute((prev) => {
       const next: Record<string, number> = {}
       let changed = false
-      // Keep focus for routes still expanded
       for (const id of expandedRouteIds) {
         if (id in prev) next[id] = prev[id]
       }
-      // Drop focus for collapsed routes
       for (const id of Object.keys(prev)) {
-        if (!expandedRouteIds.includes(id) && id in prev) changed = true
+        if (!expandedRouteIds.includes(id)) changed = true
       }
-      // Initialise focus + scroll for newly expanded routes that have multi-stop issues
+      // Initialise focus index for newly expanded routes with multi-stop issues.
+      // No auto-scroll here — user must click "View" in the banner first.
       for (const id of expandedRouteIds) {
         if (id in next) continue
         const stops = routeUniqueStopsRef.current[id] ?? []
         if (stops.length > 1) {
           next[id] = 0
           changed = true
-          // Wait two animation frames + 300ms — the accordion's expand transition
-          // needs time to settle so getBoundingClientRect() returns post-expand values.
-          window.setTimeout(() => scrollToStop(id, stops[0]), 300)
         }
+      }
+      if (Object.keys(next).length !== Object.keys(prev).length) changed = true
+      return changed ? next : prev
+    })
+    // Also clear "viewed" state for any route that just collapsed
+    setViewedIssuesByRoute((prev) => {
+      const next: Record<string, boolean> = {}
+      let changed = false
+      for (const id of expandedRouteIds) {
+        if (id in prev) next[id] = prev[id]
       }
       if (Object.keys(next).length !== Object.keys(prev).length) changed = true
       return changed ? next : prev
@@ -2998,8 +2996,11 @@ export function LassoWorkspaceSheet({
   const [reorderedRoutes, setReorderedRoutes] = useState<Record<string, string[]>>({}) // routeId → ordered order IDs
   const [recentlyAddedOrderId, setRecentlyAddedOrderId] = useState<string | null>(null)
   // Validation banner — chevron nav state. Maps routeId → index into that route's
-  // uniqueStops array (failing stops). Drives the "Stop X/N" counter + chevron buttons.
+  // uniqueStops array (failing stops). Drives the "X/N" counter + chevron buttons.
   const [focusedIssueIdxByRoute, setFocusedIssueIdxByRoute] = useState<Record<string, number>>({})
+  // Tracks whether the user has clicked "View" on the multi-stop banner for a route.
+  // Until clicked the banner shows a ghost "View" button instead of the counter.
+  const [viewedIssuesByRoute, setViewedIssuesByRoute] = useState<Record<string, boolean>>({})
   // Populated during the route-card render loop so the auto-focus effect can read fresh
   // uniqueStops per route without re-running validation logic.
   const routeUniqueStopsRef = useRef<Record<string, number[]>>({})
@@ -3245,22 +3246,25 @@ export function LassoWorkspaceSheet({
     ) as HTMLElement | null
     if (!target) return
 
-    // Try to measure the actual sticky-header stack height for this route so the target
-    // lands cleanly below it (collapsed route header + issues banner are both sticky).
-    // Fall back to 170 if measurement fails.
+    // Walk the offsetParent chain to get the target's absolute offset from the
+    // container top. This is scroll-position-independent — getBoundingClientRect()
+    // depends on the current viewport and produces the wrong desiredTop when the
+    // user has manually scrolled mid-card before clicking a chevron.
+    let offsetTop = 0
+    let el: HTMLElement | null = target
+    while (el && el !== container) {
+      offsetTop += el.offsetTop
+      el = el.offsetParent as HTMLElement | null
+    }
+
     let stickyHeaderHeight = 170
     const stickyWrapper = container.querySelector(
       `[data-sticky-route-id="${routeId}"]`
     ) as HTMLElement | null
     if (stickyWrapper) stickyHeaderHeight = stickyWrapper.offsetHeight + 16
 
-    // scrollTo (absolute) — more predictable than scrollBy when measurements are in flux
-    const containerRect = container.getBoundingClientRect()
-    const targetRect = target.getBoundingClientRect()
-    const desiredTop = container.scrollTop + (targetRect.top - containerRect.top) - stickyHeaderHeight
-    container.scrollTo({ top: Math.max(0, desiredTop), behavior: "smooth" })
+    container.scrollTo({ top: Math.max(0, offsetTop - stickyHeaderHeight), behavior: "smooth" })
 
-    // Trigger highlight animation
     target.classList.add("rb-stop-highlight")
     setTimeout(() => target.classList.remove("rb-stop-highlight"), 3000)
   }
@@ -4335,15 +4339,15 @@ export function LassoWorkspaceSheet({
                               // useEffect that reads it after expandedRouteIds changes.
                               routeUniqueStopsRef.current[routeId] = uniqueStops
                               const focusedIdx = focusedIssueIdxByRoute[routeId] ?? 0
+                              const hasViewed = viewedIssuesByRoute[routeId] ?? false
 
                               return (
                                 <div
                                   style={{
                                     backgroundColor: bannerBg,
                                     borderRadius: "0px 0px 4px 4px",
-                                    // Per Figma: banner total height 32px.
-                                    // py 4px + content 24px = 32px. Padding-left 28px, right 16px.
-                                    height: 32,
+                                    // Per Figma: banner total height 36px. pl-28px pr-16px py-4px.
+                                    height: 36,
                                     padding: "4px 16px 4px 28px",
                                     display: "flex",
                                     flexDirection: "row",
@@ -4367,22 +4371,41 @@ export function LassoWorkspaceSheet({
                                     </span>
                                   </div>
                                   {isRed && uniqueStops.length > 1 && isExpanded ? (
-                                    <StopNav
-                                      current={focusedIdx}
-                                      total={uniqueStops.length}
-                                      onPrev={() => {
-                                        const next = Math.max(0, focusedIdx - 1)
-                                        setFocusedIssueIdxByRoute((p) => ({ ...p, [routeId]: next }))
-                                        scrollToStop(routeId, uniqueStops[next])
-                                      }}
-                                      onNext={() => {
-                                        const next = Math.min(uniqueStops.length - 1, focusedIdx + 1)
-                                        setFocusedIssueIdxByRoute((p) => ({ ...p, [routeId]: next }))
-                                        scrollToStop(routeId, uniqueStops[next])
-                                      }}
-                                    />
+                                    hasViewed ? (
+                                      // State B: counter + chevrons (after "View" clicked)
+                                      <IssueCounter
+                                        current={focusedIdx}
+                                        total={uniqueStops.length}
+                                        onPrev={() => {
+                                          const next = Math.max(0, focusedIdx - 1)
+                                          setFocusedIssueIdxByRoute((p) => ({ ...p, [routeId]: next }))
+                                          scrollToStop(routeId, uniqueStops[next])
+                                        }}
+                                        onNext={() => {
+                                          const next = Math.min(uniqueStops.length - 1, focusedIdx + 1)
+                                          setFocusedIssueIdxByRoute((p) => ({ ...p, [routeId]: next }))
+                                          scrollToStop(routeId, uniqueStops[next])
+                                        }}
+                                      />
+                                    ) : (
+                                      // State A: ghost "View" button (initial state on expand)
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setViewedIssuesByRoute((p) => ({ ...p, [routeId]: true }))
+                                          scrollToStop(routeId, uniqueStops[0])
+                                        }}
+                                        style={{
+                                          height: 28, padding: "0 12px", borderRadius: 4,
+                                          background: "transparent", border: "none", cursor: "pointer",
+                                          fontSize: 14, fontWeight: 500, color: "#fafafa",
+                                        }}
+                                      >
+                                        View
+                                      </button>
+                                    )
                                   ) : isRed && uniqueStops.length === 1 && isExpanded ? (
-                                    // 1-issue case: single StopChip (unchanged from before)
+                                    // 1-issue case: single StopChip (unchanged)
                                     <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                                       <StopChip stopIndex={uniqueStops[0]} onClick={() => scrollToStop(routeId, uniqueStops[0])} />
                                     </div>
