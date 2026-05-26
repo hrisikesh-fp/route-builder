@@ -68,56 +68,6 @@ function computeDemand(
   return demand
 }
 
-interface AssumedRow {
-  values: Record<string, number>
-  helpers: Record<string, { text: string; accent: "grey" | "indigo" } | null>
-}
-
-function buildAssumedStartingLoad(
-  products: string[],
-  demand: Record<string, number>,
-  truckCapacity: number | undefined,
-): AssumedRow {
-  const values: Record<string, number> = {}
-  const helpers: Record<string, { text: string; accent: "grey" | "indigo" } | null> = {}
-
-  if (truckCapacity == null) {
-    for (const p of products) {
-      values[p] = demand[p] ?? 0
-      helpers[p] = null
-    }
-    return { values, helpers }
-  }
-
-  const isSingle = products.length === 1
-  let remaining = truckCapacity
-
-  for (const p of products) {
-    const d = demand[p] ?? 0
-    const assigned = Math.min(d, Math.max(0, remaining))
-    values[p] = assigned
-    remaining -= assigned
-
-    const fits = assigned >= d
-    if (isSingle) {
-      helpers[p] = fits
-        ? null
-        : {
-            text: `Calculations below use ${assigned.toLocaleString()} gal - the truck's full capacity. Route needs ${d.toLocaleString()}.`,
-            accent: "indigo",
-          }
-    } else {
-      helpers[p] = fits
-        ? { text: "Fully covered by truck capacity.", accent: "grey" }
-        : {
-            text: `Calculations below use ${assigned.toLocaleString()} gal - the truck's remaining capacity for this product. Route needs ${d.toLocaleString()}.`,
-            accent: "indigo",
-          }
-    }
-  }
-
-  return { values, helpers }
-}
 
 function buildBalanceTable(
   orders: ExtractionOrder[],
@@ -259,14 +209,9 @@ export function BalanceTableModal({
   const inventory = initialInventory ?? {}
   const products = collectProducts(orders)
   const demand = computeDemand(orders, products)
-  const hasLoadOrder = orders.some((o) => o.orderType === "L")
-  const assumed = buildAssumedStartingLoad(products, demand, truckCapacity)
-
   const startingBalance: Record<string, number> = {}
   for (const p of products) {
-    const inv = inventory[p] ?? 0
-    const a = hasLoadOrder ? 0 : assumed.values[p] ?? 0
-    startingBalance[p] = inv + a
+    startingBalance[p] = inventory[p] ?? 0
   }
 
   const { rows, finalBalance } = buildBalanceTable(orders, products, startingBalance)
@@ -312,17 +257,9 @@ export function BalanceTableModal({
     verticalAlign: "middle",
   }
 
-  // Initial-inventory cell: no bottom border when the Assumed row follows
-  // (the dashed separator lives on top of the Assumed row instead).
   const initialInvCell: React.CSSProperties = {
     ...bodyCellBase,
-    borderBottom: hasLoadOrder ? `1px solid ${BORDER}` : "none",
-  }
-
-  // Assumed-starting-load cells: no borderTop here — the dashed separator
-  // lives in its own <tr> below (so we can inset it 12px on each side).
-  const assumedCell: React.CSSProperties = {
-    ...bodyCellBase,
+    borderBottom: `1px solid ${BORDER}`,
   }
 
   const retainCellBase: React.CSSProperties = {
@@ -473,25 +410,6 @@ export function BalanceTableModal({
               ))}
             </tr>
 
-            {/* Dashed separator — inset 12px on each side, sits between
-                Initial inventory and Assumed starting load. */}
-            {!hasLoadOrder && (
-              <tr aria-hidden="true">
-                <td
-                  colSpan={products.length + 1}
-                  style={{ padding: 0, lineHeight: 0, fontSize: 0 }}
-                >
-                  <div
-                    style={{
-                      marginLeft: 12,
-                      marginRight: 12,
-                      borderTop: `1px dashed ${STROKE_3}`,
-                      height: 0,
-                    }}
-                  />
-                </td>
-              </tr>
-            )}
 
 
             {/* Stop rows — numbered prefix, L/D badge, name, balance per product */}
