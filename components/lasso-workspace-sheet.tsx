@@ -3246,24 +3246,22 @@ export function LassoWorkspaceSheet({
     ) as HTMLElement | null
     if (!target) return
 
-    // Walk the offsetParent chain to get the target's absolute offset from the
-    // container top. This is scroll-position-independent — getBoundingClientRect()
-    // depends on the current viewport and produces the wrong desiredTop when the
-    // user has manually scrolled mid-card before clicking a chevron.
-    let offsetTop = 0
-    let el: HTMLElement | null = target
-    while (el && el !== container) {
-      offsetTop += el.offsetTop
-      el = el.offsetParent as HTMLElement | null
-    }
-
-    let stickyHeaderHeight = 170
     const stickyWrapper = container.querySelector(
       `[data-sticky-route-id="${routeId}"]`
     ) as HTMLElement | null
-    if (stickyWrapper) stickyHeaderHeight = stickyWrapper.offsetHeight + 16
+    const stickyHeaderHeight = stickyWrapper ? stickyWrapper.offsetHeight + 16 : 170
 
-    container.scrollTo({ top: Math.max(0, offsetTop - stickyHeaderHeight), behavior: "smooth" })
+    // Defer measurement to the next animation frame so any React re-render triggered
+    // by the chevron click (state update) has already painted before we read rects.
+    // Use container.scrollTo() directly — scrollIntoView() targets the nearest
+    // scrollable ancestor found by the browser which may be the fixed outer window
+    // in a full-screen layout, not the inner workspace panel.
+    requestAnimationFrame(() => {
+      const containerRect = container.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      const desiredTop = container.scrollTop + (targetRect.top - containerRect.top) - stickyHeaderHeight
+      container.scrollTo({ top: Math.max(0, desiredTop), behavior: "smooth" })
+    })
 
     target.classList.add("rb-stop-highlight")
     setTimeout(() => target.classList.remove("rb-stop-highlight"), 3000)
