@@ -72,6 +72,8 @@ const LOAD_ORDERS: ModalLoadOrder[] = [
   { id: "lo-r1-initial", terminalId: "t-1", time: "05:30 AM", volumeGal: 4200, products: ["200*DIESEL-OFFROAD RED", "200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"], linkedDeliveryCount: null },
   { id: "lo-r1-mid", terminalId: "t-1", time: "09:00 AM", volumeGal: 600, products: ["200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"],                              linkedDeliveryCount: null },
   { id: "lo-r3-mid", terminalId: "t-1", time: "09:30 AM", volumeGal: 200, products: ["200*DIESEL-ONROAD CLEAR"],                                                     linkedDeliveryCount: null },
+  { id: "lo-r3-diesel-530", terminalId: "t-1", time: "05:30 AM", volumeGal: 5500, products: ["200*DIESEL-ONROAD CLEAR"],                                             linkedDeliveryCount: null },
+  { id: "lo-r3-diesel-930", terminalId: "t-1", time: "09:30 AM", volumeGal: 1500, products: ["200*DIESEL-ONROAD CLEAR"],                                             linkedDeliveryCount: null },
   // ── Valero Taylor (t-2) — 7 orders ──
   { id: "lo-10", terminalId: "t-2", time: "05:30 AM", volumeGal: 4000, products: ["ULSD #2", "87 UNLEDED"],                                               linkedDeliveryCount: 2 },
   { id: "lo-11", terminalId: "t-2", time: "08:00 AM", volumeGal: 3500, products: ["87 OCT W/ 10% ETH"],                                                   linkedDeliveryCount: 1 },
