@@ -36,6 +36,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [hoveredWorkspaceOrderId, setHoveredWorkspaceOrderId] = useState<string | null>(null)
   const [addedLoadOrders, setAddedLoadOrders] = useState<Record<string, ExtractionOrder[]>>({})
   const [addedDeliveryOrders, setAddedDeliveryOrders] = useState<Record<string, ExtractionOrder[]>>({})
+  const [reorderedRoutes, setReorderedRoutes] = useState<Record<string, string[]>>({})
   // When a shipto-no-order pin's "Create Order" button is clicked, the route-map fires a
   // window global. We translate that into a state value here, and pass it down to the workspace
   // sheet so the modal can open prefilled with this shipto. Cleared when the modal closes.
@@ -385,6 +386,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
   addedLoadOrders={addedLoadOrders}
   selectedUnassignedOrderIds={selectedUnassignedIds}
+  reorderedRoutes={reorderedRoutes}
   />
 
 <MapControls
@@ -419,6 +421,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onHoveredOrderChange={setHoveredWorkspaceOrderId}
         onAddedLoadOrdersChange={setAddedLoadOrders}
         onAddedDeliveryOrdersChange={setAddedDeliveryOrders}
+        onReorderedRoutesChange={setReorderedRoutes}
         onAddedUnassignedOrdersChange={setModal3UnassignedOrders}
         onAddSelectedRouteId={(id) => setSelectedRouteIds((prev) => [...new Set([...prev, id])])}
         createOrderPrefillShipToId={createOrderPrefillShipToId}

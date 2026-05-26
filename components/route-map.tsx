@@ -162,6 +162,7 @@ export interface RouteMapProps {
   addedLoadOrders?: Record<string, ExtractionOrder[]>
   selectedUnassignedOrderIds?: string[]
   isCreateOrderSideSheetOpen?: boolean
+  reorderedRoutes?: Record<string, string[]>
 }
 
 // Fallback route colors if route not found in mockRoutes
@@ -203,6 +204,7 @@ export function RouteMap({
   addedLoadOrders = {},
   selectedUnassignedOrderIds = [],
   isCreateOrderSideSheetOpen = false,
+  reorderedRoutes = {},
 }: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null) // mapboxgl.Map
@@ -461,9 +463,20 @@ export function RouteMap({
         byRoute.set(o.routeId, arr)
       }
     }
-    for (const routeOrders of byRoute.values()) {
-      routeOrders.sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
-      routeOrders.forEach((o, idx) => routePositionMapRef.current.set(o.id, idx + 1))
+    for (const [routeId, routeOrders] of byRoute.entries()) {
+      const reorderIds = reorderedRoutes[routeId]
+      if (reorderIds) {
+        // Use drag-reordered sequence: reorderIds first, then any new orders not yet in the list
+        const idToOrder = new Map(routeOrders.map((o) => [o.id, o]))
+        const ordered: ExtractionOrder[] = [
+          ...reorderIds.map((id) => idToOrder.get(id)).filter(Boolean) as ExtractionOrder[],
+          ...routeOrders.filter((o) => !reorderIds.includes(o.id)),
+        ]
+        ordered.forEach((o, idx) => routePositionMapRef.current.set(o.id, idx + 1))
+      } else {
+        routeOrders.sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
+        routeOrders.forEach((o, idx) => routePositionMapRef.current.set(o.id, idx + 1))
+      }
     }
 
     // Skip load (L) and transfer (T) orders — they're co-located with infrastructure markers
@@ -555,7 +568,7 @@ export function RouteMap({
       orderMarkerMapRef.current.set(order.id, marker)
       orderDataMapRef.current.set(order.id, { order, tankThreshold: threshold })
     })
-  }, [orders, mapReady, selectedRouteIds, selectedUnassignedOrderIds, entityVisibility.shipTosWithOrders, entityVisibility.routeSequence, showBadgesValue]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [orders, mapReady, selectedRouteIds, selectedUnassignedOrderIds, entityVisibility.shipTosWithOrders, entityVisibility.routeSequence, showBadgesValue, reorderedRoutes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── update pin icons when route selection changes (no re-cluster) ─────────
   useEffect(() => {

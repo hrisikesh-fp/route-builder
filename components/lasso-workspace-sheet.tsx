@@ -37,6 +37,8 @@ interface LassoWorkspaceSheetProps {
   initialExpandedRouteIds?: string[]
   /** Fires whenever expanded route cards change — used by route-map to highlight the right polylines. */
   onExpandedRouteIdsChange?: (ids: string[]) => void
+  /** Fires whenever the user drag-reorders stops — passes the new ID order per route to the map. */
+  onReorderedRoutesChange?: (routes: Record<string, string[]>) => void
   /** When set (by the map-pin → Create Order flow), opens the modal prefilled to this shipto with no originating route. */
   createOrderPrefillShipToId?: string | null
   onClearCreateOrderPrefillShipToId?: () => void
@@ -2897,6 +2899,7 @@ export function LassoWorkspaceSheet({
   onAddSelectedRouteId,
   initialExpandedRouteIds = [],
   onExpandedRouteIdsChange,
+  onReorderedRoutesChange,
   onCreateOrderSideSheetOpen,
   onCreateOrderSideSheetClose,
   externalUnassignedOrders = [],
@@ -3685,13 +3688,21 @@ export function LassoWorkspaceSheet({
                         return true
                       })
                       .sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
-                    // Apply reorder if user has dragged — stamp new routeSequence so validation engine respects drag order
+                    // Apply reorder if user has dragged — stamp new routeSequence so validation engine respects drag order.
+                    // Orders added AFTER the last drag (not yet in reorderIds) are appended at the end.
                     const reorderIds = reorderedRoutes[routeId]
                     const sortedOrders = reorderIds
-                      ? reorderIds.map((id, i) => {
-                          const order = defaultSorted.find((o) => o.id === id)
-                          return order ? { ...order, routeSequence: i + 1 } : null
-                        }).filter(Boolean) as ExtractionOrder[]
+                      ? [
+                          ...reorderIds
+                            .map((id, i) => {
+                              const order = defaultSorted.find((o) => o.id === id)
+                              return order ? { ...order, routeSequence: i + 1 } : null
+                            })
+                            .filter(Boolean) as ExtractionOrder[],
+                          ...defaultSorted
+                            .filter((o) => !reorderIds.includes(o.id))
+                            .map((o, i) => ({ ...o, routeSequence: reorderIds.length + i + 1 })),
+                        ]
                       : defaultSorted
 
                     // Data layer: count unique sequences (all stop types)
@@ -4455,7 +4466,9 @@ export function LassoWorkspaceSheet({
                               const ids = sortedOrders.map((o) => o.id)
                               const [moved] = ids.splice(fromIdx, 1)
                               ids.splice(toIdx, 0, moved)
-                              setReorderedRoutes((prev) => ({ ...prev, [routeId]: ids }))
+                              const next = { ...reorderedRoutes, [routeId]: ids }
+                              setReorderedRoutes(next)
+                              onReorderedRoutesChange?.(next)
                             }}
                             onPlannedQtyClick={(order, anchorY, anchorX) => {
                               if (orderDetailsOrder?.id === order.id) {
