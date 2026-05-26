@@ -209,6 +209,7 @@ export function BalanceTableModal({
   const inventory = initialInventory ?? {}
   const products = collectProducts(orders)
   const demand = computeDemand(orders, products)
+  const hasLoadOrder = orders.some((o) => o.orderType === "L")
   const startingBalance: Record<string, number> = {}
   for (const p of products) {
     startingBalance[p] = inventory[p] ?? 0
@@ -337,6 +338,24 @@ export function BalanceTableModal({
             <X size={20} />
           </button>
         </div>
+
+        {/* No-load banner — shown when route has no load order */}
+        {!hasLoadOrder && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 16px",
+            backgroundColor: "#1f1f1f",
+            border: "1px solid #282828",
+            borderRadius: 4,
+          }}>
+            <TriangleAlert size={20} color="#818cf8" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 14, fontWeight: 400, color: "#818cf8", lineHeight: "20px" }}>
+              No Load Order added yet. Add one to see product depletion stop by stop.
+            </span>
+          </div>
+        )}
 
         {/* Table — header strip, starting-state rows, stop rows, Expected Retain.
             Wrapper div carries the 4px border-radius because <table> with border-collapse
