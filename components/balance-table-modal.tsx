@@ -493,38 +493,6 @@ export function BalanceTableModal({
               </tr>
             )}
 
-            {/* Assumed starting load — only when no Load order has been added */}
-            {!hasLoadOrder && (
-              <tr>
-                <td style={assumedCell}>
-                  <div style={{ color: TEXT_2 }}>Assumed starting load</div>
-                  <div style={{ color: TEXT_4, fontSize: 14, lineHeight: "20px" }}>
-                    No load order added for this route yet
-                  </div>
-                </td>
-                {products.map((p) => {
-                  const v = assumed.values[p] ?? 0
-                  const h = assumed.helpers[p]
-                  return (
-                    <td key={p} style={assumedCell}>
-                      <div style={{ color: TEXT_2 }}>{fmtBalance(v)}</div>
-                      {h && (
-                        <div
-                          style={{
-                            marginTop: 2,
-                            fontSize: 14,
-                            lineHeight: "20px",
-                            color: h.accent === "indigo" ? ACCENT_1 : TEXT_4,
-                          }}
-                        >
-                          {h.text}
-                        </div>
-                      )}
-                    </td>
-                  )
-                })}
-              </tr>
-            )}
 
             {/* Stop rows — numbered prefix, L/D badge, name, balance per product */}
             {rows.map((row, i) => (
