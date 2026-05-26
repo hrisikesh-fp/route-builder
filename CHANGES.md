@@ -4,6 +4,13 @@
 
 ---
 
+## 2026-05-25
+
+- **Validation banner - smarter runout copy**: banners on route cards now say "X will run out at this stop" at the exact stop where the product first goes negative, and "X already ran out before this stop" for any downstream stops carrying that shortfall. Previously all failing stops said the same thing regardless of whether they were the trigger or a downstream casualty.
+- **Validation banner - stop navigator**: when a route has 2 or more failing stops, up/down chevron buttons appear in the banner so you can step through each issue without scrolling the card manually.
+
+---
+
 ## 2026-05-22
 
 - **Map polish — arrows + draw animation + smoother zoom**:
