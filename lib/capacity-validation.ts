@@ -19,9 +19,11 @@ export interface ProductIssue {
 
 export interface RunoutIssue {
   product: FuelProduct
-  stopIndex: number // 1-based delivery stop index where balance goes negative
+  stopIndex: number // 1-based delivery stop index where balance is negative
   stopName: string
   deficit: number // how many gal negative
+  isFirstFailing: boolean // true if this is where the product first went negative;
+                          // false for downstream stops that inherit the negative balance
 }
 
 export interface BalanceRow {
@@ -154,7 +156,12 @@ export function validateRouteCapacity(
     }
   }
 
-  const runoutProducts = new Set<FuelProduct>() // track which products already flagged
+  // Tracks which products have ALREADY been flagged at an earlier stop. Used to set
+  // `isFirstFailing` correctly — we no longer dedupe by product; every (stop, product)
+  // negative balance becomes an issue entry. This way the per-stop banner can render
+  // on each affected stop, with copy differing between "will run out at this stop"
+  // (first failing) and "already ran out before this stop" (downstream).
+  const productsAlreadyFlagged = new Set<FuelProduct>()
 
   // Start row (retained)
   runningBalance.push({
@@ -198,17 +205,21 @@ export function validateRouteCapacity(
         balances: { ...balance },
       })
 
-      // Check for negatives
+      // Check for negatives — push an issue entry for EVERY (stop, product) negative
+      // balance so the per-stop UI can show on each affected stop. The product set
+      // tracks whether this is the first failing stop for the product (different copy).
       for (const [product, bal] of Object.entries(balance) as [FuelProduct, number][]) {
-        if (bal < 0 && !runoutProducts.has(product)) {
-          runoutProducts.add(product)
+        if (bal < 0) {
+          const isFirstFailing = !productsAlreadyFlagged.has(product)
+          if (isFirstFailing) productsAlreadyFlagged.add(product)
           l3.push({
             product,
             stopIndex: stopCounter,
             stopName: order.customerName,
             deficit: Math.abs(bal),
+            isFirstFailing,
           })
-          if (firstFailingStopIndex === null) {
+          if (firstFailingStopIndex === null && isFirstFailing) {
             firstFailingStopIndex = stopCounter
           }
         }

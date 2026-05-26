@@ -177,7 +177,7 @@ function TypeBadge({ type }: { type: "L" | "D" | "T" }) {
 // Tooltip uses position:fixed so it escapes the table wrapper's overflow:hidden
 // (which would otherwise clip it when the icon is near the bottom of the table).
 
-function NegativeBalanceWarning({ productLabel }: { productLabel: string }) {
+function NegativeBalanceWarning({ productLabel, isFirstFailing }: { productLabel: string; isFirstFailing: boolean }) {
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null)
 
   return (
@@ -225,7 +225,9 @@ function NegativeBalanceWarning({ productLabel }: { productLabel: string }) {
               lineHeight: "16px",
             }}
           >
-            {productLabel} will run out at this stop
+            {isFirstFailing
+              ? `${productLabel} will run out at this stop`
+              : `${productLabel} already ran out before this stop`}
           </div>
         </div>
       )}
@@ -268,6 +270,21 @@ export function BalanceTableModal({
   }
 
   const { rows, finalBalance } = buildBalanceTable(orders, products, startingBalance)
+
+  // Pre-compute "first failing row" per product column. Used by the negative-balance
+  // tooltip so the copy differs between the stop where it first goes negative ("will
+  // run out at this stop") and downstream stops where it's already out ("already ran
+  // out before this stop"). Aligns with capacity-validation.ts's isFirstFailing flag.
+  const firstFailingRowByProduct: Record<string, number> = {}
+  for (const p of products) {
+    for (let i = 0; i < rows.length; i++) {
+      const bal = rows[i].balances[p] ?? 0
+      if (bal < 0) {
+        firstFailingRowByProduct[p] = i
+        break
+      }
+    }
+  }
 
   const MODAL_W = products.length <= 1 ? 800 : 1200
 
@@ -532,6 +549,7 @@ export function BalanceTableModal({
                 {products.map((p) => {
                   const bal = row.balances[p] ?? 0
                   const balNeg = bal < 0
+                  const isFirstFailing = balNeg && firstFailingRowByProduct[p] === i
                   return (
                     <td key={`${row.orderId}-${p}`} style={bodyCellBase}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -539,7 +557,10 @@ export function BalanceTableModal({
                           {fmtBalance(bal)}
                         </span>
                         {balNeg && (
-                          <NegativeBalanceWarning productLabel={PRODUCT_LABEL[p] ?? p} />
+                          <NegativeBalanceWarning
+                            productLabel={PRODUCT_LABEL[p] ?? p}
+                            isFirstFailing={isFirstFailing}
+                          />
                         )}
                       </span>
                     </td>

@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route } from "lucide-react"
+import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -243,6 +243,76 @@ function StopChip({ stopIndex, onClick }: { stopIndex: number; onClick: () => vo
         {stopIndex}
       </div>
     </button>
+  )
+}
+
+// ─── Stop Navigator (chevron up/down for N>1 issues) ────────────────────────────
+// Shows "Stop X/N" + up/down icon buttons. Used in the validation banner when a
+// route has 2+ failing stops. Per Figma:
+//   - Banner total height: 32px
+//   - "Stop X" white, "/" #E5E5E5, "N" #A3A3A3
+//   - Chevron icon buttons: 24×24 square, ghost variant
+//   - Chevron icon color: neutral #E5E5E5 (NOT banner red)
+function StopNav({
+  current,
+  total,
+  onPrev,
+  onNext,
+}: {
+  current: number
+  total: number
+  onPrev: () => void
+  onNext: () => void
+}) {
+  const prevDisabled = current <= 0
+  const nextDisabled = current >= total - 1
+  const btnStyle = (disabled: boolean): React.CSSProperties => ({
+    width: 24,
+    height: 24,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "transparent",
+    border: "none",
+    borderRadius: 4,
+    padding: 0,
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.35 : 1,
+    color: "#E5E5E5",
+    transition: "background-color 120ms ease",
+  })
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      <span style={{ fontSize: 14, whiteSpace: "nowrap", lineHeight: "20px" }}>
+        <span style={{ fontWeight: 500, color: "#FFFFFF" }}>Stop {current + 1}</span>
+        <span style={{ color: "#E5E5E5" }}>/</span>
+        <span style={{ color: "#A3A3A3" }}>{total}</span>
+      </span>
+      <div style={{ display: "flex", gap: 0 }}>
+        <button
+          type="button"
+          disabled={prevDisabled}
+          onClick={onPrev}
+          aria-label="Previous issue"
+          style={btnStyle(prevDisabled)}
+          onMouseEnter={(e) => { if (!prevDisabled) e.currentTarget.style.backgroundColor = "rgba(10,10,10,0.5)" }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+        >
+          <ChevronUp size={16} />
+        </button>
+        <button
+          type="button"
+          disabled={nextDisabled}
+          onClick={onNext}
+          aria-label="Next issue"
+          style={btnStyle(nextDisabled)}
+          onMouseEnter={(e) => { if (!nextDisabled) e.currentTarget.style.backgroundColor = "rgba(10,10,10,0.5)" }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+        >
+          <ChevronDown size={16} />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -1547,16 +1617,25 @@ function ExpandedRouteCard({
     gapLeaveTimers.current.set(orderId, timeoutId)
   }
 
-  // Change 6: Build a map of delivery stop index → single warning string (comma-separated short names)
+  // Per-stop warning copy. Each negative-balance stop becomes a banner. Copy framework:
+  //   • First failing stop for the product → "{product} will run out at this stop"
+  //   • Downstream stop (already negative)  → "{product} already ran out before this stop"
+  // When multiple products fail at the same stop, group them: first-failing list first,
+  // then a separate sentence for already-out products if any.
   const stopWarnings: Record<number, string> = {}
   if (validation?.l3) {
-    const grouped: Record<number, { products: string[]; stopName: string }> = {}
+    const grouped: Record<number, { firstFailing: string[]; alreadyOut: string[] }> = {}
     for (const issue of validation.l3) {
-      if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = { products: [], stopName: issue.stopName }
-      grouped[issue.stopIndex].products.push(getShortProductName(issue.product))
+      if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = { firstFailing: [], alreadyOut: [] }
+      const shortName = getShortProductName(issue.product)
+      if (issue.isFirstFailing) grouped[issue.stopIndex].firstFailing.push(shortName)
+      else grouped[issue.stopIndex].alreadyOut.push(shortName)
     }
     for (const [idx, g] of Object.entries(grouped)) {
-      stopWarnings[Number(idx)] = `${g.products.join(", ")} will run out before this stop`
+      const parts: string[] = []
+      if (g.firstFailing.length > 0) parts.push(`${g.firstFailing.join(", ")} will run out at this stop`)
+      if (g.alreadyOut.length > 0) parts.push(`${g.alreadyOut.join(", ")} already ran out before this stop`)
+      stopWarnings[Number(idx)] = parts.join(" • ")
     }
   }
 
@@ -2884,8 +2963,46 @@ export function LassoWorkspaceSheet({
     if (!isCreateOrderModalOpen || !createOrderRouteId) return
     setExpandedRouteIds((prev) => (prev.includes(createOrderRouteId) ? prev : [...prev, createOrderRouteId]))
   }, [isCreateOrderModalOpen, createOrderRouteId])
+
+  // Auto-focus the first issue stop when a route card with issues is expanded.
+  // Reads uniqueStops from routeUniqueStopsRef (populated in the route render loop).
+  // Cleanup: drop focus index for any route that just collapsed so the next expand resets.
+  useEffect(() => {
+    setFocusedIssueIdxByRoute((prev) => {
+      const next: Record<string, number> = {}
+      let changed = false
+      // Keep focus for routes still expanded
+      for (const id of expandedRouteIds) {
+        if (id in prev) next[id] = prev[id]
+      }
+      // Drop focus for collapsed routes
+      for (const id of Object.keys(prev)) {
+        if (!expandedRouteIds.includes(id) && id in prev) changed = true
+      }
+      // Initialise focus + scroll for newly expanded routes that have multi-stop issues
+      for (const id of expandedRouteIds) {
+        if (id in next) continue
+        const stops = routeUniqueStopsRef.current[id] ?? []
+        if (stops.length > 1) {
+          next[id] = 0
+          changed = true
+          // Wait two animation frames + 300ms — the accordion's expand transition
+          // needs time to settle so getBoundingClientRect() returns post-expand values.
+          window.setTimeout(() => scrollToStop(id, stops[0]), 300)
+        }
+      }
+      if (Object.keys(next).length !== Object.keys(prev).length) changed = true
+      return changed ? next : prev
+    })
+  }, [expandedRouteIds])
   const [reorderedRoutes, setReorderedRoutes] = useState<Record<string, string[]>>({}) // routeId → ordered order IDs
   const [recentlyAddedOrderId, setRecentlyAddedOrderId] = useState<string | null>(null)
+  // Validation banner — chevron nav state. Maps routeId → index into that route's
+  // uniqueStops array (failing stops). Drives the "Stop X/N" counter + chevron buttons.
+  const [focusedIssueIdxByRoute, setFocusedIssueIdxByRoute] = useState<Record<string, number>>({})
+  // Populated during the route-card render loop so the auto-focus effect can read fresh
+  // uniqueStops per route without re-running validation logic.
+  const routeUniqueStopsRef = useRef<Record<string, number[]>>({})
   // Selected trucks per route: { [routeId]: TruckItem }
   // Pre-populate from mockRoutes for routes that have truckId
   const [selectedTrucks, setSelectedTrucks] = useState<Record<string, TruckItem>>(() => {
@@ -3128,12 +3245,20 @@ export function LassoWorkspaceSheet({
     ) as HTMLElement | null
     if (!target) return
 
-    // Use getBoundingClientRect for reliable positioning
+    // Try to measure the actual sticky-header stack height for this route so the target
+    // lands cleanly below it (collapsed route header + issues banner are both sticky).
+    // Fall back to 170 if measurement fails.
+    let stickyHeaderHeight = 170
+    const stickyWrapper = container.querySelector(
+      `[data-sticky-route-id="${routeId}"]`
+    ) as HTMLElement | null
+    if (stickyWrapper) stickyHeaderHeight = stickyWrapper.offsetHeight + 16
+
+    // scrollTo (absolute) — more predictable than scrollBy when measurements are in flux
     const containerRect = container.getBoundingClientRect()
     const targetRect = target.getBoundingClientRect()
-    const stickyHeaderHeight = 130 // card + banner height approx
-    const offsetFromTop = targetRect.top - containerRect.top - stickyHeaderHeight
-    container.scrollBy({ top: offsetFromTop, behavior: "smooth" })
+    const desiredTop = container.scrollTop + (targetRect.top - containerRect.top) - stickyHeaderHeight
+    container.scrollTo({ top: Math.max(0, desiredTop), behavior: "smooth" })
 
     // Trigger highlight animation
     target.classList.add("rb-stop-highlight")
@@ -3602,12 +3727,15 @@ export function LassoWorkspaceSheet({
                         style={{ display: "flex", flexDirection: "column" }}
                       >
                         {/* Sticky wrapper for card + banner when expanded */}
-                        <div style={{
-                          position: isExpanded ? "sticky" : "static",
-                          top: 0,
-                          zIndex: isExpanded ? (driverDropdownRouteId === routeId || truckDropdownRouteId === routeId || trailerDropdownRouteId === routeId ? 1000 : 10) : "auto",
-                          backgroundColor: isExpanded ? "#111111" : "transparent",
-                        }}>
+                        <div
+                          data-sticky-route-id={routeId}
+                          style={{
+                            position: isExpanded ? "sticky" : "static",
+                            top: 0,
+                            zIndex: isExpanded ? (driverDropdownRouteId === routeId || truckDropdownRouteId === routeId || trailerDropdownRouteId === routeId ? 1000 : 10) : "auto",
+                            backgroundColor: isExpanded ? "#111111" : "transparent",
+                          }}
+                        >
                         {/* Card row: checkbox+chevron centered with card body — hover only on this row */}
                         <div
                           style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}
@@ -4203,17 +4331,25 @@ export function LassoWorkspaceSheet({
                               const uniqueStops = isRed && validation.l3.length > 0
                                 ? [...new Set(validation.l3.map(i => i.stopIndex))].sort((a, b) => a - b)
                                 : []
+                              // Side-effect during render: keep ref in sync for the auto-focus
+                              // useEffect that reads it after expandedRouteIds changes.
+                              routeUniqueStopsRef.current[routeId] = uniqueStops
+                              const focusedIdx = focusedIssueIdxByRoute[routeId] ?? 0
 
                               return (
                                 <div
                                   style={{
                                     backgroundColor: bannerBg,
                                     borderRadius: "0px 0px 4px 4px",
-                                    padding: "6px 16px 6px 20px",
+                                    // Per Figma: banner total height 32px.
+                                    // py 4px + content 24px = 32px. Padding-left 28px, right 16px.
+                                    height: 32,
+                                    padding: "4px 16px 4px 28px",
                                     display: "flex",
                                     flexDirection: "row",
                                     justifyContent: "space-between",
                                     alignItems: "center",
+                                    boxSizing: "border-box",
                                   }}
                                 >
                                   <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -4230,11 +4366,25 @@ export function LassoWorkspaceSheet({
                                       }
                                     </span>
                                   </div>
-                                  {isRed && uniqueStops.length > 0 && isExpanded ? (
+                                  {isRed && uniqueStops.length > 1 && isExpanded ? (
+                                    <StopNav
+                                      current={focusedIdx}
+                                      total={uniqueStops.length}
+                                      onPrev={() => {
+                                        const next = Math.max(0, focusedIdx - 1)
+                                        setFocusedIssueIdxByRoute((p) => ({ ...p, [routeId]: next }))
+                                        scrollToStop(routeId, uniqueStops[next])
+                                      }}
+                                      onNext={() => {
+                                        const next = Math.min(uniqueStops.length - 1, focusedIdx + 1)
+                                        setFocusedIssueIdxByRoute((p) => ({ ...p, [routeId]: next }))
+                                        scrollToStop(routeId, uniqueStops[next])
+                                      }}
+                                    />
+                                  ) : isRed && uniqueStops.length === 1 && isExpanded ? (
+                                    // 1-issue case: single StopChip (unchanged from before)
                                     <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                                      {uniqueStops.map(stopIdx => (
-                                        <StopChip key={stopIdx} stopIndex={stopIdx} onClick={() => scrollToStop(routeId, stopIdx)} />
-                                      ))}
+                                      <StopChip stopIndex={uniqueStops[0]} onClick={() => scrollToStop(routeId, uniqueStops[0])} />
                                     </div>
                                   ) : (
                                     <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
