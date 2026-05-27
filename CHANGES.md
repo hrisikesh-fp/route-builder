@@ -8,6 +8,11 @@
 
 - **Validation banner - View to navigate (2+ issues)**: banner on expanded route cards with 2 or more failing stops now shows a ghost "View" button instead of auto-scrolling on expand. Click View to jump to the first issue and reveal the 1/N counter with up/down chevrons. Collapsing and re-expanding the card resets to "View" again.
 - **Validation banner - scroll fix**: chevron navigation now works correctly regardless of how far the user has manually scrolled within the route card before clicking a chevron.
+- **Route Summary - removed Assumed Starting Load**: the "Assumed starting load" row is gone from the balance table. Stops now show real negative balances when no load order has been added, which is the accurate picture.
+- **Route Summary - no-load-order banner**: when a route has no load order, an indigo info banner appears above the table — "No Load Order added yet. Add one to see product depletion per stop."
+- **Drag reorder syncs to map**: dragging stops to reorder them in the workspace now updates the sequence badges on the map pins in real time. Previously the map always showed the original order regardless of drag.
+- **New orders survive drag reorder**: orders created after a drag now appear correctly at the end of the route in the workspace. Previously, creating a new stop after reordering caused it to vanish from the card.
+- **Add Load Order - new Flint Hills entries**: two new `200*DIESEL-ONROAD CLEAR` load orders added to the Flint Hills - Johnny Morris terminal — 5,500 gal at 05:30 AM and 1,500 gal at 09:30 AM.
 
 ---
 
