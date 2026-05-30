@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-29
+
+- **L1/L2 colors — orange**: capacity warning banners and per-product Zone A text now use orange `#fb923c`. Previously amber for banners and purple for per-product lines.
+- **L3 colors — amber**: stop-runout warnings moved from red to amber. Red is now reserved for product incompatibility only.
+- **Stop warning strip redesign**: red bordered card + red strip replaced by a standalone dark strip below the card in amber. New copy: "will run out before this stop" (first fail) / "already ran out" (downstream).
+- **Truck section Figma alignment**: capacity message and View Truck Details button left-indented to match Figma spec; below-truck message now mirrors the collapsed banner (arrow + delta, right-aligned).
+- **Zone B banner fires without loads**: collapsed banner now shows capacity state even before load orders are added.
+- **MidRouteAddLoadCTA redesign**: ⊗ XCircle break icon in seq column, dashed amber horizontal arm, centered amber badge ("N deliveries can't be fulfilled"), indigo CTA row below — aligned with order cards.
+- **Amber dashed connector line**: sequence line turns amber dashed from the break point (⊗) through all failing stops.
+- **R3 (Jessica Harper) demo reset**: removed pre-seeded load order and pre-assigned truck. Demo now starts from truck selection → validation fires → add loads step by step.
+- **Add Load Order modal — R3 demo orders**: Flint Hills now has two dedicated demo entries — Load 1 (D2,500 + G1,500 at 05:30 AM) and Load 2 (D500 + G500 at 09:15 AM).
+
+---
+
 ## 2026-05-26
 
 - **Validation banner - View to navigate (2+ issues)**: banner on expanded route cards with 2 or more failing stops now shows a ghost "View" button instead of auto-scrolling on expand. Click View to jump to the first issue and reveal the 1/N counter with up/down chevrons. Collapsing and re-expanding the card resets to "View" again.
