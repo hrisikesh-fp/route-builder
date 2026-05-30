@@ -118,8 +118,15 @@ Config E: No truck → dimmed "Select Truck" pill (opacity 0.6) + "No Truck sele
 
 #### Capacity validation integration
 - Imports `validateRouteCapacity` from `@/lib/capacity-validation`
-- Zone A: truck-level info displayed on card
-- Zone B: route-level banner (e.g., "Below Truck Capacity", "1 Issue")
+- **Zone A:** per-product L2 capacity overflow lines, orange `#fb923c`
+- **Zone B collapsed banner:** always visible when truck selected. Color by type:
+  - `"orange"` → L1/L2 capacity (e.g. "Exceeding/Below Truck Capacity ↑↓ N gal") — `#fb923c`, `rgba(251,146,60,0.1)`
+  - `"amber"` → L3 runout (e.g. "2 Issues") — `#eab308`, `rgba(234,179,8,0.09)` — View/counter navigation for 2+ stops
+  - `"red"` → L0 product incompatibility (reserved, not yet surfaced)
+  - `"none"` → no banner
+- **Below-truck message:** mirrors banner copy with arrow + delta, right-aligned, 36px left indent
+- **Stop warning strip:** `#1b1b1b` bg, amber `#eab308` text. Copy: "X will run out before this stop" (first-failing) / "X already ran out" (downstream)
+- **MidRouteAddLoadCTA:** shown before first failing stop when loads exist. ⊗ XCircle icon in seq col + dashed amber arm + amber centered badge ("N deliveries can't be fulfilled") + indigo CTA row below. Amber dashed vertical line continues through failing stops via per-card `AMBER_DASH` overlay (`isAfterBreak` prop on OrderStopRow/Detailed)
 
 #### Workspace scroll & tabs
 - **Unified scroll**: Driver Routes and Unassigned Orders sections are in one continuous scroll (NOT separate tab content)
@@ -169,6 +176,7 @@ Single FAB adapts based on what's checked:
 - Terminal selection → load order listing with product breakdown
 - Mock data: 8 terminals, 40+ load orders
 - Shows linked delivery count per load order
+- **R3 demo orders (Flint Hills):** `lo-r3-load1` (Diesel 2,500 + Gas 1,500, 05:30 AM) → hub load; `lo-r3-load2` (Diesel 500 + Gas 500, 09:15 AM) → mid-route between Lost Creek and Barton Creek
 
 ### `components/route-map.tsx` — Full-screen Mapbox map
 - **Uses Mapbox GL JS v3** — markers via `new mapboxgl.Marker({ element, anchor: "bottom" })`
@@ -323,6 +331,12 @@ Status colors:  Scheduled = white bg, Incomplete = #FF931E
 Tank levels:    High = #EF4444 (red), Medium = #FBBF24 (yellow), Low = #10B981 (green), NA = #3B82F6
 Pill border:    #333 (default), #737373 (active/focused)
 Pill shadow:    0px 1px 2px rgba(0,0,0,0.05) (default), 0px 0px 0px 3px rgba(115,115,115,0.5) (focused)
+
+Validation colors:
+  L1/L2 (capacity):  text #fb923c, bg rgba(251,146,60,0.1)   ← orange
+  L3 (runout):       text #eab308, bg rgba(234,179,8,0.09)   ← amber
+  L0 (incompatible): text #f87171, bg rgba(220,38,38,0.2)    ← red (reserved)
+  Amber dash line:   repeating-linear-gradient #eab308 4px on / 4px off
 ```
 
 ---
@@ -366,6 +380,7 @@ components/
 
 lib/
   mock-data.ts                 ← ExtractionOrder, ShipTo, mockRoutes, mockHubs
+                                  R3 (Jessica Harper): no pre-assigned truck, no seeded load — demo starts from truck selection
   routes-data.ts               ← Route polyline data (allRoutes), TankThreshold types
   infrastructure-data.ts       ← Hub/terminal/bulk plant coordinates (base1Infrastructure)
   capacity-validation.ts       ← 3-level capacity validation (L1=total, L2=per-product, L3=stop-by-stop)
@@ -406,7 +421,8 @@ contexts/
 
 ## Current branch / active work
 
-- **Branch:** `iter/create-order-side-sheet`
-- **Next:** Modal 3 — Side Sheet variant of the Create Order modal (planned, not started)
+- **Branch:** `iter/workspace-updates`
+- **Active work:** Validation color system, R3 three-step demo, MidRouteAddLoadCTA redesign, amber dashed connector lines
+- **Next (planned):** Modal 3 — Side Sheet variant of the Create Order modal (not started)
 - `CreateOrderModalViewType` is already typed as `"modal1" | "modal2"` — add `"modal3"` when ready
-- See `3-resources/token-efficiency.md` for guidance on avoiding expensive agent spawns during research steps
+- Daily updates log: `UPDATES.md` (root) + `updates/YYYY-MM-DD.md` per day
