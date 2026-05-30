@@ -1,8 +1,8 @@
-# Route Builder — Daily Changes
+# Route Builder — Daily Updates
 
-> Running log of user-visible changes shipped each day. End-of-day: copy the latest dated section into your stakeholder update. Keep entries short and outcome-focused ("did X so users can now Y") — engineering notes belong in commit messages, not here.
+> Running log of user-visible updates shipped each day. End-of-day: copy the latest dated section into your stakeholder update. Keep entries short and outcome-focused ("did X so users can now Y") — engineering notes belong in commit messages, not here.
 >
-> Individual day files live in `changes/` folder.
+> Individual day files live in `updates/` folder.
 
 ---
 
