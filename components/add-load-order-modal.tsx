@@ -43,7 +43,7 @@ type OrderDetailRow = { product: string; plannedQty: number }
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
 const TERMINALS: ModalTerminal[] = [
-  { id: "t-1", name: "Flint Hills - Johnny Morris", loadOrderCount: 12, miles: 3,   warning: null,                              lat: 30.3271, lng: -97.6198, address: "7501 Johnny Morris Road, Austin, TX" },
+  { id: "t-1", name: "Flint Hills - Johnny Morris", loadOrderCount: 14, miles: 3,   warning: null,                              lat: 30.3271, lng: -97.6198, address: "7501 Johnny Morris Road, Austin, TX" },
   { id: "t-2", name: "Valero Taylor",               loadOrderCount: 7,  miles: 1.5, warning: null,  lat: 30.5912, lng: -97.4092, address: "3100 N Main Street, Taylor, TX" },
   { id: "t-3", name: "BP San Fransisco",            loadOrderCount: 3,  miles: 5,   warning: null,                              lat: 30.5234, lng: -97.6789, address: "1500 Gattis School Road, Round Rock, TX" },
   { id: "t-4", name: "Kinder Morgan San Jose Terminal", loadOrderCount: 4, miles: 1.5, warning: null, lat: 30.4011, lng: -97.8395, address: "4801 Kinder Morgan Dr, Cedar Park, TX" },
@@ -68,6 +68,9 @@ const LOAD_ORDERS: ModalLoadOrder[] = [
   { id: "lo-7", terminalId: "t-1", time: "01:45 PM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],                                linkedDeliveryCount: null },
   { id: "lo-8", terminalId: "t-1", time: "02:45 PM", volumeGal: 2800, products: ["87 UNLEDED", "100*DIESEL-ONROAD CLEAR"],                                linkedDeliveryCount: null },
   { id: "lo-9", terminalId: "t-1", time: "04:45 AM", volumeGal: 2800, products: ["100*DIESEL-ONROAD CLEAR", "87 UNLEDED"],                                linkedDeliveryCount: null },
+  // R3 demo load orders (Flint Hills) — Load 1: hub load (05:30 AM), Load 2: mid-route reload (09:15 AM after Lost Creek)
+  { id: "lo-r3-load1", terminalId: "t-1", time: "05:30 AM", volumeGal: 4000, products: ["200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"], linkedDeliveryCount: null },
+  { id: "lo-r3-load2", terminalId: "t-1", time: "09:15 AM", volumeGal: 1000, products: ["200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"], linkedDeliveryCount: null },
   // Mid-route fix load orders
   { id: "lo-r1-initial", terminalId: "t-1", time: "05:30 AM", volumeGal: 4200, products: ["200*DIESEL-OFFROAD RED", "200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"], linkedDeliveryCount: null },
   { id: "lo-r1-mid", terminalId: "t-1", time: "09:00 AM", volumeGal: 600, products: ["200*DIESEL-ONROAD CLEAR", "87 OCT W/ 10% ETH"],                              linkedDeliveryCount: null },
@@ -124,6 +127,9 @@ const ORDER_DETAILS: Record<string, OrderDetailRow[]> = {
   "lo-7":  [{ product: "100*DIESEL-ONROAD CLEAR", plannedQty: 1400 }, { product: "87 UNLEDED", plannedQty: 1400 }],
   "lo-8":  [{ product: "87 UNLEDED", plannedQty: 1400 }, { product: "100*DIESEL-ONROAD CLEAR", plannedQty: 1400 }],
   "lo-9":  [{ product: "100*DIESEL-ONROAD CLEAR", plannedQty: 1400 }, { product: "87 UNLEDED", plannedQty: 1400 }],
+  // R3 demo load orders (Flint Hills)
+  "lo-r3-load1": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 2500 }, { product: "87 OCT W/ 10% ETH", plannedQty: 1500 }],
+  "lo-r3-load2": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 500 }, { product: "87 OCT W/ 10% ETH", plannedQty: 500 }],
   // Mid-route fix load orders (Flint Hills)
   "lo-r1-initial": [{ product: "200*DIESEL-OFFROAD RED", plannedQty: 700 }, { product: "200*DIESEL-ONROAD CLEAR", plannedQty: 1800 }, { product: "87 OCT W/ 10% ETH", plannedQty: 1700 }],
   "lo-r1-mid": [{ product: "200*DIESEL-ONROAD CLEAR", plannedQty: 200 }, { product: "87 OCT W/ 10% ETH", plannedQty: 400 }],

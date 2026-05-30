@@ -59,7 +59,7 @@ export interface ValidationResult {
   // Pre-computed UI strings (kept for backward compat / Zone B rendering)
   collapsedBannerText: string
   expandedBannerText: string
-  collapsedBannerType: "red" | "amber" | "none"
+  collapsedBannerType: "red" | "amber" | "orange" | "none"
   collapsedBannerDelta: string
   expandedIssues: string[]
   truckMessage: string
@@ -258,10 +258,8 @@ export function validateRouteCapacity(
 
   const zoneA: ZoneA = { color: zoneAColor, lines: zoneALines }
 
-  // Zone B: route-level banner — red for L3 failures, amber for healthy/below capacity
-  const zoneBVisible = hasLoads
-    ? true  // always visible when loads exist (red if L3 fails, amber if healthy)
-    : false // hidden when no loads (G1-only state)
+  // Zone B: visible when loads exist OR when there's a capacity issue without loads
+  const zoneBVisible = hasLoads || l1.status !== "ok"
   const zoneB: ZoneB = { visible: zoneBVisible }
 
   const severity: ValidationResult["severity"] =
@@ -281,8 +279,8 @@ export function validateRouteCapacity(
 
   // Zone B banner content
   if (zoneBVisible && l3.length > 0) {
-    // L3 failures → red banner
-    collapsedBannerType = "red"
+    // L3 failures → amber banner (red reserved for product incompatibility L0)
+    collapsedBannerType = "amber"
 
     // Build expanded issues — L3 only, same-stop products merged
     const expandedIssues: string[] = []
@@ -300,50 +298,42 @@ export function validateRouteCapacity(
     }
 
     const itemCount = expandedIssues.length
-
-    // Collapsed text: worst-problem-first L3 runout
-    const firstGroup = sortedStops[0]
-    const [stopIdx, { products }] = firstGroup
-    const names = products.map((p) => getShortProductName(p)).join(", ")
-    const moreCount = itemCount - 1
-    collapsedBannerText = moreCount > 0
-      ? `${names} runs out at Stop ${stopIdx} + ${moreCount} more`
-      : `${names} runs out at Stop ${stopIdx}`
-
-    expandedBannerText = itemCount === 1
-      ? "1 Item needs your attention"
-      : `${itemCount} Items need your attention`
-
+    collapsedBannerText = `${itemCount} ${itemCount === 1 ? "Issue" : "Issues"}`
+    expandedBannerText = collapsedBannerText
     finalExpandedIssues = expandedIssues
   } else if (zoneBVisible && l3.length === 0) {
     if (suppressL1L2) {
-      // Multi-load + L3 passes → suppress L1/L2, show amber
-      collapsedBannerType = "amber"
-      collapsedBannerText = "Below Truck Capacity"
-      collapsedBannerDelta = `${Math.abs(diff).toLocaleString()} gal`
+      // Multi-load + L3 passes → suppress L1/L2 details, but still show correct capacity direction
+      collapsedBannerType = "orange"
+      collapsedBannerText = l1.status === "exceeding" ? "Exceeding Truck Capacity" : "Below Truck Capacity"
+      collapsedBannerDelta = l1.status === "exceeding" ? `${diff.toLocaleString()} gal` : `${Math.abs(diff).toLocaleString()} gal`
     } else if (l1.status === "exceeding") {
-      // L1 exceeds but L3 passes
-      collapsedBannerType = "amber"
+      collapsedBannerType = "orange"
       collapsedBannerText = "Exceeding Truck Capacity"
       collapsedBannerDelta = `${diff.toLocaleString()} gal`
     } else {
-      // Genuinely below
-      collapsedBannerType = "amber"
+      collapsedBannerType = "orange"
       collapsedBannerText = "Below Truck Capacity"
       collapsedBannerDelta = `${Math.abs(diff).toLocaleString()} gal`
     }
     expandedBannerText = collapsedBannerText
   }
 
-  // Change 7: Truck message — only for healthy state (no "no fuel loaded" here, that's UI layer)
+  // Truck message — mirrors the banner copy in the expanded card, below the truck dropdown
   let truckMessage = ""
   let truckMessageColor: ValidationResult["truckMessageColor"] = "green"
 
   if (l3.length === 0 && l2.length === 0) {
-    truckMessage = "This truck can accommodate more orders."
-    truckMessageColor = "amber"
+    if (l1.status === "exceeding") {
+      truckMessage = "Exceeding Truck Capacity"
+      truckMessageColor = "amber"
+    } else if (l1.status === "below") {
+      truckMessage = "Below Truck Capacity"
+      truckMessageColor = "amber"
+    }
+    // "ok" → no message below truck
   }
-  // When warnings exist (l3/l2), truckMessage stays empty — banner handles it
+  // When L3/L2 warnings exist, truckMessage stays empty — banner handles it
 
   return {
     severity,
