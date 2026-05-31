@@ -17,6 +17,12 @@ export interface ProductIssue {
   overflow: number // how many gal over
 }
 
+export interface IncompatibilityIssue {
+  product: FuelProduct
+  stopIndex: number // unified stop index (same counter as L3)
+  stopName: string
+}
+
 export interface RunoutIssue {
   product: FuelProduct
   stopIndex: number // 1-based delivery stop index where balance is negative
@@ -46,6 +52,7 @@ export interface ZoneB {
 export interface ValidationResult {
   severity: "error" | "warning" | "ok"
 
+  l0: IncompatibilityIssue[]
   l1: L1Result
   l2: ProductIssue[]
   l3: RunoutIssue[]
@@ -65,6 +72,7 @@ export interface ValidationResult {
   truckMessage: string
   truckMessageColor: "red" | "amber" | "green"
   firstFailingStopIndex: number | null
+  firstBlockedStopIndex: number | null // first stop with L0 incompatibility
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -111,6 +119,27 @@ export function validateRouteCapacity(
     totalPlanned,
     truckCapacity: truckProfile.totalCapacity,
     diff,
+  }
+
+  // ── L0: Product incompatibility check (fires with truck alone) ────────────
+  const l0: IncompatibilityIssue[] = []
+  let firstBlockedStopIndex: number | null = null
+  {
+    let sc = 0
+    for (const order of sorted) {
+      if (order.orderType === "T") continue
+      sc++
+      if (order.orderType === "L") continue // loads don't need compatibility check
+      if (order.productBreakdown) {
+        for (const pb of order.productBreakdown) {
+          const truckCanCarry = (truckProfile.productCapacities[pb.product] ?? 0) > 0
+          if (!truckCanCarry) {
+            l0.push({ product: pb.product, stopIndex: sc, stopName: order.customerName })
+            if (firstBlockedStopIndex === null) firstBlockedStopIndex = sc
+          }
+        }
+      }
+    }
   }
 
   // ── L2: Per-product capacity check ──────────────────────────────────────
@@ -258,18 +287,17 @@ export function validateRouteCapacity(
 
   const zoneA: ZoneA = { color: zoneAColor, lines: zoneALines }
 
-  // Zone B: visible when loads exist OR when there's a capacity issue without loads
-  const zoneBVisible = hasLoads || l1.status !== "ok"
+  // Zone B: visible when loads exist, capacity issue, or L0 fires
+  const zoneBVisible = hasLoads || l1.status !== "ok" || l0.length > 0
   const zoneB: ZoneB = { visible: zoneBVisible }
 
   const severity: ValidationResult["severity"] =
-    l3.length > 0 || l2.length > 0
+    l0.length > 0 || l3.length > 0 || l2.length > 0
       ? "error"
       : l1.status === "exceeding" || l1.status === "below"
         ? "warning"
         : "ok"
 
-  // Change 2 & 3: Banner colors — amber=healthy, red=issues; collapsed vs expanded text
   let collapsedBannerText = ""
   let expandedBannerText = ""
   let collapsedBannerType: ValidationResult["collapsedBannerType"] = "none"
@@ -277,9 +305,37 @@ export function validateRouteCapacity(
 
   let finalExpandedIssues: string[] = []
 
-  // Zone B banner content
-  if (zoneBVisible && l3.length > 0) {
-    // L3 failures → amber banner (red reserved for product incompatibility L0)
+  // Zone B banner content — L0 dominates (red), then L3 (amber), then L1 (orange)
+  if (zoneBVisible && l0.length > 0) {
+    // L0 present → RED banner (highest severity)
+    collapsedBannerType = "red"
+    const allIssueStops = new Set([...l0.map(i => i.stopIndex), ...l3.map(i => i.stopIndex)])
+    const totalCount = allIssueStops.size
+    collapsedBannerText = `${totalCount} ${totalCount === 1 ? "Issue" : "Issues"}`
+    expandedBannerText = collapsedBannerText
+    // Build expanded issues: L0 stops first, then L3
+    const expandedIssues: string[] = []
+    const l0Grouped: Record<number, { products: FuelProduct[]; stopName: string }> = {}
+    for (const issue of l0) {
+      if (!l0Grouped[issue.stopIndex]) l0Grouped[issue.stopIndex] = { products: [], stopName: issue.stopName }
+      l0Grouped[issue.stopIndex].products.push(issue.product)
+    }
+    for (const [stopIdx, g] of Object.entries(l0Grouped).sort(([a], [b]) => Number(a) - Number(b))) {
+      const names = g.products.map((p) => getShortProductName(p)).join(", ")
+      expandedIssues.push(`${names} incompatible at Stop ${stopIdx} (${g.stopName})`)
+    }
+    const l3Grouped: Record<number, { products: FuelProduct[]; stopName: string }> = {}
+    for (const issue of l3) {
+      if (!l3Grouped[issue.stopIndex]) l3Grouped[issue.stopIndex] = { products: [], stopName: issue.stopName }
+      l3Grouped[issue.stopIndex].products.push(issue.product)
+    }
+    for (const [stopIdx, g] of Object.entries(l3Grouped).sort(([a], [b]) => Number(a) - Number(b))) {
+      const names = g.products.map((p) => getShortProductName(p)).join(", ")
+      expandedIssues.push(`${names} will run out before Stop ${stopIdx} (${g.stopName})`)
+    }
+    finalExpandedIssues = expandedIssues
+  } else if (zoneBVisible && l3.length > 0) {
+    // L3 failures → amber banner (red reserved for L0)
     collapsedBannerType = "amber"
 
     // Build expanded issues — L3 only, same-stop products merged
@@ -292,16 +348,14 @@ export function validateRouteCapacity(
     const sortedStops = Object.entries(grouped).sort(([a], [b]) => Number(a) - Number(b))
     for (const [stopIdx, g] of sortedStops) {
       const names = g.products.map((p) => getShortProductName(p)).join(", ")
-      expandedIssues.push(
-        `${names} will run out before Stop ${stopIdx} (${g.stopName})`
-      )
+      expandedIssues.push(`${names} will run out before Stop ${stopIdx} (${g.stopName})`)
     }
 
     const itemCount = expandedIssues.length
     collapsedBannerText = `${itemCount} ${itemCount === 1 ? "Issue" : "Issues"}`
     expandedBannerText = collapsedBannerText
     finalExpandedIssues = expandedIssues
-  } else if (zoneBVisible && l3.length === 0) {
+  } else if (zoneBVisible && l3.length === 0 && l0.length === 0) {
     if (suppressL1L2) {
       // Multi-load + L3 passes → suppress L1/L2 details, but still show correct capacity direction
       collapsedBannerType = "orange"
@@ -335,6 +389,7 @@ export function validateRouteCapacity(
 
   return {
     severity,
+    l0,
     l1,
     l2,
     l3,
@@ -349,5 +404,6 @@ export function validateRouteCapacity(
     truckMessage,
     truckMessageColor,
     firstFailingStopIndex,
+    firstBlockedStopIndex,
   }
 }

@@ -919,6 +919,7 @@ function RouteCardCollapsed({
 // ─── Expanded Route Card ───────────────────────────────────────────────────────
 
 const AMBER_DASH = "repeating-linear-gradient(to bottom, #eab308 0px, #eab308 4px, transparent 4px, transparent 8px)"
+const RED_DASH = "repeating-linear-gradient(to bottom, #f87171 0px, #f87171 4px, transparent 4px, transparent 8px)"
 
 const MOCK_STOP_TIMES = [
   "5:45 AM", "06:30 AM", "7:15 AM", "8:00 AM", "8:45 AM",
@@ -1630,7 +1631,9 @@ function ExpandedRouteCard({
   //   • Downstream stop (already negative)  → "{product} already ran out before this stop"
   // When multiple products fail at the same stop, group them: first-failing list first,
   // then a separate sentence for already-out products if any.
-  const stopWarnings: Record<number, string> = {}
+  // Per-stop warnings: { l3?: string; l0?: string } — rendered as stacked strips
+  const stopWarnings: Record<number, { l3?: string; l0?: string }> = {}
+
   if (validation?.l3) {
     const grouped: Record<number, { firstFailing: string[]; alreadyOut: string[] }> = {}
     for (const issue of validation.l3) {
@@ -1649,9 +1652,27 @@ function ExpandedRouteCard({
         const names = g.alreadyOut.length === 1 ? g.alreadyOut[0] : g.alreadyOut.join(" and ")
         parts.push(`${names} already ran out`)
       }
-      stopWarnings[Number(idx)] = parts.join(" · ")
+      if (!stopWarnings[Number(idx)]) stopWarnings[Number(idx)] = {}
+      stopWarnings[Number(idx)].l3 = parts.join(" · ")
     }
   }
+
+  if (validation?.l0) {
+    const grouped: Record<number, string[]> = {}
+    for (const issue of validation.l0) {
+      if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = []
+      grouped[issue.stopIndex].push(getShortProductName(issue.product))
+    }
+    for (const [idx, products] of Object.entries(grouped)) {
+      const names = products.length === 1 ? products[0] : products.join(" and ")
+      if (!stopWarnings[Number(idx)]) stopWarnings[Number(idx)] = {}
+      stopWarnings[Number(idx)].l0 = `${names} ${products.length === 1 ? "is" : "are"} incompatible with Truck`
+    }
+  }
+
+  // Determine connector color: red when L0 fires, amber otherwise
+  const breakConnectorDash = validation?.l0?.length ? RED_DASH : AMBER_DASH
+  const breakIconColor = validation?.l0?.length ? "#f87171" : "#eab308"
 
   // Track unified stop counter to match validation stop indices (loads + deliveries)
   let stopIdx = 0
@@ -1692,11 +1713,20 @@ function ExpandedRouteCard({
           if (!isTransfer) stopIdx++
           const currentStopIdx = stopIdx
 
+          // Break stop = earlier of L3 firstFailingStopIndex and L0 firstBlockedStopIndex
+          const breakStopIndex = (() => {
+            const candidates = [
+              validation?.firstFailingStopIndex ?? null,
+              validation?.firstBlockedStopIndex ?? null,
+            ].filter((x): x is number => x != null)
+            return candidates.length ? Math.min(...candidates) : null
+          })()
+
           // Check if we need a mid-route "Add Load Order" CTA before this stop
           const showMidRouteCTA = isDelivery
-            && validation?.firstFailingStopIndex != null
-            && currentStopIdx === validation.firstFailingStopIndex
-            && orders.some((o) => o.orderType === "L") // only if there's already a load (otherwise the top banner handles it)
+            && breakStopIndex != null
+            && currentStopIdx === breakStopIndex
+            && orders.some((o) => o.orderType === "L")
 
           // Use MOCK_STOP_TIMES for ALL order types (load + delivery).
           // Exception: orders added through the inline "Create Order" flow carry their picked
@@ -1709,7 +1739,9 @@ function ExpandedRouteCard({
             || MOCK_STOP_TIMES[idx]
             || "—"
 
-          const warning = isDelivery ? stopWarnings[currentStopIdx] : undefined
+          const stopIssues = isDelivery ? stopWarnings[currentStopIdx] : undefined
+          const warning = stopIssues?.l3
+          const l0Warning = stopIssues?.l0
 
           // Only the hovered card lights its own bottom-edge + (the gap below it).
           // The + between cards N and N+1 lives at the bottom of card N — so reach it via card N's hover.
@@ -1728,6 +1760,9 @@ function ExpandedRouteCard({
                 <MidRouteAddLoadCTA
                   onOpenModal={onOpenModal}
                   failingDeliveryCount={validation ? new Set(validation.l3.map(i => i.stopIndex)).size : 0}
+                  blockedDeliveryCount={validation ? new Set(validation.l0.map(i => i.stopIndex)).size : 0}
+                  connectorDash={breakConnectorDash}
+                  iconColor={breakIconColor}
                 />
               )}
               {showMidRouteCTA && (afterBreak = true, null)}
@@ -1756,6 +1791,8 @@ function ExpandedRouteCard({
                   onBreakdownClick,
                   isBreakdownOpen: order.id === breakdownOpenOrderId,
                   isAfterBreak,
+                  isAfterBreakDash: breakConnectorDash,
+                  l0Warning,
                 }
                 return orderCardView === "detailed"
                   ? <OrderStopRowDetailed {...sharedProps} />
@@ -1863,41 +1900,57 @@ function InsertOrderOverlay({
 }
 
 /** Mid-route "Add Load Order" CTA — inserted before the first failing stop */
-function MidRouteAddLoadCTA({ onOpenModal, failingDeliveryCount }: { onOpenModal: () => void; failingDeliveryCount: number }) {
+function MidRouteAddLoadCTA({
+  onOpenModal, failingDeliveryCount, blockedDeliveryCount = 0, connectorDash = AMBER_DASH, iconColor = "#eab308",
+}: {
+  onOpenModal: () => void
+  failingDeliveryCount: number
+  blockedDeliveryCount?: number
+  connectorDash?: string
+  iconColor?: string
+}) {
+  const hasL0 = blockedDeliveryCount > 0
+  const badgeBg = hasL0 ? "rgba(220,38,38,0.2)" : "rgba(234,179,8,0.09)"
+  const badgeText = hasL0 ? "#f87171" : "#eab308"
+  const badgeCopy = hasL0 && failingDeliveryCount > 0
+    ? `${blockedDeliveryCount} ${blockedDeliveryCount === 1 ? "Delivery" : "Deliveries"} blocked by incompatible products · ${failingDeliveryCount} will run out`
+    : hasL0
+      ? `${blockedDeliveryCount} ${blockedDeliveryCount === 1 ? "Delivery" : "Deliveries"} blocked by incompatible products`
+      : `${failingDeliveryCount} ${failingDeliveryCount === 1 ? "delivery" : "deliveries"} can't be fulfilled`
   return (
     <div style={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
-      {/* Single amber dashed line from ⊗ center (top:16) through both rows + gap below — no gaps */}
+      {/* Connector dashed line from ⊗ center through both rows + gap below */}
       <div style={{
         position: "absolute",
         left: SEQ_CENTER - 0.5,
         top: 16,
         bottom: -(ORDER_LIST_GAP),
         width: 1,
-        background: AMBER_DASH,
+        background: connectorDash,
         zIndex: 0,
         pointerEvents: "none",
       }} />
 
-      {/* Row 1: ⊗ icon + dashed arm + amber badge (centered, no icon) */}
+      {/* Row 1: ⊗ icon + dashed arm + badge (centered, no icon) */}
       <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
         {/* Seq col: XCircle break icon */}
         <div style={{ width: SEQ_COL_W, flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
-          <XCircle size={16} color="#eab308" strokeWidth={1.5} style={{ position: "relative", zIndex: 1 }} />
+          <XCircle size={16} color={iconColor} strokeWidth={1.5} style={{ position: "relative", zIndex: 1 }} />
         </div>
-        {/* Dashed arm — spans SEQ_TO_CARD_GAP to align badge with order cards */}
-        <div style={{ width: SEQ_TO_CARD_GAP, flexShrink: 0, height: 1, borderTop: "1px dashed #eab308" }} />
-        {/* Amber badge — text centered, no icon */}
+        {/* Dashed arm */}
+        <div style={{ width: SEQ_TO_CARD_GAP, flexShrink: 0, height: 1, borderTop: `1px dashed ${iconColor}` }} />
+        {/* Badge — text centered, no icon */}
         <div style={{
           flex: 1,
-          backgroundColor: "rgba(234,179,8,0.09)",
+          backgroundColor: badgeBg,
           borderRadius: 4,
           padding: "6px 16px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}>
-          <span style={{ fontSize: 14, fontWeight: 400, color: "#eab308" }}>
-            {failingDeliveryCount} {failingDeliveryCount === 1 ? "delivery" : "deliveries"} can&apos;t be fulfilled
+          <span style={{ fontSize: 14, fontWeight: 400, color: badgeText }}>
+            {badgeCopy}
           </span>
         </div>
       </div>
@@ -1972,6 +2025,8 @@ function OrderStopRow({
   onBreakdownClick,
   isBreakdownOpen,
   isAfterBreak,
+  isAfterBreakDash,
+  l0Warning,
 }: {
   order: ExtractionOrder
   idx: number
@@ -1995,6 +2050,8 @@ function OrderStopRow({
   onBreakdownClick?: (orderId: string, cardLeft: number, cardRight: number, fabTop: number) => void
   isBreakdownOpen?: boolean
   isAfterBreak?: boolean
+  isAfterBreakDash?: string
+  l0Warning?: string
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -2025,7 +2082,7 @@ function OrderStopRow({
   }, [isMenuOpen])
   const seq = idx + 1
   const type = order.orderType ?? "D"
-  const hasWarning = !!warning
+  const hasWarning = !!warning || !!l0Warning
 
   return (
     <div
@@ -2068,7 +2125,7 @@ function OrderStopRow({
             left: "50%", transform: "translateX(-50%)",
             top: -ORDER_LIST_GAP, bottom: 0,
             width: 1,
-            background: AMBER_DASH,
+            background: isAfterBreakDash ?? AMBER_DASH,
             zIndex: 0,
             pointerEvents: "none",
           }} />
@@ -2309,21 +2366,28 @@ function OrderStopRow({
           </div>
         </div>
       </div>
-        {/* Warning strip for products that run out at this stop */}
+        {/* L0 incompatibility strip — red, always above L3 strip */}
+        {l0Warning && (
+          <div style={{
+            backgroundColor: "#1b1b1b",
+            borderRadius: hasWarning ? 0 : "0 0 4px 4px",
+            padding: "6px 16px 6px 20px",
+            fontSize: 14, fontWeight: 400, color: "#f87171",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <TriangleAlert size={16} color="#f87171" style={{ flexShrink: 0 }} />
+            {l0Warning}
+          </div>
+        )}
+        {/* L3 runout strip — amber */}
         {hasWarning && (
-          <div
-            style={{
-              backgroundColor: "#1b1b1b",
-              borderRadius: "0 0 4px 4px",
-              padding: "6px 16px 6px 20px",
-              fontSize: 14,
-              fontWeight: 400,
-              color: "#eab308",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+          <div style={{
+            backgroundColor: "#1b1b1b",
+            borderRadius: "0 0 4px 4px",
+            padding: "6px 16px 6px 20px",
+            fontSize: 14, fontWeight: 400, color: "#eab308",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
             <TriangleAlert size={16} color="#eab308" style={{ flexShrink: 0 }} />
             {warning}
           </div>
@@ -2365,6 +2429,8 @@ function OrderStopRowDetailed({
   onBreakdownClick,
   isBreakdownOpen,
   isAfterBreak,
+  isAfterBreakDash,
+  l0Warning,
 }: {
   order: ExtractionOrder
   idx: number
@@ -2388,6 +2454,8 @@ function OrderStopRowDetailed({
   onBreakdownClick?: (orderId: string, cardLeft: number, cardRight: number, fabTop: number) => void
   isBreakdownOpen?: boolean
   isAfterBreak?: boolean
+  isAfterBreakDash?: string
+  l0Warning?: string
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -2419,7 +2487,7 @@ function OrderStopRowDetailed({
   const seq = idx + 1
   const type = order.orderType ?? "D"
   const isLoad = type === "L"
-  const hasWarning = !!warning
+  const hasWarning = !!warning || !!l0Warning
 
   const totalAssets = order.totalAssets ?? 0
   const totalTopOffs = order.totalTopOffs ?? 0
@@ -2465,7 +2533,7 @@ function OrderStopRowDetailed({
             left: "50%", transform: "translateX(-50%)",
             top: -ORDER_LIST_GAP, bottom: 0,
             width: 1,
-            background: AMBER_DASH,
+            background: isAfterBreakDash ?? AMBER_DASH,
             zIndex: 0,
             pointerEvents: "none",
           }} />
@@ -2776,17 +2844,28 @@ function OrderStopRowDetailed({
         </div>
         </div>{/* end inner card bg div with hover */}
 
-        {/* Warning strip */}
+        {/* L0 incompatibility strip — red */}
+        {l0Warning && (
+          <div style={{
+            backgroundColor: "#1b1b1b",
+            borderRadius: hasWarning ? 0 : "0 0 4px 4px",
+            padding: "6px 16px 6px 20px",
+            fontSize: 14, fontWeight: 400, color: "#f87171",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <TriangleAlert size={16} color="#f87171" style={{ flexShrink: 0 }} />
+            {l0Warning}
+          </div>
+        )}
+        {/* L3 runout strip — amber */}
         {hasWarning && (
-          <div
-            style={{
-              backgroundColor: "#1b1b1b",
-              borderRadius: "0 0 4px 4px",
-              padding: "6px 16px 6px 20px",
-              fontSize: 14, fontWeight: 400, color: "#eab308",
-              display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
+          <div style={{
+            backgroundColor: "#1b1b1b",
+            borderRadius: "0 0 4px 4px",
+            padding: "6px 16px 6px 20px",
+            fontSize: 14, fontWeight: 400, color: "#eab308",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
             <TriangleAlert size={16} color="#eab308" style={{ flexShrink: 0 }} />
             {warning}
           </div>
@@ -4419,9 +4498,9 @@ export function LassoWorkspaceSheet({
                               const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : isOrange ? "rgba(251,146,60,0.1)" : "rgba(234, 179, 8, 0.09)"
                               const hasIssues = validation.expandedIssues.length > 0
                               const issueCount = validation.expandedIssues.length
-                              // uniqueStops for L3 navigation — now amber, not red
-                              const uniqueStops = isAmber && validation.l3.length > 0
-                                ? [...new Set(validation.l3.map(i => i.stopIndex))].sort((a, b) => a - b)
+                              // uniqueStops for navigation: L0 (red) or L3 (amber) — all issue stops
+                              const uniqueStops = (isRed || isAmber) && (validation.l0.length > 0 || validation.l3.length > 0)
+                                ? [...new Set([...validation.l0.map(i => i.stopIndex), ...validation.l3.map(i => i.stopIndex)])].sort((a, b) => a - b)
                                 : []
                               // Side-effect during render: keep ref in sync for the auto-focus
                               // useEffect that reads it after expandedRouteIds changes.
@@ -4454,7 +4533,7 @@ export function LassoWorkspaceSheet({
                                         : validation.collapsedBannerText}
                                     </span>
                                   </div>
-                                  {isAmber && uniqueStops.length > 1 && isExpanded ? (
+                                  {(isAmber || isRed) && uniqueStops.length > 1 && isExpanded ? (
                                     hasViewed ? (
                                       // State B: counter + chevrons (after "View" clicked)
                                       <IssueCounter
@@ -4488,7 +4567,7 @@ export function LassoWorkspaceSheet({
                                         View
                                       </button>
                                     )
-                                  ) : isAmber && uniqueStops.length === 1 && isExpanded ? (
+                                  ) : (isAmber || isRed) && uniqueStops.length === 1 && isExpanded ? (
                                     // 1-issue case: single StopChip
                                     <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                                       <StopChip stopIndex={uniqueStops[0]} onClick={() => scrollToStop(routeId, uniqueStops[0])} />
