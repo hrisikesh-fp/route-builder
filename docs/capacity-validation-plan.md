@@ -162,7 +162,7 @@ Routes 2-5 need to load with trucks and load orders already assigned so validati
 - Add Load Order modal changes
 
 ## Pre-step: Save reference doc
-Save this plan as `/Users/hrisikeshmedhi/Projects/route-builder/docs/capacity-validation-plan.md` so Hrisikesh can reference it while learning.
+Save this plan as `/Users/hrisikeshmedhi/brain/fleetpanda/1-projects/route-builder/docs/capacity-validation-plan.md` so Hrisikesh can reference it while learning.
 
 ## Verification
 - Load app → workspace empty (default state)

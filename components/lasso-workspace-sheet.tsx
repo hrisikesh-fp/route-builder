@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route } from "lucide-react"
+import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route, XCircle } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -283,7 +283,7 @@ function IssueCounter({
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
-      border: "1px solid rgba(248,113,113,0.2)", borderRadius: 4,
+      borderRadius: 4,
       padding: "2px 2px 2px 4px",
     }}>
       <span style={{ fontSize: 14, whiteSpace: "nowrap" }}>
@@ -918,6 +918,9 @@ function RouteCardCollapsed({
 
 // ─── Expanded Route Card ───────────────────────────────────────────────────────
 
+const AMBER_DASH = "repeating-linear-gradient(to bottom, #eab308 0px, #eab308 4px, transparent 4px, transparent 8px)"
+const RED_DASH = "repeating-linear-gradient(to bottom, #f87171 0px, #f87171 4px, transparent 4px, transparent 8px)"
+
 const MOCK_STOP_TIMES = [
   "5:45 AM", "06:30 AM", "7:15 AM", "8:00 AM", "8:45 AM",
   "9:30 AM", "10:15 AM", "11:00 AM", "11:45 AM", "12:30 PM",
@@ -1289,12 +1292,12 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
           </div>
           {/* Zone A: L2 info under truck row */}
           {validation?.zoneA && validation.zoneA.color !== "none" && validation.zoneA.lines.length > 0 && (
-            <div style={{ paddingLeft: 12, paddingTop: 4, paddingBottom: 8 }}>
+            <div style={{ paddingLeft: 36, paddingTop: 4, paddingBottom: 8 }}>
               {validation.zoneA.lines.map((line, i) => (
                 <div key={i} style={{
                   fontSize: 14,
                   fontWeight: 400,
-                  color: validation.zoneA.color === "accent" ? "#818cf8" : "#eab308",
+                  color: "#fb923c",
                   lineHeight: "20px",
                 }}>
                   {line}
@@ -1304,24 +1307,34 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
           )}
           {/* "No fuel loaded" — only when no validation AND no load orders */}
           {(selectedTruck || truckNameProp) && hasLoadOrders === false && !validation && (
-            <div style={{ padding: "2px 12px 2px" }}>
-              <span style={{ fontSize: 13, fontWeight: 400, color: "#eab308" }}>
+            <div style={{ padding: "2px 12px 2px 36px" }}>
+              <span style={{ fontSize: 13, fontWeight: 400, color: "#fb923c" }}>
                 No fuel loaded. Add a load order to supply this route.
               </span>
             </div>
           )}
-          {/* Truck message for healthy state */}
+          {/* Truck message — mirrors banner: text left, arrow + delta far right.
+              Delta computed from l1.diff directly so it shows even when L3 is also firing. */}
           {validation && validation.truckMessage && validation.zoneA.color === "none" && (
-            <div style={{ padding: "2px 12px 2px" }}>
-              <span style={{ fontSize: 13, fontWeight: 400, color: "#eab308" }}>
+            <div style={{ padding: "2px 12px 2px 36px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 14, fontWeight: 400, color: "#fb923c" }}>
                 {validation.truckMessage}
               </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                {validation.l1.status === "exceeding" && <ArrowUp size={16} color="#fb923c" />}
+                {validation.l1.status === "below" && <ArrowDown size={16} color="#fb923c" />}
+                {validation.l1.status !== "ok" && (
+                  <span style={{ fontSize: 14, fontWeight: 400, color: "#fb923c" }}>
+                    {Math.abs(validation.l1.diff).toLocaleString()} gal
+                  </span>
+                )}
+              </div>
             </div>
           )}
           {/* View Truck Details — ghost button below truck row + messages.
               4px top gap from preceding element via padding. Only rendered when a truck is selected. */}
           {(selectedTruck || truckNameProp) && (
-            <div style={{ padding: "4px 8px 0" }}>
+            <div style={{ padding: "4px 0px 0px 24px" }}>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1618,25 +1631,53 @@ function ExpandedRouteCard({
   //   • Downstream stop (already negative)  → "{product} already ran out before this stop"
   // When multiple products fail at the same stop, group them: first-failing list first,
   // then a separate sentence for already-out products if any.
-  const stopWarnings: Record<number, string> = {}
+  // Per-stop warnings: { l3?: string; l0?: string } — rendered as stacked strips
+  const stopWarnings: Record<number, { l3?: string; l0?: string }> = {}
+
   if (validation?.l3) {
     const grouped: Record<number, { firstFailing: string[]; alreadyOut: string[] }> = {}
     for (const issue of validation.l3) {
       if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = { firstFailing: [], alreadyOut: [] }
-      const shortName = getShortProductName(issue.product)
-      if (issue.isFirstFailing) grouped[issue.stopIndex].firstFailing.push(shortName)
-      else grouped[issue.stopIndex].alreadyOut.push(shortName)
+      const name = getShortProductName(issue.product)
+      if (issue.isFirstFailing) grouped[issue.stopIndex].firstFailing.push(name)
+      else grouped[issue.stopIndex].alreadyOut.push(name)
     }
     for (const [idx, g] of Object.entries(grouped)) {
       const parts: string[] = []
-      if (g.firstFailing.length > 0) parts.push(`${g.firstFailing.join(", ")} will run out at this stop`)
-      if (g.alreadyOut.length > 0) parts.push(`${g.alreadyOut.join(", ")} already ran out before this stop`)
-      stopWarnings[Number(idx)] = parts.join(" • ")
+      if (g.firstFailing.length > 0) {
+        const names = g.firstFailing.length === 1 ? g.firstFailing[0] : g.firstFailing.join(" and ")
+        parts.push(`${names} will run out before this stop`)
+      }
+      if (g.alreadyOut.length > 0) {
+        const names = g.alreadyOut.length === 1 ? g.alreadyOut[0] : g.alreadyOut.join(" and ")
+        parts.push(`${names} already ran out`)
+      }
+      if (!stopWarnings[Number(idx)]) stopWarnings[Number(idx)] = {}
+      stopWarnings[Number(idx)].l3 = parts.join(" · ")
     }
   }
 
+  if (validation?.l0) {
+    const grouped: Record<number, string[]> = {}
+    for (const issue of validation.l0) {
+      if (!grouped[issue.stopIndex]) grouped[issue.stopIndex] = []
+      grouped[issue.stopIndex].push(getShortProductName(issue.product))
+    }
+    for (const [idx, products] of Object.entries(grouped)) {
+      const names = products.length === 1 ? products[0] : products.join(" and ")
+      if (!stopWarnings[Number(idx)]) stopWarnings[Number(idx)] = {}
+      stopWarnings[Number(idx)].l0 = `${names} ${products.length === 1 ? "is" : "are"} incompatible with Truck`
+    }
+  }
+
+  // Determine connector color: red when L0 fires, amber otherwise
+  const breakConnectorDash = validation?.l0?.length ? RED_DASH : AMBER_DASH
+  const breakIconColor = validation?.l0?.length ? "#f87171" : "#eab308"
+
   // Track unified stop counter to match validation stop indices (loads + deliveries)
   let stopIdx = 0
+  // Track whether we've passed the break point (for amber dashed connector line)
+  let afterBreak = false
 
   return (
     <div style={{ paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column" }}>
@@ -1672,11 +1713,20 @@ function ExpandedRouteCard({
           if (!isTransfer) stopIdx++
           const currentStopIdx = stopIdx
 
+          // Break stop = earlier of L3 firstFailingStopIndex and L0 firstBlockedStopIndex
+          const breakStopIndex = (() => {
+            const candidates = [
+              validation?.firstFailingStopIndex ?? null,
+              validation?.firstBlockedStopIndex ?? null,
+            ].filter((x): x is number => x != null)
+            return candidates.length ? Math.min(...candidates) : null
+          })()
+
           // Check if we need a mid-route "Add Load Order" CTA before this stop
           const showMidRouteCTA = isDelivery
-            && validation?.firstFailingStopIndex != null
-            && currentStopIdx === validation.firstFailingStopIndex
-            && orders.some((o) => o.orderType === "L") // only if there's already a load (otherwise the top banner handles it)
+            && breakStopIndex != null
+            && currentStopIdx === breakStopIndex
+            && orders.some((o) => o.orderType === "L")
 
           // Use MOCK_STOP_TIMES for ALL order types (load + delivery).
           // Exception: orders added through the inline "Create Order" flow carry their picked
@@ -1689,7 +1739,9 @@ function ExpandedRouteCard({
             || MOCK_STOP_TIMES[idx]
             || "—"
 
-          const warning = isDelivery ? stopWarnings[currentStopIdx] : undefined
+          const stopIssues = isDelivery ? stopWarnings[currentStopIdx] : undefined
+          const warning = stopIssues?.l3
+          const l0Warning = stopIssues?.l0
 
           // Only the hovered card lights its own bottom-edge + (the gap below it).
           // The + between cards N and N+1 lives at the bottom of card N — so reach it via card N's hover.
@@ -1705,9 +1757,17 @@ function ExpandedRouteCard({
               onMouseLeave={handleCardLeave}
             >
               {showMidRouteCTA && (
-                <MidRouteAddLoadCTA onOpenModal={onOpenModal} />
+                <MidRouteAddLoadCTA
+                  onOpenModal={onOpenModal}
+                  failingDeliveryCount={validation ? new Set(validation.l3.map(i => i.stopIndex)).size : 0}
+                  blockedDeliveryCount={validation ? new Set(validation.l0.map(i => i.stopIndex)).size : 0}
+                  connectorDash={breakConnectorDash}
+                  iconColor={breakIconColor}
+                />
               )}
+              {showMidRouteCTA && (afterBreak = true, null)}
               {(() => {
+                const isAfterBreak = afterBreak
                 const sharedProps = {
                   order,
                   idx,
@@ -1730,6 +1790,9 @@ function ExpandedRouteCard({
                   hasLoadOrders: orders.some((o) => o.orderType === "L"),
                   onBreakdownClick,
                   isBreakdownOpen: order.id === breakdownOpenOrderId,
+                  isAfterBreak,
+                  isAfterBreakDash: breakConnectorDash,
+                  l0Warning,
                 }
                 return orderCardView === "detailed"
                   ? <OrderStopRowDetailed {...sharedProps} />
@@ -1836,25 +1899,66 @@ function InsertOrderOverlay({
   )
 }
 
-/** Mid-route "Add Load Order" CTA — inserted between stops when a runout is detected */
-function MidRouteAddLoadCTA({ onOpenModal }: { onOpenModal: () => void }) {
+/** Mid-route "Add Load Order" CTA — inserted before the first failing stop */
+function MidRouteAddLoadCTA({
+  onOpenModal, failingDeliveryCount, blockedDeliveryCount = 0, connectorDash = AMBER_DASH, iconColor = "#eab308",
+}: {
+  onOpenModal: () => void
+  failingDeliveryCount: number
+  blockedDeliveryCount?: number
+  connectorDash?: string
+  iconColor?: string
+}) {
+  const hasL0 = blockedDeliveryCount > 0
+  const badgeBg = hasL0 ? "rgba(220,38,38,0.2)" : "rgba(234,179,8,0.09)"
+  const badgeText = hasL0 ? "#f87171" : "#eab308"
+  const badgeCopy = hasL0 && failingDeliveryCount > 0
+    ? `${blockedDeliveryCount} ${blockedDeliveryCount === 1 ? "Delivery" : "Deliveries"} blocked by incompatible products · ${failingDeliveryCount} will run out`
+    : hasL0
+      ? `${blockedDeliveryCount} ${blockedDeliveryCount === 1 ? "Delivery" : "Deliveries"} blocked by incompatible products`
+      : `${failingDeliveryCount} ${failingDeliveryCount === 1 ? "delivery" : "deliveries"} can't be fulfilled`
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: SEQ_TO_CARD_GAP,
-        position: "relative",
-        zIndex: 1,
-        marginBottom: ORDER_LIST_GAP,
-      }}
-    >
-      <div style={{ width: SEQ_COL_W, flexShrink: 0, display: "flex", justifyContent: "center" }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#818CF8" }} />
+    <div style={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
+      {/* Connector dashed line from ⊗ center through both rows + gap below */}
+      <div style={{
+        position: "absolute",
+        left: SEQ_CENTER - 0.5,
+        top: 16,
+        bottom: -(ORDER_LIST_GAP),
+        width: 1,
+        background: connectorDash,
+        zIndex: 0,
+        pointerEvents: "none",
+      }} />
+
+      {/* Row 1: ⊗ icon + dashed arm + badge (centered, no icon) */}
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+        {/* Seq col: XCircle break icon */}
+        <div style={{ width: SEQ_COL_W, flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
+          <XCircle size={16} color={iconColor} strokeWidth={1.5} style={{ position: "relative", zIndex: 1 }} />
+        </div>
+        {/* Dashed arm */}
+        <div style={{ width: SEQ_TO_CARD_GAP, flexShrink: 0, height: 1, borderTop: `1px dashed ${iconColor}` }} />
+        {/* Badge — text centered, no icon */}
+        <div style={{
+          flex: 1,
+          backgroundColor: badgeBg,
+          borderRadius: 4,
+          padding: "6px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 400, color: badgeText }}>
+            {badgeCopy}
+          </span>
+        </div>
       </div>
-      <div
-        style={{
+
+      {/* Row 2: indigo CTA — aligned with order cards */}
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginTop: 8 }}>
+        <div style={{ width: SEQ_COL_W + SEQ_TO_CARD_GAP, flexShrink: 0 }} />
+        <div style={{
           flex: 1,
           backgroundColor: "rgba(99, 102, 241, 0.1)",
           borderRadius: 4,
@@ -1862,30 +1966,37 @@ function MidRouteAddLoadCTA({ onOpenModal }: { onOpenModal: () => void }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-        }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 400, color: "#818CF8" }}>Add Load Order</span>
-        <button
-          onClick={onOpenModal}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "4px 12px",
-            borderRadius: 4,
-            border: "1px solid rgba(255,255,255,0.08)",
-            backgroundColor: "rgba(255,255,255,0.05)",
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 400,
-            color: "#E5E5E5",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)" }}
-        >
-          <Plus size={14} color="#E5E5E5" />
-          Add Load Order
-        </button>
+          gap: 12,
+        }}>
+          <button
+            onClick={onOpenModal}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 14, fontWeight: 400, color: "#818CF8",
+              padding: 0, display: "flex", alignItems: "center", gap: 8,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8" }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1" }}
+          >
+            <TriangleAlert size={16} color="#818CF8" style={{ flexShrink: 0 }} />
+            Add another load order
+          </button>
+          <button
+            onClick={onOpenModal}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "4px 12px", borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.08)",
+              backgroundColor: "rgba(255,255,255,0.05)",
+              cursor: "pointer", fontSize: 13, fontWeight: 400, color: "#E5E5E5",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)" }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)" }}
+          >
+            <Plus size={14} color="#E5E5E5" />
+            Add Load Order
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1913,6 +2024,9 @@ function OrderStopRow({
   hasLoadOrders,
   onBreakdownClick,
   isBreakdownOpen,
+  isAfterBreak,
+  isAfterBreakDash,
+  l0Warning,
 }: {
   order: ExtractionOrder
   idx: number
@@ -1935,6 +2049,9 @@ function OrderStopRow({
   hasLoadOrders?: boolean
   onBreakdownClick?: (orderId: string, cardLeft: number, cardRight: number, fabTop: number) => void
   isBreakdownOpen?: boolean
+  isAfterBreak?: boolean
+  isAfterBreakDash?: string
+  l0Warning?: string
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -1965,7 +2082,7 @@ function OrderStopRow({
   }, [isMenuOpen])
   const seq = idx + 1
   const type = order.orderType ?? "D"
-  const hasWarning = !!warning
+  const hasWarning = !!warning || !!l0Warning
 
   return (
     <div
@@ -2001,6 +2118,18 @@ function OrderStopRow({
           paddingTop: 16,
         }}
       >
+        {/* Amber dashed connector — replaces dark line after the break point */}
+        {isAfterBreak && (
+          <div style={{
+            position: "absolute",
+            left: "50%", transform: "translateX(-50%)",
+            top: -ORDER_LIST_GAP, bottom: 0,
+            width: 1,
+            background: isAfterBreakDash ?? AMBER_DASH,
+            zIndex: 0,
+            pointerEvents: "none",
+          }} />
+        )}
         {/* Sequence badge — 16×16 circle per Figma spec, #A3A3A3 bg, #171717 text */}
         <div
           className="order-seq-badge"
@@ -2046,7 +2175,6 @@ function OrderStopRow({
             position: "relative",
             backgroundColor: isBreakdownOpen ? "#282828" : "#1F1F1F",
             borderRadius: hasWarning ? "4px 4px 0 0" : 4,
-            border: hasWarning ? "1px solid rgba(248, 113, 113, 0.3)" : undefined,
             padding: "16px 16px 12px 16px",
             gap: 12,
             display: "flex",
@@ -2238,25 +2366,29 @@ function OrderStopRow({
           </div>
         </div>
       </div>
-        {/* Warning strip for products that run out at this stop — one per stop, comma-separated */}
-        {hasWarning && (
-          <div
-            style={{
-              backgroundColor: "rgba(220, 38, 38, 0.2)",
-              borderLeft: "1px solid rgba(248, 113, 113, 0.3)",
-              borderRight: "1px solid rgba(248, 113, 113, 0.3)",
-              borderBottom: "1px solid rgba(248, 113, 113, 0.3)",
-              borderRadius: "0 0 4px 4px",
-              padding: "6px 16px 6px 20px",
-              fontSize: 14,
-              fontWeight: 400,
-              color: "#f87171",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+        {/* L0 incompatibility strip — red, always above L3 strip */}
+        {l0Warning && (
+          <div style={{
+            backgroundColor: "#1b1b1b",
+            borderRadius: hasWarning ? 0 : "0 0 4px 4px",
+            padding: "6px 16px 6px 20px",
+            fontSize: 14, fontWeight: 400, color: "#f87171",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
             <TriangleAlert size={16} color="#f87171" style={{ flexShrink: 0 }} />
+            {l0Warning}
+          </div>
+        )}
+        {/* L3 runout strip — amber */}
+        {hasWarning && (
+          <div style={{
+            backgroundColor: "#1b1b1b",
+            borderRadius: "0 0 4px 4px",
+            padding: "6px 16px 6px 20px",
+            fontSize: 14, fontWeight: 400, color: "#eab308",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <TriangleAlert size={16} color="#eab308" style={{ flexShrink: 0 }} />
             {warning}
           </div>
         )}
@@ -2296,6 +2428,9 @@ function OrderStopRowDetailed({
   hasLoadOrders,
   onBreakdownClick,
   isBreakdownOpen,
+  isAfterBreak,
+  isAfterBreakDash,
+  l0Warning,
 }: {
   order: ExtractionOrder
   idx: number
@@ -2318,6 +2453,9 @@ function OrderStopRowDetailed({
   hasLoadOrders?: boolean
   onBreakdownClick?: (orderId: string, cardLeft: number, cardRight: number, fabTop: number) => void
   isBreakdownOpen?: boolean
+  isAfterBreak?: boolean
+  isAfterBreakDash?: string
+  l0Warning?: string
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -2349,7 +2487,7 @@ function OrderStopRowDetailed({
   const seq = idx + 1
   const type = order.orderType ?? "D"
   const isLoad = type === "L"
-  const hasWarning = !!warning
+  const hasWarning = !!warning || !!l0Warning
 
   const totalAssets = order.totalAssets ?? 0
   const totalTopOffs = order.totalTopOffs ?? 0
@@ -2389,6 +2527,17 @@ function OrderStopRowDetailed({
           zIndex: 1,
         }}
       >
+        {isAfterBreak && (
+          <div style={{
+            position: "absolute",
+            left: "50%", transform: "translateX(-50%)",
+            top: -ORDER_LIST_GAP, bottom: 0,
+            width: 1,
+            background: isAfterBreakDash ?? AMBER_DASH,
+            zIndex: 0,
+            pointerEvents: "none",
+          }} />
+        )}
         <div
           className="order-seq-badge"
           style={{
@@ -2431,7 +2580,6 @@ function OrderStopRowDetailed({
             position: "relative",
             backgroundColor: "#1F1F1F",
             borderRadius: hasWarning ? "4px 4px 0 0" : 4,
-            border: hasWarning ? "1px solid rgba(248, 113, 113, 0.3)" : undefined,
             padding: 16,
             gap: 12,
             display: "flex",
@@ -2696,21 +2844,29 @@ function OrderStopRowDetailed({
         </div>
         </div>{/* end inner card bg div with hover */}
 
-        {/* Warning strip */}
-        {hasWarning && (
-          <div
-            style={{
-              backgroundColor: "rgba(220, 38, 38, 0.2)",
-              borderLeft: "1px solid rgba(248, 113, 113, 0.3)",
-              borderRight: "1px solid rgba(248, 113, 113, 0.3)",
-              borderBottom: "1px solid rgba(248, 113, 113, 0.3)",
-              borderRadius: "0 0 4px 4px",
-              padding: "6px 16px 6px 20px",
-              fontSize: 14, fontWeight: 400, color: "#f87171",
-              display: "flex", alignItems: "center", gap: 6,
-            }}
-          >
+        {/* L0 incompatibility strip — red */}
+        {l0Warning && (
+          <div style={{
+            backgroundColor: "#1b1b1b",
+            borderRadius: hasWarning ? 0 : "0 0 4px 4px",
+            padding: "6px 16px 6px 20px",
+            fontSize: 14, fontWeight: 400, color: "#f87171",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
             <TriangleAlert size={16} color="#f87171" style={{ flexShrink: 0 }} />
+            {l0Warning}
+          </div>
+        )}
+        {/* L3 runout strip — amber */}
+        {hasWarning && (
+          <div style={{
+            backgroundColor: "#1b1b1b",
+            borderRadius: "0 0 4px 4px",
+            padding: "6px 16px 6px 20px",
+            fontSize: 14, fontWeight: 400, color: "#eab308",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <TriangleAlert size={16} color="#eab308" style={{ flexShrink: 0 }} />
             {warning}
           </div>
         )}
@@ -4334,15 +4490,17 @@ export function LassoWorkspaceSheet({
                             </div>{/* end card body (wedge scope) */}
 
                             {/* Zone B: Banner — inside card wrapper, below wedge */}
-                            {validation && validation.zoneB.visible && (() => {
+                            {validation && validation.zoneB.visible && validation.collapsedBannerType !== "none" && (() => {
                               const isRed = validation.collapsedBannerType === "red"
                               const isAmber = validation.collapsedBannerType === "amber"
-                              const bannerColor = isRed ? "#f87171" : "#eab308"
-                              const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : "rgba(234, 179, 8, 0.09)"
+                              const isOrange = validation.collapsedBannerType === "orange"
+                              const bannerColor = isRed ? "#f87171" : isOrange ? "#fb923c" : "#eab308"
+                              const bannerBg = isRed ? "rgba(220, 38, 38, 0.2)" : isOrange ? "rgba(251,146,60,0.1)" : "rgba(234, 179, 8, 0.09)"
                               const hasIssues = validation.expandedIssues.length > 0
                               const issueCount = validation.expandedIssues.length
-                              const uniqueStops = isRed && validation.l3.length > 0
-                                ? [...new Set(validation.l3.map(i => i.stopIndex))].sort((a, b) => a - b)
+                              // uniqueStops for navigation: L0 (red) or L3 (amber) — all issue stops
+                              const uniqueStops = (isRed || isAmber) && (validation.l0.length > 0 || validation.l3.length > 0)
+                                ? [...new Set([...validation.l0.map(i => i.stopIndex), ...validation.l3.map(i => i.stopIndex)])].sort((a, b) => a - b)
                                 : []
                               // Side-effect during render: keep ref in sync for the auto-focus
                               // useEffect that reads it after expandedRouteIds changes.
@@ -4355,7 +4513,6 @@ export function LassoWorkspaceSheet({
                                   style={{
                                     backgroundColor: bannerBg,
                                     borderRadius: "0px 0px 4px 4px",
-                                    // Per Figma: banner total height 36px. pl-28px pr-16px py-4px.
                                     height: 36,
                                     padding: "4px 16px 4px 28px",
                                     display: "flex",
@@ -4366,20 +4523,17 @@ export function LassoWorkspaceSheet({
                                   }}
                                 >
                                   <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                                    {(isRed || (isAmber && hasIssues)) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
+                                    {(isRed || isAmber) && <TriangleAlert size={16} color={bannerColor} style={{ flexShrink: 0 }} />}
                                     <span style={{
                                       fontSize: 14, fontWeight: 400, color: bannerColor,
                                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                                     }}>
-                                      {isRed && uniqueStops.length > 0
-                                        ? `${issueCount} Issue${issueCount !== 1 ? "s" : ""}`
-                                        : (isExpanded && hasIssues
-                                            ? validation.expandedBannerText
-                                            : validation.collapsedBannerText)
-                                      }
+                                      {isExpanded && hasIssues
+                                        ? validation.expandedBannerText
+                                        : validation.collapsedBannerText}
                                     </span>
                                   </div>
-                                  {isRed && uniqueStops.length > 1 && isExpanded ? (
+                                  {(isAmber || isRed) && uniqueStops.length > 1 && isExpanded ? (
                                     hasViewed ? (
                                       // State B: counter + chevrons (after "View" clicked)
                                       <IssueCounter
@@ -4413,14 +4567,17 @@ export function LassoWorkspaceSheet({
                                         View
                                       </button>
                                     )
-                                  ) : isRed && uniqueStops.length === 1 && isExpanded ? (
-                                    // 1-issue case: single StopChip (unchanged)
+                                  ) : (isAmber || isRed) && uniqueStops.length === 1 && isExpanded ? (
+                                    // 1-issue case: single StopChip
                                     <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                                       <StopChip stopIndex={uniqueStops[0]} onClick={() => scrollToStop(routeId, uniqueStops[0])} />
                                     </div>
                                   ) : (
                                     <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                                      {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && isAmber && validation.l1.status === "below" && (
+                                      {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && isOrange && validation.l1.status === "exceeding" && (
+                                        <ArrowUp size={16} color={bannerColor} />
+                                      )}
+                                      {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && isOrange && validation.l1.status === "below" && (
                                         <ArrowDown size={16} color={bannerColor} />
                                       )}
                                       {validation.expandedIssues.length <= 1 && !(isExpanded && hasIssues) && validation.collapsedBannerDelta && (

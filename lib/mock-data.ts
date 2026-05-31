@@ -2882,12 +2882,10 @@ const route2Orders: ExtractionOrder[] = [
 ]
 
 // Route 3 — Jessica Harper (S3: 2 products, mid-route load needed, multi-load options)
-// Two products: Diesel CLR + Gas 87. Load 1 = Flint Hills 3,000 Diesel + 1,600 Gas (Option 1 default).
-// Retained: zero (decided 2026-05-10). 6 deliveries, planned qty: 5,000 gal (Diesel 3,000 + Gas 2,000).
-// Truck H-310 is 4,600 gal — mid-route Load 2 needed to cover the 400 gal gap on Gas 87.
+// Two products: Diesel CLR + Gas 87. Demand: 5,000 gal (Diesel 3,000 + Gas 2,000).
+// Truck H-310 is 4,600 gal. No seeded load — user adds loads via Add Load Order modal.
+// Demo: Load 1 = Flint Hills D2500+G1500 (05:30 AM); Load 2 = D500+G500 mid-route (09:15 AM after Lost Creek).
 const route3Orders: ExtractionOrder[] = [
-  // Load 1: Flint Hills - Johnny Morris — Diesel 3,000 + Gas 1,600 = 4,600 gal (fills truck)
-  { id: "r3-load", customerId: "c-r3-load", customerName: "Flint Hills - Johnny Morris", shipToAddress: "7501 Johnny Morris Road Austin TX 78724", latitude: 30.3271, longitude: -97.6198, status: "assigned", volume: 4600, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Austin", state: "TX", zip: "78724", tankSize: 0, currentLevel: 0, daysUntilEmpty: 0, priority: "Medium", lastDelivery: "2026-02-04", zone: "Terminal", routeId: "route-3", routeSequence: 1, orderType: "L", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 3000 }, { product: "87 OCT W/ 10% ETH", volume: 1600 }] },
   // Stop 1: Lakeway Fuel Stop — 900 gal (Diesel 600, Gas 300)
   { id: "r3-1", customerId: "c-r3-1", customerName: "Lakeway Fuel Stop", shipToAddress: "1902 Ranch Rd 620, Lakeway, TX 78734", latitude: 30.3567, longitude: -97.9834, status: "assigned", volume: 900, scheduledDate: "2026-02-05", zoneId: "zone-austin", hubId: "hub-austin", city: "Lakeway", state: "TX", zip: "78734", tankSize: 4000, currentLevel: 72, daysUntilEmpty: 4, priority: "High", lastDelivery: "2026-01-22", zone: "Lakeway", routeId: "route-3", routeSequence: 2, orderType: "D", productBreakdown: [{ product: "200*DIESEL-ONROAD CLEAR", volume: 600 }, { product: "87 OCT W/ 10% ETH", volume: 300 }] },
   // Stop 2: Bee Cave Builders Supply — 900 gal (Diesel 500, Gas 400)
@@ -3067,9 +3065,7 @@ export const mockRoutes: any[] = [
     orders: route3Orders.map((o) => o.id),
     status: "active",
     createdAt: "2026-02-04",
-    truckName: "H-310 · 2020 Freightliner Tanker",
-    truckId: "H-310",
-    // Retained zeroed out for Phase 1.3 — Option 1 default scenario. Easy to re-introduce later.
+    // No truck pre-assigned — user selects from dropdown to trigger validations
     retainedFuel: [],
   },
   {
