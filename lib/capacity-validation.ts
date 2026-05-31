@@ -319,21 +319,19 @@ export function validateRouteCapacity(
     expandedBannerText = collapsedBannerText
   }
 
-  // Truck message — mirrors the banner copy in the expanded card, below the truck dropdown
+  // Truck message — always mirrors L1 status below the truck dropdown.
+  // Shown regardless of L3/L2 — truck capacity is a fixed fact about the route.
   let truckMessage = ""
   let truckMessageColor: ValidationResult["truckMessageColor"] = "green"
 
-  if (l3.length === 0 && l2.length === 0) {
-    if (l1.status === "exceeding") {
-      truckMessage = "Exceeding Truck Capacity"
-      truckMessageColor = "amber"
-    } else if (l1.status === "below") {
-      truckMessage = "Below Truck Capacity"
-      truckMessageColor = "amber"
-    }
-    // "ok" → no message below truck
+  if (l1.status === "exceeding") {
+    truckMessage = "Exceeding Truck Capacity"
+    truckMessageColor = "amber"
+  } else if (l1.status === "below") {
+    truckMessage = "Below Truck Capacity"
+    truckMessageColor = "amber"
   }
-  // When L3/L2 warnings exist, truckMessage stays empty — banner handles it
+  // "ok" → no message below truck
 
   return {
     severity,

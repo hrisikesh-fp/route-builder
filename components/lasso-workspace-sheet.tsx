@@ -1312,7 +1312,8 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
               </span>
             </div>
           )}
-          {/* Truck message — mirrors banner: text left, arrow + delta far right */}
+          {/* Truck message — mirrors banner: text left, arrow + delta far right.
+              Delta computed from l1.diff directly so it shows even when L3 is also firing. */}
           {validation && validation.truckMessage && validation.zoneA.color === "none" && (
             <div style={{ padding: "2px 12px 2px 36px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 14, fontWeight: 400, color: "#fb923c" }}>
@@ -1321,9 +1322,9 @@ function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLo
               <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                 {validation.l1.status === "exceeding" && <ArrowUp size={16} color="#fb923c" />}
                 {validation.l1.status === "below" && <ArrowDown size={16} color="#fb923c" />}
-                {validation.collapsedBannerDelta && (
+                {validation.l1.status !== "ok" && (
                   <span style={{ fontSize: 14, fontWeight: 400, color: "#fb923c" }}>
-                    {validation.collapsedBannerDelta}
+                    {Math.abs(validation.l1.diff).toLocaleString()} gal
                   </span>
                 )}
               </div>
