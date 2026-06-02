@@ -122,7 +122,7 @@ Config E: No truck → dimmed "Select Truck" pill (opacity 0.6) + "No Truck sele
 - **Zone B collapsed banner:** always visible when truck selected. Color by type:
   - `"orange"` → L1/L2 capacity (e.g. "Exceeding/Below Truck Capacity ↑↓ N gal") — `#fb923c`, `rgba(251,146,60,0.1)`
   - `"amber"` → L3 runout (e.g. "2 Issues") — `#eab308`, `rgba(234,179,8,0.09)` — View/counter navigation for 2+ stops
-  - `"red"` → L0 product incompatibility (reserved, not yet surfaced)
+  - `"red"` → L0 product incompatibility — `#f87171`, `rgba(220,38,38,0.2)` — dominates over L3/L1
   - `"none"` → no banner
 - **Below-truck message:** mirrors banner copy with arrow + delta, right-aligned, 36px left indent
 - **Stop warning strip:** `#1b1b1b` bg, amber `#eab308` text. Copy: "X will run out before this stop" (first-failing) / "X already ran out" (downstream)
@@ -422,7 +422,7 @@ contexts/
 ## Current branch / active work
 
 - **Branch:** `iter/workspace-updates`
-- **Active work:** Validation color system, R3 three-step demo, MidRouteAddLoadCTA redesign, amber dashed connector lines
+- **Active work:** L0 product incompatibility shipped. Remaining: multi-product truncation (3+ → "+ N more"), any L0 edge cases
 - **Next (planned):** Modal 3 — Side Sheet variant of the Create Order modal (not started)
 - `CreateOrderModalViewType` is already typed as `"modal1" | "modal2"` — add `"modal3"` when ready
 - Daily updates log: `UPDATES.md` (root) + `updates/YYYY-MM-DD.md` per day
