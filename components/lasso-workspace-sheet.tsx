@@ -1573,6 +1573,7 @@ function ExpandedRouteCard({
   onBreakdownClick,
   breakdownOpenOrderId,
   onViewTruckDetails,
+  onEditOrder,
 }: {
   orders: ExtractionOrder[]
   color?: string
@@ -1595,6 +1596,7 @@ function ExpandedRouteCard({
   onBreakdownClick?: (orderId: string, cardLeft: number, cardRight: number, fabTop: number) => void
   breakdownOpenOrderId?: string | null
   onViewTruckDetails?: (cardLeft: number, cardRight: number, btnTop: number) => void
+  onEditOrder?: (order: ExtractionOrder) => void
 }) {
   const { orderCardView } = useSettings()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
@@ -1793,6 +1795,7 @@ function ExpandedRouteCard({
                   isAfterBreak,
                   isAfterBreakDash: breakConnectorDash,
                   l0Warning,
+                  onEditOrder,
                 }
                 return orderCardView === "detailed"
                   ? <OrderStopRowDetailed {...sharedProps} />
@@ -2027,6 +2030,7 @@ function OrderStopRow({
   isAfterBreak,
   isAfterBreakDash,
   l0Warning,
+  onEditOrder,
 }: {
   order: ExtractionOrder
   idx: number
@@ -2052,6 +2056,7 @@ function OrderStopRow({
   isAfterBreak?: boolean
   isAfterBreakDash?: string
   l0Warning?: string
+  onEditOrder?: (order: ExtractionOrder) => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -2361,6 +2366,19 @@ function OrderStopRow({
                 >
                   Unassign
                 </div>
+                {/* Separator */}
+                <div style={{ height: 6, display: "flex", alignItems: "center" }}>
+                  <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
+                </div>
+                {/* Edit — opens the Create Order modal in edit mode */}
+                <div
+                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
+                >
+                  Edit
+                </div>
               </div>
             )}
           </div>
@@ -2431,6 +2449,7 @@ function OrderStopRowDetailed({
   isAfterBreak,
   isAfterBreakDash,
   l0Warning,
+  onEditOrder,
 }: {
   order: ExtractionOrder
   idx: number
@@ -2456,6 +2475,7 @@ function OrderStopRowDetailed({
   isAfterBreak?: boolean
   isAfterBreakDash?: string
   l0Warning?: string
+  onEditOrder?: (order: ExtractionOrder) => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -2838,6 +2858,19 @@ function OrderStopRowDetailed({
                 >
                   Unassign
                 </div>
+                {/* Separator */}
+                <div style={{ height: 6, display: "flex", alignItems: "center" }}>
+                  <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
+                </div>
+                {/* Edit — opens the Create Order modal in edit mode */}
+                <div
+                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
+                >
+                  Edit
+                </div>
               </div>
             )}
           </div>
@@ -3083,6 +3116,8 @@ export function LassoWorkspaceSheet({
   //  - Map shipto-no-order pin → opens with createOrderRouteId null + a prefillShipToId
   const [isCreateOrderModalOpen, setIsCreateOrderModalOpen] = useState(false)
   const [createOrderRouteId, setCreateOrderRouteId] = useState<string | null>(null)
+  // When set, the Create Order modal opens in "Edit Order" mode for this order.
+  const [editOrder, setEditOrder] = useState<ExtractionOrder | null>(null)
   // Unassigned orders added through the shipto-pin → Create Order flow (no originating route)
   const [addedUnassignedOrders, setAddedUnassignedOrders] = useState<ExtractionOrder[]>([])
 
@@ -4653,6 +4688,11 @@ export function LassoWorkspaceSheet({
                               setTruckDetailsAnchorY(btnTop)
                               setTruckDetailsRouteId(routeId)
                             }}
+                            onEditOrder={(order) => {
+                              setEditOrder(order)
+                              setCreateOrderRouteId(null)
+                              setIsCreateOrderModalOpen(true)
+                            }}
                           />
                           </div>
                         )}
@@ -5207,6 +5247,7 @@ export function LassoWorkspaceSheet({
       {isCreateOrderModalOpen && (
         <CreateOrderModal
           isOpen={isCreateOrderModalOpen}
+          editOrder={editOrder}
           prefillShipToId={createOrderPrefillShipToId ?? null}
           prefillDriverName={
             createOrderRouteId
@@ -5216,6 +5257,7 @@ export function LassoWorkspaceSheet({
           onClose={() => {
             setIsCreateOrderModalOpen(false)
             setCreateOrderRouteId(null)
+            setEditOrder(null)
             onClearCreateOrderPrefillShipToId?.()
           }}
           onCollapseToDrawer={() => {
@@ -5223,6 +5265,16 @@ export function LassoWorkspaceSheet({
             onCreateOrderSideSheetOpen?.()
           }}
           onSubmit={(data: CreateOrderSubmit) => {
+            // Edit mode — prototype: confirm + close (no mock mutation yet).
+            if (editOrder) {
+              const who = editOrder.shipToName ?? editOrder.customerName
+              onShowMessage?.(`${who}'s order updated`)
+              setIsCreateOrderModalOpen(false)
+              setCreateOrderRouteId(null)
+              setEditOrder(null)
+              onClearCreateOrderPrefillShipToId?.()
+              return
+            }
             // Trigger memory: createOrderRouteId (from + FAB) wins; fall back to focusedRouteId
             // (most recently touched route). Null = Unassigned.
             const routeId = createOrderRouteId ?? focusedRouteId ?? null

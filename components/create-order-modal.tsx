@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSettings } from "@/contexts/settings-context"
 import { X, ChevronDown, ChevronLeft, ChevronRight, RotateCw, Search, Package, Calendar, Clock, Maximize2, Minimize2 } from "lucide-react"
-import { mockExtractionOrders, shipTosWithoutOrders, mockHubs, mockDrivers } from "@/lib/mock-data"
+import { mockExtractionOrders, shipTosWithoutOrders, mockHubs, mockDrivers, type ExtractionOrder } from "@/lib/mock-data"
 
 // ─── Derived customer + shipTo data ──────────────────────────────────────────
 
@@ -169,6 +169,9 @@ interface Props {
   onClose: () => void
   onSubmit: (data: CreateOrderSubmit) => void
   prefillShipToId?: string | null
+  /** When set, the modal opens in "Edit Order" mode: read-only customer card
+   *  (no Customer/ShipTo dropdowns), prefilled schedule + assets, "Update Order" CTA. */
+  editOrder?: ExtractionOrder | null
   /** When set (route entry point), Driver field shows as read-only. */
   prefillDriverName?: string | null
   /** Expand icon: modal3 → modal1. Shown only when createOrderModalView === "modal3". */
@@ -861,9 +864,10 @@ const PO_TYPE_OPTIONS = [
   { id: "spot", label: "Spot" },
 ]
 
-export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, prefillDriverName, onExpandToModal, onCollapseToDrawer }: Props) {
+export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, editOrder, prefillDriverName, onExpandToModal, onCollapseToDrawer }: Props) {
   const { customers, shipTosByCustomer } = useMemo(buildCustomerAndShipToIndex, [])
   const { createOrderModalView } = useSettings()
+  const isEdit = !!editOrder
 
   // ── Customer / ShipTo
   const [customerId, setCustomerId] = useState<string | null>(null)
@@ -909,6 +913,35 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     // setHubId(null)
     // setDriverId(null)
 
+    // Edit mode — prefill from the order being edited.
+    if (editOrder) {
+      setCustomerId(editOrder.customerId)
+      setShipToKey(`${editOrder.customerId}__${editOrder.shipToAddress}`)
+      setMarkUrgent(!!editOrder.urgency && editOrder.urgency.red > 0)
+      // Time: order.scheduledDate may be "HH:MM AM/PM" or an ISO string.
+      const sd = editOrder.scheduledDate ?? ""
+      const ampm = sd.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+      if (ampm) {
+        let h = parseInt(ampm[1], 10) % 12
+        if (/PM/i.test(ampm[3])) h += 12
+        setPlannedTime(`${pad2(h)}:${ampm[2]}`)
+      } else if (sd) {
+        const d = new Date(sd)
+        if (!isNaN(d.getTime())) {
+          setPlannedDate(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`)
+          setPlannedTime(`${pad2(d.getHours())}:${pad2(d.getMinutes())}`)
+        }
+      }
+      // Prefill per-product quantities against the asset-row ids buildAssetRows generates.
+      const key = `${editOrder.customerId}__${editOrder.shipToAddress}`
+      const qty: Record<string, string> = {}
+      ;(editOrder.productBreakdown ?? []).forEach((pb, i) => {
+        qty[`${key}__${pb.product}__${i}`] = String(pb.volume)
+      })
+      setTankQuantities(qty)
+      return
+    }
+
     if (prefillShipToId) {
       let owningCustomerId: string | null = null
       for (const [cId, list] of shipTosByCustomer.entries()) {
@@ -923,14 +956,16 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
       setCustomerId(null)
       setShipToKey(null)
     }
-  }, [isOpen, prefillShipToId, shipTosByCustomer])
+  }, [isOpen, prefillShipToId, editOrder, shipTosByCustomer])
 
-  // Reset table state when ShipTo changes
+  // Reset table state when ShipTo changes. Skip in edit mode — the ShipTo is fixed
+  // and the open-effect above has already prefilled quantities from the order.
   useEffect(() => {
+    if (isEdit) return
     setTankQuantities({})
     setTopOffRows({})
     setTopOffMaster(false)
-  }, [shipToKey])
+  }, [shipToKey, isEdit])
 
   // ── Enter/exit animation state — keeps DOM mounted briefly during exit so the
   // close animation can play before unmount. Emil-style: enter slower (settling),
@@ -1082,6 +1117,35 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
       </div>
     </div>
   )
+
+  // Edit mode — read-only customer card in place of the Customer/ShipTo dropdowns.
+  const customerCardSection = editOrder ? (
+    <div
+      style={{
+        backgroundColor: "#1F1F1F",
+        border: "1px solid #282828",
+        borderRadius: 8,
+        padding: 16,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      <span style={{ fontSize: 16, fontWeight: 500, color: "#FAFAFA", lineHeight: "24px" }}>
+        {editOrder.customerName}
+        {editOrder.shipToName ? ` - ${editOrder.shipToName}` : editOrder.city ? ` - ${editOrder.city}` : ""}
+      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#737373" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+        <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+          {[editOrder.shipToAddress, [editOrder.city, editOrder.state].filter(Boolean).join(", "), editOrder.zip].filter(Boolean).join(" ")}
+        </span>
+      </div>
+    </div>
+  ) : null
 
   const scheduleDetailsSection = (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1349,7 +1413,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
             borderBottom: "1px solid #282828",
           }}
         >
-          <span style={{ fontSize: 16, fontWeight: 500, color: "#E5E5E5" }}>Create Order</span>
+          <span style={{ fontSize: 16, fontWeight: 500, color: "#E5E5E5" }}>{isEdit ? "Edit Order" : "Create Order"}</span>
           <Checkbox checked={markUrgent} onChange={() => setMarkUrgent((v) => !v)} label="Mark Order As Urgent" />
           <div style={{ flex: 1 }} />
           {createOrderModalView === "modal3" && onExpandToModal && (
@@ -1393,7 +1457,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
           <div style={{ flex: 1, display: "flex", alignItems: "stretch", overflow: "hidden" }}>
             {/* Left: 480px fixed — Customer, Schedule, Others */}
             <div style={{ width: 480, flexShrink: 0, display: "flex", flexDirection: "column", gap: 24, overflowY: "auto", padding: 24 }}>
-              {customerDetailsSection}
+              {isEdit ? customerCardSection : customerDetailsSection}
               {scheduleDetailsSection}
               {othersSection}
             </div>
@@ -1402,15 +1466,15 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
             {/* Right: fills remaining space — Delivery Order, Instructions */}
             <div style={{ flex: "1 0 0", display: "flex", flexDirection: "column", gap: 24, overflowY: "auto", padding: 24 }}>
               {deliveryOrderSection}
-              {deliveryInstructionsSection}
+              {!isEdit && deliveryInstructionsSection}
             </div>
           </div>
         ) : (
           <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 24 }}>
-            {customerDetailsSection}
+            {isEdit ? customerCardSection : customerDetailsSection}
             {scheduleDetailsSection}
             {deliveryOrderSection}
-            {deliveryInstructionsSection}
+            {!isEdit && deliveryInstructionsSection}
             {othersSection}
           </div>
         )}
@@ -1432,7 +1496,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
             disabled={!canSubmit}
             style={{ height: 36, padding: "0 16px", backgroundColor: canSubmit ? "#E5E5E5" : "rgba(229,229,229,0.4)", border: "none", borderRadius: 4, color: "#171717", fontSize: 14, fontWeight: 500, cursor: canSubmit ? "pointer" : "not-allowed", fontFamily: "inherit" }}
           >
-            Create Order
+            {isEdit ? "Update Order" : "Create Order"}
           </button>
         </div>
       </div>
