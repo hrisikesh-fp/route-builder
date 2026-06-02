@@ -28,7 +28,8 @@ const TEXT_2 = "#E5E5E5"
 const TEXT_3 = "#A3A3A3"
 const TEXT_4 = "#737373"
 const ACCENT_1 = "#818CF8"
-const DESTRUCTIVE = "#F87171"
+const DESTRUCTIVE = "#F87171" // reserved for L0 product incompatibility
+const RUNOUT = "#eab308" // L3 runout — amber, matches expanded route card stop strips
 const TEXT_DARK = "#171717"
 
 interface BalanceRow {
@@ -53,19 +54,27 @@ function collectProducts(orders: ExtractionOrder[]): string[] {
   return products
 }
 
-function computeDemand(
+// Sums planned volumes per product, split by order type:
+//   load     = Load orders (orderType "L")  → "Total Load Qty"
+//   delivery = Delivery/Transfer (non-"L")   → "Total Delivery Qty"
+// Drives the Totals block at the bottom of the modal.
+function computeTypeTotals(
   orders: ExtractionOrder[],
   products: string[],
-): Record<string, number> {
-  const demand: Record<string, number> = {}
-  for (const p of products) demand[p] = 0
+): { load: Record<string, number>; delivery: Record<string, number> } {
+  const load: Record<string, number> = {}
+  const delivery: Record<string, number> = {}
+  for (const p of products) {
+    load[p] = 0
+    delivery[p] = 0
+  }
   for (const o of orders) {
-    if (o.orderType === "L") continue
+    const bucket = o.orderType === "L" ? load : delivery
     for (const pb of o.productBreakdown ?? []) {
-      demand[pb.product] = (demand[pb.product] ?? 0) + pb.volume
+      bucket[pb.product] = (bucket[pb.product] ?? 0) + pb.volume
     }
   }
-  return demand
+  return { load, delivery }
 }
 
 
@@ -139,7 +148,7 @@ function NegativeBalanceWarning({ productLabel, isFirstFailing }: { productLabel
       }}
       onMouseLeave={() => setTipPos(null)}
     >
-      <TriangleAlert size={16} color={DESTRUCTIVE} />
+      <TriangleAlert size={16} color={RUNOUT} />
       {tipPos && (
         <div
           style={{
@@ -208,7 +217,9 @@ export function BalanceTableModal({
 
   const inventory = initialInventory ?? {}
   const products = collectProducts(orders)
-  const demand = computeDemand(orders, products)
+  const { load: totalLoad, delivery: totalDelivery } = computeTypeTotals(orders, products)
+  const sumOf = (rec: Record<string, number>) =>
+    products.reduce((acc, p) => acc + (rec[p] ?? 0), 0)
   const hasLoadOrder = orders.some((o) => o.orderType === "L")
   const startingBalance: Record<string, number> = {}
   for (const p of products) {
@@ -495,7 +506,7 @@ export function BalanceTableModal({
                     key={`retain-${p}`}
                     style={{
                       ...retainCellBase,
-                      color: balNeg ? DESTRUCTIVE : TEXT_2,
+                      color: balNeg ? RUNOUT : TEXT_2,
                       fontWeight: balNeg ? 500 : 400,
                     }}
                   >
@@ -507,6 +518,63 @@ export function BalanceTableModal({
           </tbody>
         </table>
         </div>
+
+        {/* Totals — Total Load Qty / Total Delivery Qty. Filled #282828 card; each row
+            is its own fixed-layout table sharing the main table's colgroup so the
+            product columns line up. Figma node 4493:58735. */}
+        {products.length > 0 && (
+          <div
+            style={{
+              backgroundColor: BG_STRIP,
+              borderRadius: 4,
+              padding: 4,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            {([
+              { key: "load", label: "Total Load Qty", grand: sumOf(totalLoad), per: totalLoad },
+              { key: "delivery", label: "Total Delivery Qty", grand: sumOf(totalDelivery), per: totalDelivery },
+            ] as const).map((row, idx) => (
+              <div key={row.key} style={{ width: "100%" }}>
+                {idx > 0 && (
+                  <div style={{ borderTop: `1px dashed ${STROKE_3}`, width: "100%" }} />
+                )}
+                <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col />
+                    {products.map((p) => (
+                      <col key={p} />
+                    ))}
+                  </colgroup>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "8px 12px", verticalAlign: "middle" }}>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <span style={{ fontFamily: "Geist, sans-serif", fontSize: 14, lineHeight: "20px", fontWeight: 500, color: TEXT_2 }}>
+                            {fmtBalance(row.grand)}
+                          </span>
+                          <span style={{ fontFamily: "Geist, sans-serif", fontSize: 14, lineHeight: "20px", fontWeight: 400, color: TEXT_4 }}>
+                            {row.label}
+                          </span>
+                        </div>
+                      </td>
+                      {products.map((p) => (
+                        <td
+                          key={`${row.key}-${p}`}
+                          style={{ height: 56, padding: "8px 12px", verticalAlign: "middle", fontFamily: "Geist, sans-serif", fontSize: 16, lineHeight: "24px", fontWeight: 500, color: TEXT_2 }}
+                        >
+                          {fmtBalance(row.per[p] ?? 0)}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
