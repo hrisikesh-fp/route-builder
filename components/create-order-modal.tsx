@@ -90,21 +90,31 @@ type AssetRow = {
 function buildAssetRows(shipToKey: string | null): AssetRow[] {
   if (!shipToKey) return []
 
+  // Demo row with a deliberately long name — mirrors the dev "Customer | ShipTo |
+  // Product" format so we can exercise the Top Off column truncation + hover tooltip.
+  const demoRow: AssetRow = {
+    id: `${shipToKey}__demo-long`,
+    name: "Bastrop County Asphalt & Paving (FUEL ONLY) (CCO-BETA) | South Yard Bulk Storage / Permanent Location | #1 DYED DIESEL OFFROAD CLEAR",
+    tmProvider: "Anova",
+    tmInventory: 42,
+    capacity: 10000,
+    ullage: 5800,
+  }
+
   const order = mockExtractionOrders.find(
     (o) => `${o.customerId}__${o.shipToAddress}` === shipToKey,
   )
 
+  let rows: AssetRow[]
   if (!order) {
     const st = shipTosWithoutOrders.find((s) => s.id === shipToKey)
     if (!st) return []
     const cap = st.tankSize
-    return [{ id: `${shipToKey}__tank`, name: "Tank", tmProvider: "Anova", tmInventory: 0, capacity: cap, ullage: cap }]
-  }
-
-  if (order.productBreakdown && order.productBreakdown.length > 0) {
+    rows = [{ id: `${shipToKey}__tank`, name: "Tank", tmProvider: "Anova", tmInventory: 0, capacity: cap, ullage: cap }]
+  } else if (order.productBreakdown && order.productBreakdown.length > 0) {
     const inv = order.currentLevel
     const cap = order.tankSize
-    return order.productBreakdown.map((pb, i) => ({
+    rows = order.productBreakdown.map((pb, i) => ({
       id: `${shipToKey}__${pb.product}__${i}`,
       name: String(pb.product),
       tmProvider: "Anova",
@@ -112,18 +122,20 @@ function buildAssetRows(shipToKey: string | null): AssetRow[] {
       capacity: cap,
       ullage: Math.round(cap * (1 - inv / 100)),
     }))
+  } else {
+    const inv = order.currentLevel
+    const cap = order.tankSize
+    rows = [{
+      id: `${shipToKey}__tank`,
+      name: "Tank",
+      tmProvider: "Anova",
+      tmInventory: inv,
+      capacity: cap,
+      ullage: Math.round(cap * (1 - inv / 100)),
+    }]
   }
 
-  const inv = order.currentLevel
-  const cap = order.tankSize
-  return [{
-    id: `${shipToKey}__tank`,
-    name: "Tank",
-    tmProvider: "Anova",
-    tmInventory: inv,
-    capacity: cap,
-    ullage: Math.round(cap * (1 - inv / 100)),
-  }]
+  return [demoRow, ...rows]
 }
 
 function inventoryColor(pct: number): string {
@@ -202,6 +214,60 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     <span style={{ fontSize: 16, fontWeight: 300, color: "#E5E5E5", lineHeight: "24px" }}>
       {children}
     </span>
+  )
+}
+
+// Asset name that truncates with an ellipsis and, when the text is actually
+// clipped, shows the full name in a fixed-position tooltip on hover.
+function TruncatedAssetName({ name }: { name: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [tip, setTip] = useState<{ x: number; y: number } | null>(null)
+
+  const handleEnter = () => {
+    const el = ref.current
+    if (!el) return
+    if (el.scrollWidth > el.clientWidth) {
+      const r = el.getBoundingClientRect()
+      setTip({ x: r.left, y: r.bottom + 6 })
+    }
+  }
+
+  return (
+    <>
+      <span
+        ref={ref}
+        onMouseEnter={handleEnter}
+        onMouseLeave={() => setTip(null)}
+        style={{ display: "block", fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+      >
+        {name}
+      </span>
+      {tip && (
+        <div
+          style={{
+            position: "fixed",
+            top: tip.y,
+            left: tip.x,
+            maxWidth: 420,
+            backgroundColor: "#1F1F1F",
+            border: "1px solid #333",
+            color: "#E5E5E5",
+            fontSize: 12,
+            lineHeight: "16px",
+            padding: "8px 10px",
+            borderRadius: 6,
+            fontFamily: "Geist, sans-serif",
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            zIndex: 10002,
+            pointerEvents: "none",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+          }}
+        >
+          {name}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -974,7 +1040,9 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
     if (e.target === e.currentTarget) onClose()
   }
 
-  const TABLE_GRID = "44px 1fr 160px 160px"
+  // Top Off (name) column capped at 400px and truncated; the 1fr spacer keeps
+  // Ullage/Quantity pinned to the right regardless of how long the name is.
+  const TABLE_GRID = "44px minmax(0, 400px) 1fr 160px 160px"
   const colHeaderStyle = { padding: "0 12px", fontSize: 13, fontWeight: 500, color: "#A3A3A3" }
 
   // ── Sections extracted so both Modal 1 and Modal 2 layouts can share them
@@ -1095,6 +1163,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
               size="sm"
             />
           </div>
+          <div />
           <div style={colHeaderStyle}>Ullage</div>
           <div style={colHeaderStyle}>Quantity</div>
         </div>
@@ -1117,9 +1186,10 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, p
             >
               <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}><FauxCheckbox /></div>
               <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
+                <TruncatedAssetName name={row.name} />
                 <span style={{ fontSize: 12, color: "#737373" }}>Product</span>
               </div>
+              <div />
               <div style={{ padding: "0 12px", display: "flex", flexDirection: "column", gap: 4 }}>
                 <span style={{ fontSize: 14, color: "#E5E5E5" }}>{row.ullage.toLocaleString()}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
