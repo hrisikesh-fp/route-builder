@@ -1087,13 +1087,13 @@ export function RouteMap({
               const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
               const step = (now: number) => {
                 if (!map.getLayer(layerId)) return
-                const t = Math.min((now - start) / DRAW_MS, 1)
+                const t = Math.max(0, Math.min((now - start) / DRAW_MS, 1))
                 const eased = easeOutCubic(t)
                 // dash = visible portion (in line-width units); gap = hidden portion
                 // Use total = 200 line-widths to ensure clean draw across long routes
                 const total = 200
-                const dash = eased * total
-                const gap = total - dash
+                const dash = Math.max(0, eased * total)
+                const gap = Math.max(0, total - dash)
                 try {
                   map.setPaintProperty(layerId, "line-dasharray", [dash, gap])
                 } catch { /* layer may have been removed */ }
