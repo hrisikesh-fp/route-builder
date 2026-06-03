@@ -8,37 +8,7 @@ All changes are in 5 files. Below is exactly what changed and where, so you can 
 
 ---
 
-## 1. Edit Order Modal — Customer/ShipTo Card Redesign
-
-**File:** `components/create-order-modal.tsx`
-
-The card that shows at the top of the **Edit Order** modal (read-only customer + address) was redesigned to match Figma.
-
-**What changed** (lines ~1151–1195):
-- Background: `#1F1F1F` with border → `#282828` with no border
-- Border radius: `8` → `4`
-- Padding: `16` → `"12px 16px"`
-- Customer name and ShipTo name now sit on **one row** separated by a `4px` grey dot (instead of concatenated with a dash)
-- MapPin icon: `14px / #737373` → `16px / #A3A3A3`
-
-**Key JSX pattern** — row 1 layout:
-```tsx
-// customer name · dot · shipto name on same line
-<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-  <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF" }}>{customerName}</span>
-  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#A3A3A3" }} />
-  <span style={{ fontSize: 14, fontWeight: 400, color: "#E5E5E5" }}>{shipToName}</span>
-</div>
-// row 2: map pin + address
-<div style={{ display: "flex", alignItems: "center", gap: 4, height: 16 }}>
-  <MapPinSVG size={16} color="#A3A3A3" />
-  <span style={{ fontSize: 14, color: "#A3A3A3" }}>{address}</span>
-</div>
-```
-
----
-
-## 2. Pencil (Edit) Button on Order Card Hover FAB
+## 1. Pencil (Edit) Button on Order Card Hover FAB
 
 **Files:**
 - `components/lasso-workspace-sheet.tsx`
