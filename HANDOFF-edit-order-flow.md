@@ -269,3 +269,107 @@ Both warning dialogs use the same pattern — just reuse this shell:
   </div>
 </div>
 ```
+
+---
+
+## 6. Route Summary — Totals Block (Total Load Qty / Total Delivery Qty)
+
+**File:** `components/balance-table-modal.tsx`
+
+A totals block sits **below the balance table** inside the Route Summary modal. It shows two rows — **Total Load Qty** and **Total Delivery Qty** — with a grand total in the first column and per-product totals in each subsequent column. Columns align with the main table above using a shared `<colgroup>`.
+
+**Figma node:** `4493:58735`
+
+### Helper — `computeTypeTotals` (lines 61–78)
+
+Splits orders into load (`orderType === "L"`) and delivery (everything else), sums per product:
+
+```ts
+function computeTypeTotals(
+  orders: ExtractionOrder[],
+  products: string[],
+): { load: Record<string, number>; delivery: Record<string, number> } {
+  const load: Record<string, number> = {}
+  const delivery: Record<string, number> = {}
+  for (const p of products) { load[p] = 0; delivery[p] = 0 }
+  for (const o of orders) {
+    const bucket = o.orderType === "L" ? load : delivery
+    for (const pb of o.productBreakdown ?? []) {
+      bucket[pb.product] = (bucket[pb.product] ?? 0) + pb.volume
+    }
+  }
+  return { load, delivery }
+}
+```
+
+### Usage in component (lines 220–222)
+
+```ts
+const { load: totalLoad, delivery: totalDelivery } = computeTypeTotals(orders, products)
+const sumOf = (rec: Record<string, number>) =>
+  products.reduce((acc, p) => acc + (rec[p] ?? 0), 0)
+```
+
+### Totals block JSX (lines 522–577)
+
+Rendered immediately after the `</table>` closing tag of the main balance table, only when `products.length > 0`:
+
+```tsx
+{products.length > 0 && (
+  <div style={{
+    backgroundColor: "#282828",  // BG_STRIP
+    borderRadius: 4,
+    padding: 4,
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+  }}>
+    {([
+      { key: "load",     label: "Total Load Qty",     grand: sumOf(totalLoad),     per: totalLoad },
+      { key: "delivery", label: "Total Delivery Qty",  grand: sumOf(totalDelivery), per: totalDelivery },
+    ] as const).map((row, idx) => (
+      <div key={row.key} style={{ width: "100%" }}>
+        {/* dashed divider between the two rows */}
+        {idx > 0 && <div style={{ borderTop: "1px dashed #333333", width: "100%" }} />}
+        <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
+          <colgroup>
+            <col />
+            {products.map((p) => <col key={p} />)}
+          </colgroup>
+          <tbody>
+            <tr>
+              {/* First col: grand total (bold) + label (muted) stacked */}
+              <td style={{ padding: "8px 12px", verticalAlign: "middle" }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>
+                    {fmtBalance(row.grand)}   {/* e.g. "5,000 gal" */}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 400, color: "#737373" }}>
+                    {row.label}
+                  </span>
+                </div>
+              </td>
+              {/* Per-product cols */}
+              {products.map((p) => (
+                <td key={`${row.key}-${p}`}
+                  style={{ height: 56, padding: "8px 12px", verticalAlign: "middle",
+                           fontSize: 16, fontWeight: 500, color: "#E5E5E5" }}>
+                  {fmtBalance(row.per[p] ?? 0)}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    ))}
+  </div>
+)}
+```
+
+### Formatting helper (line 106)
+
+```ts
+function fmtBalance(n: number): string {
+  return `${n.toLocaleString()} gal`
+}
+```
