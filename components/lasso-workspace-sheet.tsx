@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route, XCircle } from "lucide-react"
+import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route, XCircle, LayoutGrid, List } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -14,7 +14,7 @@ import { MergeModal } from "@/components/merge-modal"
 import { BreakdownSheet } from "@/components/breakdown-sheet"
 import { RouteSummarySheet } from "@/components/route-summary-sheet"
 import { TruckDetailsSheet, truckProfileToVehicleInfo, synthesizeTrailerVehicleInfo, type VehicleInfo } from "@/components/truck-details-sheet"
-import { BalanceTableModal } from "@/components/balance-table-modal"
+import { BalanceTableModal, BalanceTableContent } from "@/components/balance-table-modal"
 import { InitialInventoryModal, aggregateCompartmentValues } from "@/components/initial-inventory-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -1573,6 +1573,8 @@ function ExpandedRouteCard({
   onBreakdownClick,
   breakdownOpenOrderId,
   onViewTruckDetails,
+  initialInventory,
+  onEditInitialInventory,
 }: {
   orders: ExtractionOrder[]
   color?: string
@@ -1595,8 +1597,11 @@ function ExpandedRouteCard({
   onBreakdownClick?: (orderId: string, cardLeft: number, cardRight: number, fabTop: number) => void
   breakdownOpenOrderId?: string | null
   onViewTruckDetails?: (cardLeft: number, cardRight: number, btnTop: number) => void
+  initialInventory?: Record<string, number>
+  onEditInitialInventory?: () => void
 }) {
   const { orderCardView } = useSettings()
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
 
@@ -1688,7 +1693,49 @@ function ExpandedRouteCard({
       {/* Bridge gap between starting hub and orders */}
       <SeqLineBridge />
 
+      {/* View toggle: Cards | Table */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 2,
+        padding: "0 16px 8px 16px",
+      }}>
+        {(["cards", "table"] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setViewMode(mode)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              height: 32, padding: "0 10px",
+              background: viewMode === mode ? "#282828" : "transparent",
+              border: "none",
+              borderBottom: viewMode === mode ? "2px solid #6366F1" : "2px solid transparent",
+              borderRadius: "4px 4px 0 0",
+              cursor: "pointer",
+              color: viewMode === mode ? "#E5E5E5" : "#A3A3A3",
+              fontSize: 13,
+              fontWeight: viewMode === mode ? 500 : 400,
+              fontFamily: "Geist, sans-serif",
+              transition: "color 120ms, background 120ms",
+            }}
+          >
+            {mode === "cards" ? <LayoutGrid size={14} /> : <List size={14} />}
+            {mode === "cards" ? "Cards" : "Table"}
+          </button>
+        ))}
+      </div>
+
+      {/* Table view — balance table rendered inline */}
+      {viewMode === "table" && (
+        <div style={{ padding: "0 16px 16px" }}>
+          <BalanceTableContent
+            orders={orders}
+            initialInventory={initialInventory}
+            onEditInitialInventory={onEditInitialInventory}
+          />
+        </div>
+      )}
+
       {/* Order rows: one continuous vertical line through all stops */}
+      {viewMode === "cards" && (
       <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: ORDER_LIST_GAP }}>
         <div
           style={{
@@ -1810,6 +1857,7 @@ function ExpandedRouteCard({
           )
         })}
       </div>
+      )}
 
       {/* Bridge gap between orders and ending hub */}
       <SeqLineBridge />
@@ -3632,7 +3680,7 @@ export function LassoWorkspaceSheet({
     <div
       className="fixed right-0 top-[68px] bottom-0 z-[1100] flex flex-col"
       style={{
-        width: 560,
+        width: 720,
         backgroundColor: "#111111",
         borderLeft: "1px solid #282828",
         animation: "rb-co-drawer-in 320ms cubic-bezier(0.32, 0.72, 0, 1)",
@@ -4653,6 +4701,8 @@ export function LassoWorkspaceSheet({
                               setTruckDetailsAnchorY(btnTop)
                               setTruckDetailsRouteId(routeId)
                             }}
+                            initialInventory={aggregateCompartmentValues(initialInventories[routeId] ?? {})}
+                            onEditInitialInventory={() => setEditingInitialInventoryRouteId(routeId)}
                           />
                           </div>
                         )}

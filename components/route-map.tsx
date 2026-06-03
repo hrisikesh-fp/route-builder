@@ -200,7 +200,7 @@ export function RouteMap({
   hoveredWorkspaceOrderId = null,
   expandedRouteIds = [],
   isWorkspaceOpen = false,
-  workspaceWidth = 560,
+  workspaceWidth = 720,
   addedLoadOrders = {},
   selectedUnassignedOrderIds = [],
   isCreateOrderSideSheetOpen = false,
@@ -362,9 +362,9 @@ export function RouteMap({
     ;(window as any).__zoomToRoute = (routeId: string, opts?: { maxZoom?: number }) => {
       const bounds = routeBoundsRef.current.get(routeId)
       if (bounds && mapRef.current) {
-        // Right padding accounts for 560px workspace panel so route stays centred in visible area
+        // Right padding accounts for 720px workspace panel so route stays centred in visible area
         mapRef.current.fitBounds(bounds, {
-          padding: { top: 80, right: 640, bottom: 80, left: 80 },
+          padding: { top: 80, right: 800, bottom: 80, left: 80 },
           maxZoom: opts?.maxZoom ?? 13,
           duration: 800,
         })
@@ -400,7 +400,7 @@ export function RouteMap({
         Math.max(...lats),
       ]
       mapRef.current.fitBounds(bounds, {
-        padding: opts?.padding ?? { top: 80, right: 640, bottom: 80, left: 80 },
+        padding: opts?.padding ?? { top: 80, right: 800, bottom: 80, left: 80 },
         maxZoom: opts?.maxZoom ?? 14,
         duration,
         // Smooth ease-out so the camera lands gracefully instead of snapping
@@ -415,8 +415,8 @@ export function RouteMap({
           center: [terminal.longitude, terminal.latitude],
           zoom: 12,
           duration: 800,
-          // Shift focal point left so terminal centres in the visible portion (workspace is 560px right)
-          padding: { top: 0, right: 560, bottom: 0, left: 0 },
+          // Shift focal point left so terminal centres in the visible portion (workspace is 720px right)
+          padding: { top: 0, right: 720, bottom: 0, left: 0 },
         })
       }
     }
@@ -1278,7 +1278,7 @@ export function RouteMap({
 
   // ─── layout ──────────────────────────────────────────────────────────────
 
-  const rightOffset = isWorkspaceOpen ? "560px" : isRouteListOpen || isCreatePanelOpen ? "450px" : "44px"
+  const rightOffset = isWorkspaceOpen ? "720px" : isRouteListOpen || isCreatePanelOpen ? "450px" : "44px"
 
   return (
     <>

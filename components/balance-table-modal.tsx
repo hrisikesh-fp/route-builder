@@ -185,6 +185,144 @@ function NegativeBalanceWarning({ productLabel, isFirstFailing }: { productLabel
   )
 }
 
+// ─── Shared table content (used by both the modal and the inline card view) ──
+
+export interface BalanceTableContentProps {
+  orders: ExtractionOrder[]
+  initialInventory?: Record<string, number>
+  onEditInitialInventory?: () => void
+}
+
+export function BalanceTableContent({ orders, initialInventory: initialInventoryProp, onEditInitialInventory }: BalanceTableContentProps) {
+  const inventory = initialInventoryProp ?? {}
+  const products = collectProducts(orders)
+  const hasLoadOrder = orders.some((o) => o.orderType === "L")
+  const startingBalance: Record<string, number> = {}
+  for (const p of products) startingBalance[p] = inventory[p] ?? 0
+
+  const { rows, finalBalance } = buildBalanceTable(orders, products, startingBalance)
+
+  const firstFailingRowByProduct: Record<string, number> = {}
+  for (const p of products) {
+    for (let i = 0; i < rows.length; i++) {
+      if ((rows[i].balances[p] ?? 0) < 0) { firstFailingRowByProduct[p] = i; break }
+    }
+  }
+
+  const subHeadCell: React.CSSProperties = {
+    height: 40, padding: "0 12px", backgroundColor: BG_STRIP,
+    borderBottom: `1px solid ${BORDER}`, fontFamily: "Geist, sans-serif",
+    fontWeight: 500, fontSize: 14, lineHeight: "20px", color: TEXT_3,
+    textAlign: "left", verticalAlign: "middle",
+  }
+  const bodyCellBase: React.CSSProperties = {
+    padding: 12, fontFamily: "Geist, sans-serif", fontSize: 16,
+    lineHeight: "24px", color: TEXT_2, borderBottom: `1px solid ${BORDER}`, verticalAlign: "middle",
+  }
+  const retainCellBase: React.CSSProperties = {
+    padding: 12, height: 48, fontFamily: "Geist, sans-serif", fontSize: 16,
+    lineHeight: "24px", color: TEXT_2, borderTop: `1px solid ${BORDER}`, verticalAlign: "middle",
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {!hasLoadOrder && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "12px 16px", backgroundColor: "#1f1f1f",
+          border: "1px solid #282828", borderRadius: 4,
+        }}>
+          <TriangleAlert size={20} color="#818cf8" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: 14, fontWeight: 400, color: "#818cf8", lineHeight: "20px" }}>
+            No Load Order added yet. Add one to see product depletion per stop.
+          </span>
+        </div>
+      )}
+      <div style={{ border: `1px solid ${BORDER}`, borderRadius: 4, overflow: "hidden", width: "100%" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", tableLayout: "fixed" }}>
+          <colgroup>
+            <col />
+            {products.map((p) => <col key={p} />)}
+          </colgroup>
+          <thead>
+            <tr>
+              <th style={subHeadCell}>Stops</th>
+              {products.map((p) => <th key={p} style={subHeadCell}>{PRODUCT_LABEL[p] ?? p}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={bodyCellBase}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <span>Initial inventory</span>
+                  <button
+                    type="button" aria-label="Edit initial inventory"
+                    onClick={onEditInitialInventory} disabled={!onEditInitialInventory}
+                    style={{
+                      width: 28, height: 28, display: "inline-flex", alignItems: "center",
+                      justifyContent: "center", background: "transparent", border: "none",
+                      cursor: "pointer", color: TEXT_3, padding: 0, borderRadius: 4,
+                    }}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </span>
+              </td>
+              {products.map((p) => (
+                <td key={p} style={bodyCellBase}>{fmtBalance(inventory[p] ?? 0)}</td>
+              ))}
+            </tr>
+            {rows.map((row, i) => (
+              <tr key={row.orderId}>
+                <td style={bodyCellBase}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 12, textAlign: "center", color: TEXT_3, fontSize: 14, lineHeight: "20px" }}>
+                      {i + 1}
+                    </span>
+                    <TypeBadge type={row.type} />
+                    <span style={{ color: TEXT_2 }}>{row.name}</span>
+                  </span>
+                </td>
+                {products.map((p) => {
+                  const bal = row.balances[p] ?? 0
+                  const balNeg = bal < 0
+                  return (
+                    <td key={`${row.orderId}-${p}`} style={bodyCellBase}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ color: TEXT_2, fontWeight: balNeg ? 500 : 400 }}>{fmtBalance(bal)}</span>
+                        {balNeg && (
+                          <NegativeBalanceWarning
+                            productLabel={PRODUCT_LABEL[p] ?? p}
+                            isFirstFailing={balNeg && firstFailingRowByProduct[p] === i}
+                          />
+                        )}
+                      </span>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+            <tr>
+              <td style={{ ...retainCellBase, fontSize: 14, lineHeight: "20px", fontWeight: 500, color: TEXT_2 }}>
+                Expected Retain
+              </td>
+              {products.map((p) => {
+                const bal = finalBalance[p] ?? 0
+                const balNeg = bal < 0
+                return (
+                  <td key={`retain-${p}`} style={{ ...retainCellBase, color: balNeg ? DESTRUCTIVE : TEXT_2, fontWeight: balNeg ? 500 : 400 }}>
+                    {fmtBalance(bal)}
+                  </td>
+                )
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Modal ─────────────────────────────────────────────────────────────
 
 export interface BalanceTableModalProps {
@@ -200,313 +338,49 @@ export function BalanceTableModal({
   isOpen,
   onClose,
   orders,
-  truckCapacity,
   initialInventory,
   onEditInitialInventory,
 }: BalanceTableModalProps) {
   if (!isOpen) return null
 
-  const inventory = initialInventory ?? {}
   const products = collectProducts(orders)
-  const demand = computeDemand(orders, products)
-  const hasLoadOrder = orders.some((o) => o.orderType === "L")
-  const startingBalance: Record<string, number> = {}
-  for (const p of products) {
-    startingBalance[p] = inventory[p] ?? 0
-  }
-
-  const { rows, finalBalance } = buildBalanceTable(orders, products, startingBalance)
-
-  // Pre-compute "first failing row" per product column. Used by the negative-balance
-  // tooltip so the copy differs between the stop where it first goes negative ("will
-  // run out at this stop") and downstream stops where it's already out ("already ran
-  // out before this stop"). Aligns with capacity-validation.ts's isFirstFailing flag.
-  const firstFailingRowByProduct: Record<string, number> = {}
-  for (const p of products) {
-    for (let i = 0; i < rows.length; i++) {
-      const bal = rows[i].balances[p] ?? 0
-      if (bal < 0) {
-        firstFailingRowByProduct[p] = i
-        break
-      }
-    }
-  }
-
   const MODAL_W = products.length <= 1 ? 800 : 1200
-
-  const subHeadCell: React.CSSProperties = {
-    height: 40,
-    padding: "0 12px",
-    backgroundColor: BG_STRIP,
-    borderBottom: `1px solid ${BORDER}`,
-    fontFamily: "Geist, sans-serif",
-    fontWeight: 500,
-    fontSize: 14,
-    lineHeight: "20px",
-    color: TEXT_3,
-    textAlign: "left",
-    verticalAlign: "middle",
-  }
-
-  const bodyCellBase: React.CSSProperties = {
-    padding: 12,
-    fontFamily: "Geist, sans-serif",
-    fontSize: 16,
-    lineHeight: "24px",
-    color: TEXT_2,
-    borderBottom: `1px solid ${BORDER}`,
-    verticalAlign: "middle",
-  }
-
-  const initialInvCell: React.CSSProperties = {
-    ...bodyCellBase,
-    borderBottom: `1px solid ${BORDER}`,
-  }
-
-  const retainCellBase: React.CSSProperties = {
-    padding: 12,
-    height: 48,
-    fontFamily: "Geist, sans-serif",
-    fontSize: 16,
-    lineHeight: "24px",
-    color: TEXT_2,
-    borderTop: `1px solid ${BORDER}`,
-    verticalAlign: "middle",
-  }
 
   return (
     <div
       onClick={onClose}
       style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 10000,
+        position: "fixed", inset: 0, zIndex: 10000,
         backgroundColor: "rgba(0, 0, 0, 0.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        fontFamily: "Geist, sans-serif",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 24, fontFamily: "Geist, sans-serif",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: MODAL_W,
-          maxWidth: "calc(100vw - 48px)",
-          maxHeight: "calc(100vh - 48px)",
-          overflow: "auto",
-          backgroundColor: BG_MODAL,
-          borderRadius: 8,
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
+          width: MODAL_W, maxWidth: "calc(100vw - 48px)", maxHeight: "calc(100vh - 48px)",
+          overflow: "auto", backgroundColor: BG_MODAL, borderRadius: 8, padding: 24,
+          display: "flex", flexDirection: "column", gap: 16,
           boxShadow: "0px 8px 24px rgba(0,0,0,0.5)",
         }}
       >
-        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <h3
-            style={{
-              fontSize: 18,
-              fontWeight: 500,
-              color: TEXT_2,
-              margin: 0,
-              lineHeight: "28px",
-            }}
-          >
+          <h3 style={{ fontSize: 18, fontWeight: 500, color: TEXT_2, margin: 0, lineHeight: "28px" }}>
             Route Summary
           </h3>
           <div style={{ flex: 1 }} />
           <button
-            onClick={onClose}
-            aria-label="Close"
+            onClick={onClose} aria-label="Close"
             style={{
-              width: 24,
-              height: 24,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: TEXT_3,
-              padding: 0,
+              width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", cursor: "pointer", color: TEXT_3, padding: 0,
             }}
           >
             <X size={20} />
           </button>
         </div>
-
-        {/* No-load banner — shown when route has no load order */}
-        {!hasLoadOrder && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "12px 16px",
-            backgroundColor: "#1f1f1f",
-            border: "1px solid #282828",
-            borderRadius: 4,
-          }}>
-            <TriangleAlert size={20} color="#818cf8" style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: 14, fontWeight: 400, color: "#818cf8", lineHeight: "20px" }}>
-              No Load Order added yet. Add one to see product depletion per stop.
-            </span>
-          </div>
-        )}
-
-        {/* Table — header strip, starting-state rows, stop rows, Expected Retain.
-            Wrapper div carries the 4px border-radius because <table> with border-collapse
-            ignores border-radius on its own. */}
-        <div
-          style={{
-            border: `1px solid ${BORDER}`,
-            borderRadius: 4,
-            overflow: "hidden",
-            width: "100%",
-          }}
-        >
-        <table
-          style={{
-            borderCollapse: "collapse",
-            width: "100%",
-            tableLayout: "fixed",
-          }}
-        >
-          <colgroup>
-            <col />
-            {products.map((p) => (
-              <col key={p} />
-            ))}
-          </colgroup>
-
-          <thead>
-            <tr>
-              <th style={subHeadCell}>Stops</th>
-              {products.map((p) => (
-                <th key={p} style={subHeadCell}>
-                  {PRODUCT_LABEL[p] ?? p}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {/* Initial inventory — always renders */}
-            <tr>
-              <td style={initialInvCell}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <span>Initial inventory</span>
-                  <button
-                    type="button"
-                    aria-label="Edit initial inventory"
-                    onClick={onEditInitialInventory}
-                    disabled={!onEditInitialInventory}
-                    style={{
-                      width: 28,
-                      height: 28,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      color: TEXT_3,
-                      padding: 0,
-                      borderRadius: 4,
-                    }}
-                  >
-                    <Pencil size={16} />
-                  </button>
-                </span>
-              </td>
-              {products.map((p) => (
-                <td key={p} style={initialInvCell}>
-                  {fmtBalance(inventory[p] ?? 0)}
-                </td>
-              ))}
-            </tr>
-
-
-
-            {/* Stop rows — numbered prefix, L/D badge, name, balance per product */}
-            {rows.map((row, i) => (
-              <tr key={row.orderId}>
-                <td style={bodyCellBase}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <span
-                      style={{
-                        width: 12,
-                        textAlign: "center",
-                        color: TEXT_3,
-                        fontSize: 14,
-                        lineHeight: "20px",
-                      }}
-                    >
-                      {i + 1}
-                    </span>
-                    <TypeBadge type={row.type} />
-                    <span style={{ color: TEXT_2 }}>{row.name}</span>
-                  </span>
-                </td>
-                {products.map((p) => {
-                  const bal = row.balances[p] ?? 0
-                  const balNeg = bal < 0
-                  const isFirstFailing = balNeg && firstFailingRowByProduct[p] === i
-                  return (
-                    <td key={`${row.orderId}-${p}`} style={bodyCellBase}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ color: TEXT_2, fontWeight: balNeg ? 500 : 400 }}>
-                          {fmtBalance(bal)}
-                        </span>
-                        {balNeg && (
-                          <NegativeBalanceWarning
-                            productLabel={PRODUCT_LABEL[p] ?? p}
-                            isFirstFailing={isFirstFailing}
-                          />
-                        )}
-                      </span>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-
-            {/* Expected Retain */}
-            <tr>
-              <td
-                style={{
-                  ...retainCellBase,
-                  fontSize: 14,
-                  lineHeight: "20px",
-                  fontWeight: 500,
-                  color: TEXT_2,
-                }}
-              >
-                Expected Retain
-              </td>
-              {products.map((p) => {
-                const bal = finalBalance[p] ?? 0
-                const balNeg = bal < 0
-                return (
-                  <td
-                    key={`retain-${p}`}
-                    style={{
-                      ...retainCellBase,
-                      color: balNeg ? DESTRUCTIVE : TEXT_2,
-                      fontWeight: balNeg ? 500 : 400,
-                    }}
-                  >
-                    {fmtBalance(bal)}
-                  </td>
-                )
-              })}
-            </tr>
-          </tbody>
-        </table>
-        </div>
+        <BalanceTableContent orders={orders} initialInventory={initialInventory} onEditInitialInventory={onEditInitialInventory} />
       </div>
     </div>
   )
