@@ -2331,19 +2331,41 @@ function OrderStopRow({
               Route-level Balance Table modal (ScanEye on route card) covers this use case. */}
           {/* Pencil — quick edit, shown when setting is on */}
           {showEditInFab && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEditOrder?.(order) }}
-              title="Edit Order"
-              style={{
-                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-                borderRadius: 2, border: "none", backgroundColor: "transparent",
-                cursor: "pointer", color: "#FAFAFA", padding: 0,
+            <div
+              style={{ position: "relative" }}
+              onMouseEnter={(e) => {
+                const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+                if (tip) tip.style.display = "flex"
+                const btn = e.currentTarget.querySelector<HTMLElement>("button")
+                if (btn) btn.style.backgroundColor = "#333"
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+              onMouseLeave={(e) => {
+                const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+                if (tip) tip.style.display = "none"
+                const btn = e.currentTarget.querySelector<HTMLElement>("button")
+                if (btn) btn.style.backgroundColor = "transparent"
+              }}
             >
-              <Pencil size={14} />
-            </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditOrder?.(order) }}
+                style={{
+                  width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 2, border: "none", backgroundColor: "transparent",
+                  cursor: "pointer", color: "#FAFAFA", padding: 0,
+                }}
+              >
+                <Pencil size={14} />
+              </button>
+              <div data-fab-tooltip style={{
+                display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+                flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
+              }}>
+                <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+                  Edit Order
+                </div>
+                <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+              </div>
+            </div>
           )}
           <div style={{ position: "relative" }}>
             <button
@@ -2840,19 +2862,41 @@ function OrderStopRowDetailed({
               Route-level Balance Table modal (ScanEye on route card) covers this use case. */}
           {/* Pencil — quick edit, shown when setting is on */}
           {showEditInFab && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEditOrder?.(order) }}
-              title="Edit Order"
-              style={{
-                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-                borderRadius: 2, border: "none", backgroundColor: "transparent",
-                cursor: "pointer", color: "#FAFAFA", padding: 0,
+            <div
+              style={{ position: "relative" }}
+              onMouseEnter={(e) => {
+                const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+                if (tip) tip.style.display = "flex"
+                const btn = e.currentTarget.querySelector<HTMLElement>("button")
+                if (btn) btn.style.backgroundColor = "#333"
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+              onMouseLeave={(e) => {
+                const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+                if (tip) tip.style.display = "none"
+                const btn = e.currentTarget.querySelector<HTMLElement>("button")
+                if (btn) btn.style.backgroundColor = "transparent"
+              }}
             >
-              <Pencil size={14} />
-            </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditOrder?.(order) }}
+                style={{
+                  width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 2, border: "none", backgroundColor: "transparent",
+                  cursor: "pointer", color: "#FAFAFA", padding: 0,
+                }}
+              >
+                <Pencil size={14} />
+              </button>
+              <div data-fab-tooltip style={{
+                display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+                flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
+              }}>
+                <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+                  Edit Order
+                </div>
+                <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+              </div>
+            </div>
           )}
           <div style={{ position: "relative" }}>
             <button
