@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route, XCircle } from "lucide-react"
+import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route, XCircle, Pencil } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -2061,6 +2061,7 @@ function OrderStopRow({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const { showEditInFab } = useSettings()
 
   // When breakdown sheet is open for this order, force the hover bg + hide the FAB
   // so the user knows which card the open sheet belongs to.
@@ -2328,6 +2329,44 @@ function OrderStopRow({
         >
           {/* v2: per-stop product balance (package icon → breakdown sheet) removed.
               Route-level Balance Table modal (ScanEye on route card) covers this use case. */}
+          {/* Pencil — quick edit, shown when setting is on */}
+          {showEditInFab && (
+            <div
+              style={{ position: "relative" }}
+              onMouseEnter={(e) => {
+                const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+                if (tip) tip.style.display = "flex"
+                const btn = e.currentTarget.querySelector<HTMLElement>("button")
+                if (btn) btn.style.backgroundColor = "#333"
+              }}
+              onMouseLeave={(e) => {
+                const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+                if (tip) tip.style.display = "none"
+                const btn = e.currentTarget.querySelector<HTMLElement>("button")
+                if (btn) btn.style.backgroundColor = "transparent"
+              }}
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditOrder?.(order) }}
+                style={{
+                  width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 2, border: "none", backgroundColor: "transparent",
+                  cursor: "pointer", color: "#FAFAFA", padding: 0,
+                }}
+              >
+                <Pencil size={14} />
+              </button>
+              <div data-fab-tooltip style={{
+                display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+                flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
+              }}>
+                <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+                  Edit Order
+                </div>
+                <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+              </div>
+            </div>
+          )}
           <div style={{ position: "relative" }}>
             <button
               onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen) }}
@@ -2366,19 +2405,21 @@ function OrderStopRow({
                 >
                   Unassign
                 </div>
-                {/* Separator */}
-                <div style={{ height: 6, display: "flex", alignItems: "center" }}>
-                  <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
-                </div>
-                {/* Edit — opens the Create Order modal in edit mode */}
-                <div
-                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
-                >
-                  Edit
-                </div>
+                {!showEditInFab && (<>
+                  {/* Separator */}
+                  <div style={{ height: 6, display: "flex", alignItems: "center" }}>
+                    <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
+                  </div>
+                  {/* Edit — only shown when pencil FAB is off */}
+                  <div
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
+                  >
+                    Edit
+                  </div>
+                </>)}
               </div>
             )}
           </div>
@@ -2480,6 +2521,7 @@ function OrderStopRowDetailed({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const { showEditInFab } = useSettings()
 
   // When breakdown sheet is open for this order, force the hover bg + hide the FAB
   // so the user knows which card the open sheet belongs to.
@@ -2807,7 +2849,7 @@ function OrderStopRowDetailed({
           </div>{/* end wrapper: « + stats */}
           </div>{/* end Right: content */}
 
-        {/* FAB — Package + 3-dot menu, positioned top-right of card */}
+        {/* FAB — Pencil + 3-dot menu, positioned top-right of card */}
         <div
           className="order-fab"
           style={{
@@ -2820,6 +2862,44 @@ function OrderStopRowDetailed({
         >
           {/* v2: per-stop product balance (package icon → breakdown sheet) removed.
               Route-level Balance Table modal (ScanEye on route card) covers this use case. */}
+          {/* Pencil — quick edit, shown when setting is on */}
+          {showEditInFab && (
+            <div
+              style={{ position: "relative" }}
+              onMouseEnter={(e) => {
+                const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+                if (tip) tip.style.display = "flex"
+                const btn = e.currentTarget.querySelector<HTMLElement>("button")
+                if (btn) btn.style.backgroundColor = "#333"
+              }}
+              onMouseLeave={(e) => {
+                const tip = e.currentTarget.querySelector<HTMLElement>("[data-fab-tooltip]")
+                if (tip) tip.style.display = "none"
+                const btn = e.currentTarget.querySelector<HTMLElement>("button")
+                if (btn) btn.style.backgroundColor = "transparent"
+              }}
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditOrder?.(order) }}
+                style={{
+                  width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 2, border: "none", backgroundColor: "transparent",
+                  cursor: "pointer", color: "#FAFAFA", padding: 0,
+                }}
+              >
+                <Pencil size={14} />
+              </button>
+              <div data-fab-tooltip style={{
+                display: "none", position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+                flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 1001,
+              }}>
+                <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+                  Edit Order
+                </div>
+                <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+              </div>
+            </div>
+          )}
           <div style={{ position: "relative" }}>
             <button
               onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen) }}
@@ -2858,19 +2938,21 @@ function OrderStopRowDetailed({
                 >
                   Unassign
                 </div>
-                {/* Separator */}
-                <div style={{ height: 6, display: "flex", alignItems: "center" }}>
-                  <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
-                </div>
-                {/* Edit — opens the Create Order modal in edit mode */}
-                <div
-                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
-                >
-                  Edit
-                </div>
+                {!showEditInFab && (<>
+                  {/* Separator */}
+                  <div style={{ height: 6, display: "flex", alignItems: "center" }}>
+                    <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
+                  </div>
+                  {/* Edit — only shown when pencil FAB is off */}
+                  <div
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
+                  >
+                    Edit
+                  </div>
+                </>)}
               </div>
             )}
           </div>

@@ -185,6 +185,15 @@ interface Props {
 function pad2(n: number) {
   return String(n).padStart(2, "0")
 }
+function ordinalSuffix(d: number) {
+  if (d >= 11 && d <= 13) return "th"
+  return ["th", "st", "nd", "rd", "th"][Math.min(d % 10, 4)]
+}
+function formatDateOrdinal(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"][m - 1]
+  return `${d}${ordinalSuffix(d)} ${monthName} ${y}`
+}
 function todayDateInputValue() {
   const d = new Date()
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
@@ -878,6 +887,20 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
   const [plannedTime, setPlannedTime] = useState<string>(nowTimeInputValue())
   const [markUrgent, setMarkUrgent] = useState(false)
 
+  // ── Date change warning (shown when date is changed while in route context)
+  const [pendingDate, setPendingDate] = useState<string | null>(null)
+  const isFromRoute = !!prefillDriverName && !isEdit
+  function handleDateChange(newDate: string) {
+    if (isFromRoute && newDate !== plannedDate) {
+      setPendingDate(newDate)
+    } else {
+      setPlannedDate(newDate)
+    }
+  }
+
+  // ── Empty order warning (shown when submitting with no quantities)
+  const [showEmptyOrderWarning, setShowEmptyOrderWarning] = useState(false)
+
   // ── Order type toggle
   const [orderType, setOrderType] = useState<"delivery" | "extraction">("delivery")
 
@@ -1043,13 +1066,12 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
   const totalQty = Object.values(tankQuantities).reduce((sum, v) => sum + (parseInt(v, 10) || 0), 0)
   const canSubmit = !!customerId && !!shipToKey
 
-  const handleSubmit = () => {
+  const doSubmit = () => {
     if (!canSubmit) return
     const customer = customers.find((c) => c.id === customerId)
     const shipTo = allShipTos.find((s) => s.id === shipToKey)
     if (!customer || !shipTo) return
     const iso = new Date(`${plannedDate}T${plannedTime}:00`).toISOString()
-    // const selectedDriver = driverId ? mockDrivers.find((d) => d.id === driverId) : undefined
     onSubmit({
       customerId: customer.id,
       customerName: customer.name,
@@ -1064,10 +1086,17 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
       scheduledDateTimeISO: iso,
       scheduledTimeLabel: formatTimeLabel(plannedTime),
       volume: totalQty,
-      // driverId: selectedDriver?.id,
-      // driverName: selectedDriver?.name,
     })
     onClose()
+  }
+
+  const handleSubmit = () => {
+    if (!canSubmit) return
+    if (totalQty === 0 && !isEdit) {
+      setShowEmptyOrderWarning(true)
+      return
+    }
+    doSubmit()
   }
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1122,27 +1151,39 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
   const customerCardSection = editOrder ? (
     <div
       style={{
-        backgroundColor: "#1F1F1F",
-        border: "1px solid #282828",
-        borderRadius: 8,
-        padding: 16,
+        backgroundColor: "#282828",
+        borderRadius: 4,
+        padding: "12px 16px",
         display: "flex",
-        flexDirection: "column",
-        gap: 6,
+        alignItems: "center",
+        width: "100%",
       }}
     >
-      <span style={{ fontSize: 16, fontWeight: 500, color: "#FAFAFA", lineHeight: "24px" }}>
-        {editOrder.customerName}
-        {editOrder.shipToName ? ` - ${editOrder.shipToName}` : editOrder.city ? ` - ${editOrder.city}` : ""}
-      </span>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#737373" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-        <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-          {[editOrder.shipToAddress, [editOrder.city, editOrder.state].filter(Boolean).join(", "), editOrder.zip].filter(Boolean).join(" ")}
-        </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 0 0", minWidth: 1 }}>
+        {/* Row 1: Customer name · ShipTo name */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px", whiteSpace: "nowrap" }}>
+            {editOrder.customerName}
+          </span>
+          {(editOrder.shipToName || editOrder.city) && (
+            <>
+              <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#A3A3A3", flexShrink: 0 }} />
+              <span style={{ fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", whiteSpace: "nowrap" }}>
+                {editOrder.shipToName ?? editOrder.city}
+              </span>
+            </>
+          )}
+        </div>
+        {/* Row 2: MapPin + address */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, height: 16 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px", whiteSpace: "nowrap" }}>
+            {[editOrder.shipToAddress, [editOrder.city, editOrder.state].filter(Boolean).join(", "), editOrder.zip].filter(Boolean).join(" ")}
+          </span>
+        </div>
       </div>
     </div>
   ) : null
@@ -1153,7 +1194,7 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
       <div style={{ display: "flex", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           <FieldLabel>Planned Date</FieldLabel>
-          <DatePicker value={plannedDate} onChange={setPlannedDate} />
+          <DatePicker value={plannedDate} onChange={handleDateChange} />
         </div>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           <FieldLabel>Planned Time</FieldLabel>
@@ -1355,6 +1396,135 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
           : `rb-co-center-in 260ms ${EASE} both`)
 
   return (
+    <>
+    {/* Empty order warning — shown when submitting with no quantities entered */}
+    {showEmptyOrderWarning && (
+      <div
+        style={{
+          position: "fixed", inset: 0, zIndex: 400,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "Geist, system-ui, sans-serif",
+        }}
+      >
+        <div style={{
+          backgroundColor: "#1B1B1B",
+          border: "1px solid #333",
+          borderRadius: 4,
+          padding: 24,
+          display: "flex",
+          flexDirection: "column",
+          gap: 20,
+          maxWidth: 480,
+          width: "100%",
+          boxShadow: "0px 10px 15px rgba(0,0,0,0.1), 0px 4px 6px rgba(0,0,0,0.1)",
+          margin: "0 24px",
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 500, lineHeight: "28px", color: "#E5E5E5" }}>
+              Create Order?
+            </p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#A3A3A3" }}>
+              Are you sure you want to create an order without adding any asset and product details?
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button
+              onClick={() => setShowEmptyOrderWarning(false)}
+              style={{
+                height: 36, padding: "0 16px",
+                background: "transparent", border: "1px solid #333", borderRadius: 4,
+                boxShadow: "0px 1px 2px rgba(0,0,0,0.05)",
+                fontSize: 14, fontWeight: 500, color: "#FAFAFA",
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { setShowEmptyOrderWarning(false); doSubmit() }}
+              style={{
+                height: 36, padding: "0 16px",
+                background: "#E5E5E5", border: "none", borderRadius: 4,
+                fontSize: 14, fontWeight: 500, color: "#171717",
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D4D4D4")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#E5E5E5")}
+            >
+              Yes, Create
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {/* Date change warning dialog — shown above the modal when user changes date from a route context */}
+    {pendingDate && (
+      <div
+        style={{
+          position: "fixed", inset: 0, zIndex: 400,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "Geist, system-ui, sans-serif",
+        }}
+      >
+        <div style={{
+          backgroundColor: "#1B1B1B",
+          border: "1px solid #333",
+          borderRadius: 4,
+          padding: 24,
+          display: "flex",
+          flexDirection: "column",
+          gap: 20,
+          maxWidth: 480,
+          width: "100%",
+          boxShadow: "0px 10px 15px rgba(0,0,0,0.1), 0px 4px 6px rgba(0,0,0,0.1)",
+          margin: "0 24px",
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 500, lineHeight: "28px", color: "#E5E5E5" }}>
+              Change Planned Date?
+            </p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#A3A3A3" }}>
+              Changing the planned date to {formatDateOrdinal(pendingDate)} will move this order out from the route. Are you sure you want to proceed?
+            </p>
+          </div>
+          {/* Footer */}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button
+              onClick={() => setPendingDate(null)}
+              style={{
+                height: 36, padding: "0 16px",
+                background: "transparent", border: "1px solid #333", borderRadius: 4,
+                boxShadow: "0px 1px 2px rgba(0,0,0,0.05)",
+                fontSize: 14, fontWeight: 500, color: "#FAFAFA",
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { setPlannedDate(pendingDate); setPendingDate(null) }}
+              style={{
+                height: 36, padding: "0 16px",
+                background: "#E5E5E5", border: "none", borderRadius: 4,
+                fontSize: 14, fontWeight: 500, color: "#171717",
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D4D4D4")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#E5E5E5")}
+            >
+              Yes, Proceed Anyway
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div
       onClick={handleBackdropClick}
       style={{
@@ -1501,5 +1671,6 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
         </div>
       </div>
     </div>
+    </>
   )
 }
