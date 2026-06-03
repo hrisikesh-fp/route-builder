@@ -41,12 +41,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         style={{
           backgroundColor: "#111",
           border: "1px solid #282828",
+          maxHeight: "720px",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-4"
-          style={{ borderBottom: "1px solid #282828" }}
+          style={{ borderBottom: "1px solid #282828", flexShrink: 0 }}
         >
           <div className="flex items-center gap-3">
             <Settings className="w-5 h-5 text-white" />
@@ -63,7 +66,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div className="p-6" style={{ display: "flex", flexDirection: "column", gap: 24, overflowY: "auto", flex: 1 }}>
 
           {/* ── APPEARANCE ── */}
           <div>

@@ -2405,19 +2405,21 @@ function OrderStopRow({
                 >
                   Unassign
                 </div>
-                {/* Separator */}
-                <div style={{ height: 6, display: "flex", alignItems: "center" }}>
-                  <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
-                </div>
-                {/* Edit — opens the Create Order modal in edit mode */}
-                <div
-                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
-                >
-                  Edit
-                </div>
+                {!showEditInFab && (<>
+                  {/* Separator */}
+                  <div style={{ height: 6, display: "flex", alignItems: "center" }}>
+                    <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
+                  </div>
+                  {/* Edit — only shown when pencil FAB is off */}
+                  <div
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
+                  >
+                    Edit
+                  </div>
+                </>)}
               </div>
             )}
           </div>
@@ -2936,19 +2938,21 @@ function OrderStopRowDetailed({
                 >
                   Unassign
                 </div>
-                {/* Separator */}
-                <div style={{ height: 6, display: "flex", alignItems: "center" }}>
-                  <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
-                </div>
-                {/* Edit — opens the Create Order modal in edit mode */}
-                <div
-                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
-                >
-                  Edit
-                </div>
+                {!showEditInFab && (<>
+                  {/* Separator */}
+                  <div style={{ height: 6, display: "flex", alignItems: "center" }}>
+                    <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
+                  </div>
+                  {/* Edit — only shown when pencil FAB is off */}
+                  <div
+                    style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333" }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+                    onClick={(e) => { e.stopPropagation(); setIsMenuOpen(false); onEditOrder?.(order) }}
+                  >
+                    Edit
+                  </div>
+                </>)}
               </div>
             )}
           </div>
