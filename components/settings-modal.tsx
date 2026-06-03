@@ -1,6 +1,6 @@
 "use client"
 
-import { X, Settings, Route, Tag, Sun } from "lucide-react"
+import { X, Settings, Route, Tag, Sun, Pencil } from "lucide-react"
 import { useSettings } from "@/contexts/settings-context"
 import { Switch } from "@/components/ui/switch"
 
@@ -16,11 +16,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     reducedOpacityValue,
     orderCardView,
     createOrderModalView,
+    showEditInFab,
     updateRouteLineDisplay,
     updateShowBadges,
     updateReducedOpacity,
     updateOrderCardView,
     updateCreateOrderModalView,
+    updateShowEditInFab,
   } = useSettings()
 
   if (!isOpen) return null
@@ -339,7 +341,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               )}
 
               {/* Show Badges Setting */}
-              <div className="flex items-center justify-between p-4">
+              <div
+                className="flex items-center justify-between p-4"
+                style={{ borderBottom: "1px solid #282828" }}
+              >
                 <div className="flex items-start gap-3">
                   <div
                     className="w-9 h-9 rounded-lg flex items-center justify-center mt-0.5"
@@ -360,6 +365,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   checked={showBadgesValue}
                   onCheckedChange={updateShowBadges}
                   className="data-[state=checked]:bg-[#F97316] data-[state=unchecked]:bg-[#404040]"
+                />
+              </div>
+
+              {/* Edit button in order card hover */}
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center mt-0.5"
+                    style={{ backgroundColor: "#282828" }}
+                  >
+                    <Pencil className="w-5 h-5 text-[#A3A3A3]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                      Edit Button on Order Card
+                    </span>
+                    <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                      Show a quick-edit pencil icon on order card hover. Opens the Edit Order modal directly.
+                    </span>
+                  </div>
+                </div>
+                <Switch
+                  checked={showEditInFab}
+                  onCheckedChange={updateShowEditInFab}
+                  className="data-[state=checked]:bg-[#6366F1] data-[state=unchecked]:bg-[#404040]"
                 />
               </div>
             </div>

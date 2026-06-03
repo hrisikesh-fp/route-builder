@@ -1122,27 +1122,39 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
   const customerCardSection = editOrder ? (
     <div
       style={{
-        backgroundColor: "#1F1F1F",
-        border: "1px solid #282828",
-        borderRadius: 8,
-        padding: 16,
+        backgroundColor: "#282828",
+        borderRadius: 4,
+        padding: "12px 16px",
         display: "flex",
-        flexDirection: "column",
-        gap: 6,
+        alignItems: "center",
+        width: "100%",
       }}
     >
-      <span style={{ fontSize: 16, fontWeight: 500, color: "#FAFAFA", lineHeight: "24px" }}>
-        {editOrder.customerName}
-        {editOrder.shipToName ? ` - ${editOrder.shipToName}` : editOrder.city ? ` - ${editOrder.city}` : ""}
-      </span>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#737373" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-        <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-          {[editOrder.shipToAddress, [editOrder.city, editOrder.state].filter(Boolean).join(", "), editOrder.zip].filter(Boolean).join(" ")}
-        </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 0 0", minWidth: 1 }}>
+        {/* Row 1: Customer name · ShipTo name */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px", whiteSpace: "nowrap" }}>
+            {editOrder.customerName}
+          </span>
+          {(editOrder.shipToName || editOrder.city) && (
+            <>
+              <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#A3A3A3", flexShrink: 0 }} />
+              <span style={{ fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", whiteSpace: "nowrap" }}>
+                {editOrder.shipToName ?? editOrder.city}
+              </span>
+            </>
+          )}
+        </div>
+        {/* Row 2: MapPin + address */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, height: 16 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px", whiteSpace: "nowrap" }}>
+            {[editOrder.shipToAddress, [editOrder.city, editOrder.state].filter(Boolean).join(", "), editOrder.zip].filter(Boolean).join(" ")}
+          </span>
+        </div>
       </div>
     </div>
   ) : null

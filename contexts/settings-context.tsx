@@ -8,6 +8,7 @@ const DEFAULT_SHOW_BADGES = false
 const DEFAULT_REDUCED_OPACITY = true
 const DEFAULT_ORDER_CARD_VIEW = "condensed" as const
 const DEFAULT_CREATE_ORDER_MODAL_VIEW = "modal1" as const
+const DEFAULT_SHOW_EDIT_IN_FAB = true
 
 type RouteLineDisplayType = "grayscale" | "colored"
 type OrderCardViewType = "condensed" | "detailed"
@@ -19,11 +20,13 @@ interface SettingsContextType {
   reducedOpacityValue: boolean
   orderCardView: OrderCardViewType
   createOrderModalView: CreateOrderModalViewType
+  showEditInFab: boolean
   updateRouteLineDisplay: (v: RouteLineDisplayType) => void
   updateShowBadges: (v: boolean) => void
   updateReducedOpacity: (v: boolean) => void
   updateOrderCardView: (v: OrderCardViewType) => void
   updateCreateOrderModalView: (v: CreateOrderModalViewType) => void
+  updateShowEditInFab: (v: boolean) => void
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null)
@@ -34,6 +37,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [reducedOpacityValue, setReducedOpacityValue] = useState<boolean>(DEFAULT_REDUCED_OPACITY)
   const [orderCardView, setOrderCardView] = useState<OrderCardViewType>(DEFAULT_ORDER_CARD_VIEW)
   const [createOrderModalView, setCreateOrderModalView] = useState<CreateOrderModalViewType>(DEFAULT_CREATE_ORDER_MODAL_VIEW)
+  const [showEditInFab, setShowEditInFab] = useState<boolean>(DEFAULT_SHOW_EDIT_IN_FAB)
 
   // Load persisted settings from localStorage on mount
   useEffect(() => {
@@ -45,6 +49,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (storedModalView === "modal1" || storedModalView === "modal2" || storedModalView === "modal3") {
       setCreateOrderModalView(storedModalView)
     }
+    const storedEditInFab = localStorage.getItem("showEditInFab")
+    if (storedEditInFab !== null) setShowEditInFab(storedEditInFab === "true")
   }, [])
 
   const updateRouteLineDisplay = (v: RouteLineDisplayType) => setRouteLineDisplayValue(v)
@@ -58,6 +64,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setCreateOrderModalView(v)
     localStorage.setItem("createOrderModalView", v)
   }
+  const updateShowEditInFab = (v: boolean) => {
+    setShowEditInFab(v)
+    localStorage.setItem("showEditInFab", String(v))
+  }
 
   return (
     <SettingsContext.Provider
@@ -67,11 +77,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         reducedOpacityValue,
         orderCardView,
         createOrderModalView,
+        showEditInFab,
         updateRouteLineDisplay,
         updateShowBadges,
         updateReducedOpacity,
         updateOrderCardView,
         updateCreateOrderModalView,
+        updateShowEditInFab,
       }}
     >
       {children}
@@ -88,11 +100,13 @@ export function useSettings(): SettingsContextType {
       reducedOpacityValue: DEFAULT_REDUCED_OPACITY,
       orderCardView: DEFAULT_ORDER_CARD_VIEW,
       createOrderModalView: DEFAULT_CREATE_ORDER_MODAL_VIEW,
+      showEditInFab: DEFAULT_SHOW_EDIT_IN_FAB,
       updateRouteLineDisplay: () => {},
       updateShowBadges: () => {},
       updateReducedOpacity: () => {},
       updateOrderCardView: () => {},
       updateCreateOrderModalView: () => {},
+      updateShowEditInFab: () => {},
     }
   }
   return ctx
