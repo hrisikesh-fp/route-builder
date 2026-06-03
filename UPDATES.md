@@ -6,6 +6,19 @@
 
 ---
 
+## 2026-06-03
+
+- **Edit Order — customer card redesign**: the read-only customer/ship-to card at the top of the Edit Order modal now matches Figma — `#282828` bg, 4px radius, no border, customer name and ship-to on one row separated by a grey dot, map pin icon at 16px.
+- **Pencil (edit) button on order card hover**: hovering an order card in the workspace now shows a pencil icon before the 3-dot menu. One click opens Edit Order directly — no menu required. Works on both condensed and detailed card views.
+- **Settings toggle — Edit Button on Order Card**: new toggle in Settings → Preferences (indigo switch, default ON, persisted). When ON, pencil shows in FAB and Edit is removed from 3-dot. When OFF, the reverse.
+- **Settings modal — fixed height + scroll**: 720px max-height, header fixed, content scrollable.
+- **Date change warning (create from route)**: changing the planned date while creating an order from a route now shows a confirmation — "Change Planned Date? / ...will move this order out from the route." Cancel reverts; "Yes, Proceed Anyway" applies.
+- **Empty order warning**: clicking "Create Order" with all quantities at 0 now shows a confirmation before submitting.
+- **Route Summary — Totals block**: totals block below the balance table shows Total Load Qty and Total Delivery Qty — grand total + per-product columns, aligned with the table above.
+- **Route map dasharray fix**: fixed console error from sub-millisecond timer jitter in the route draw-in animation.
+
+---
+
 ## 2026-05-29
 
 - **L1/L2 colors — orange**: capacity warning banners and per-product Zone A text now use orange `#fb923c`. Previously amber for banners and purple for per-product lines.
