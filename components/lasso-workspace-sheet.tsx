@@ -17,6 +17,9 @@ import { TruckDetailsSheet, truckProfileToVehicleInfo, synthesizeTrailerVehicleI
 import { BalanceTableModal } from "@/components/balance-table-modal"
 import { InitialInventoryModal, aggregateCompartmentValues } from "@/components/initial-inventory-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { TruckConflictModal } from "@/components/truck-conflict-modal"
+import { RouteSequenceModal } from "@/components/route-sequence-modal"
+import { RouteStartTimeModal } from "@/components/route-start-time-modal"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -345,6 +348,8 @@ function RouteCardCollapsed({
   onOptimise,
   onViewSummary,
   isSummaryOpen = false,
+  hasDriverConflict = false,
+  onRouteStartTimeClick,
 }: {
   color: string
   driverName: string
@@ -376,6 +381,8 @@ function RouteCardCollapsed({
   onOptimise?: () => void
   onViewSummary?: (cardLeft: number, cardRight: number, fabTop: number) => void
   isSummaryOpen?: boolean
+  hasDriverConflict?: boolean
+  onRouteStartTimeClick?: () => void
 }) {
   // Determine config
   const config: "A" | "B" | "C" | "D" | "E" = !hasTruck ? "E"
@@ -805,6 +812,17 @@ function RouteCardCollapsed({
                   </div>
                 </div>
               </div>
+              {/* Route Start Time — only when this driver has a conflict with another route */}
+              {hasDriverConflict && (
+                <div
+                  onClick={(e) => { e.stopPropagation(); onRouteStartTimeClick?.() }}
+                  style={{ padding: "6px 8px", borderRadius: 4, fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px", cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#333"; e.currentTarget.style.borderRadius = "2px" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderRadius = "4px" }}
+                >
+                  Route Start Time
+                </div>
+              )}
               {/* Separator */}
               <div style={{ height: 6, display: "flex", alignItems: "center", padding: "0 0" }}>
                 <div style={{ height: 1, width: "100%", backgroundColor: "#333" }} />
@@ -3425,6 +3443,55 @@ export function LassoWorkspaceSheet({
     return initial
   })
 
+  // Start times per route (used for multi-route sequencing)
+  const [routeStartTimes, setRouteStartTimes] = useState<Record<string, string>>({})
+
+  // Truck conflict modal — fires when same truck selected for 2+ routes
+  const [truckConflictModal, setTruckConflictModal] = useState<{
+    routeId: string
+    pendingTruck: TruckItem
+    conflictRouteIds: string[]
+  } | null>(null)
+
+  // Driver conflict modal — fires when same driver selected for 2+ routes
+  const [driverConflictModal, setDriverConflictModal] = useState<{
+    routeId: string
+    pendingDriver: DriverItem
+    conflictRouteIds: string[]
+  } | null>(null)
+
+  // Route start time modal — opened from ⋮ menu "Route Start Time" item
+  const [routeStartTimeModal, setRouteStartTimeModal] = useState<string | null>(null)
+
+  // Conflict detection helpers
+  function getTruckConflicts(trucks: Record<string, TruckItem>, routeId: string, truckId: string): string[] {
+    return Object.entries(trucks).filter(([rid, t]) => rid !== routeId && t.id === truckId).map(([rid]) => rid)
+  }
+  function getDriverConflicts(drivers: Record<string, DriverItem>, routeId: string, driverId: string): string[] {
+    return Object.entries(drivers).filter(([rid, d]) => rid !== routeId && d.id === driverId).map(([rid]) => rid)
+  }
+
+  // Wrapped truck selection — checks for conflict before assigning
+  function handleTruckSelect(routeId: string, truck: TruckItem) {
+    const conflicts = getTruckConflicts(selectedTrucks, routeId, truck.id)
+    if (conflicts.length > 0) {
+      setTruckConflictModal({ routeId, pendingTruck: truck, conflictRouteIds: conflicts })
+    } else {
+      setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))
+      setSelectedTrailers((prev) => ({ ...prev, [routeId]: { t1: null, t2: null } }))
+    }
+  }
+
+  // Wrapped driver selection — checks for conflict before assigning
+  function handleDriverSelect(routeId: string, driver: DriverItem) {
+    const conflicts = getDriverConflicts(selectedDrivers, routeId, driver.id)
+    if (conflicts.length > 0) {
+      setDriverConflictModal({ routeId, pendingDriver: driver, conflictRouteIds: conflicts })
+    } else {
+      setSelectedDrivers((prev) => ({ ...prev, [routeId]: driver }))
+    }
+  }
+
   // Synthetic routes created via "Create Order → select driver" (no base orders in selectedOrders)
   const [addedRouteInfo, setAddedRouteInfo] = useState<Record<string, { driverName: string; driverId: string; color: string }>>({})
 
@@ -4150,7 +4217,7 @@ export function LassoWorkspaceSheet({
                               }}
                               currentDriverId={selectedDrivers[routeId]?.id}
                               onDriverSelect={(driver) => {
-                                setSelectedDrivers((prev) => ({ ...prev, [routeId]: driver }))
+                                handleDriverSelect(routeId, driver)
                                 setMenuRouteId(null)
                               }}
                               onViewSummary={(cardLeft, cardRight, fabTop) => {
@@ -4160,6 +4227,14 @@ export function LassoWorkspaceSheet({
                                 setRouteSummaryRouteId(routeId)
                               }}
                               isSummaryOpen={routeSummaryRouteId === routeId}
+                              hasDriverConflict={
+                                !!(selectedDrivers[routeId] &&
+                                  getDriverConflicts(selectedDrivers, routeId, selectedDrivers[routeId].id).length > 0)
+                              }
+                              onRouteStartTimeClick={() => {
+                                setRouteStartTimeModal(routeId)
+                                setMenuRouteId(null)
+                              }}
                             />
 
                             {/* Inline optimise loading overlay — covers card body, leaves wedge visible */}
@@ -4304,7 +4379,7 @@ export function LassoWorkspaceSheet({
                                         <div
                                           key={driver.id}
                                           onClick={() => {
-                                            setSelectedDrivers((prev) => ({ ...prev, [routeId]: driver }))
+                                            handleDriverSelect(routeId, driver)
                                             setDriverDropdownRouteId(null)
                                             setDriverSearch("")
                                           }}
@@ -4410,8 +4485,7 @@ export function LassoWorkspaceSheet({
                                         const isSelected = currentTruck?.id === truck.id
                                         return (
                                           <div key={truck.id} onClick={() => {
-                                            setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))
-                                            setSelectedTrailers((prev) => ({ ...prev, [routeId]: { t1: null, t2: null } }))
+                                            handleTruckSelect(routeId, truck)
                                             setTruckSearchExpanded(false)
                                             setCardTruckSearch("")
                                           }}
@@ -4725,7 +4799,7 @@ export function LassoWorkspaceSheet({
                             validation={validation}
                             hasLoadOrders={sortedOrders.some((o) => o.orderType === "L")}
                             routeId={routeId}
-                            onTruckChange={(truck) => setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))}
+                            onTruckChange={(truck) => handleTruckSelect(routeId, truck)}
                             onOpenModal={() => {
                               setActiveRouteIdForModal(routeId)
                               setIsAddLoadModalOpen(true)
@@ -5673,6 +5747,111 @@ export function LassoWorkspaceSheet({
             anchorLeft={breakdownAnchorLeft}
             anchorRight={breakdownAnchorRight}
             anchorY={breakdownAnchorY}
+          />
+        )
+      })()}
+
+      {/* ── Truck Conflict Modal (Modal 1) ─────────────────────────────────── */}
+      {truckConflictModal && (() => {
+        const conflictRoutes = truckConflictModal.conflictRouteIds.map((rid) => {
+          const route = mockRoutes.find((r) => r.id === rid)
+          const truck = selectedTrucks[rid]
+          const truckProfile = truck?.id ? TRUCK_CAPACITIES[truck.id] ?? null : null
+          const driver = selectedDrivers[rid]
+          const orderCount = selectedOrders.filter((o) => o.routeId === rid).length
+          const specParts: string[] = []
+          if (truck?.capacity) specParts.push(truck.capacity)
+          if (truck?.compartments) specParts.push(truck.compartments)
+          if (truckProfile) specParts.push(`${Object.keys(truckProfile.productCapacities).length} Products`)
+          return {
+            id: rid,
+            truckName: truck?.name ?? route?.truckName ?? "Unknown",
+            specs: specParts.join(" · "),
+            driverName: driver?.name ?? route?.driverName ?? "",
+            orderCount,
+            color: route?.color ?? "#9A7BC7",
+          }
+        })
+        return (
+          <TruckConflictModal
+            isOpen={true}
+            truckName={truckConflictModal.pendingTruck.name}
+            conflictRoutes={conflictRoutes}
+            onConfirm={() => {
+              setSelectedTrucks((prev) => ({ ...prev, [truckConflictModal.routeId]: truckConflictModal.pendingTruck }))
+              setSelectedTrailers((prev) => ({ ...prev, [truckConflictModal.routeId]: { t1: null, t2: null } }))
+              setTruckConflictModal(null)
+            }}
+            onCancel={() => setTruckConflictModal(null)}
+          />
+        )
+      })()}
+
+      {/* ── Driver Sequence Modal (Modal 2) ────────────────────────────────── */}
+      {driverConflictModal && (() => {
+        const allRouteIds = [driverConflictModal.routeId, ...driverConflictModal.conflictRouteIds]
+        const modalRoutes = allRouteIds.map((rid) => {
+          const route = mockRoutes.find((r) => r.id === rid)
+          const truck = selectedTrucks[rid]
+          const orderCount = selectedOrders.filter((o) => o.routeId === rid).length
+          return {
+            id: rid,
+            truckName: truck?.name ?? route?.truckName ?? "No Truck Selected",
+            orderCount,
+            color: route?.color ?? "#9A7BC7",
+          }
+        })
+        const now = new Date()
+        const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+        const dateLabel = `${monthNames[now.getMonth()]} ${String(now.getDate()).padStart(2, "0")}`
+        return (
+          <RouteSequenceModal
+            isOpen={true}
+            driverName={driverConflictModal.pendingDriver.name}
+            date={dateLabel}
+            routes={modalRoutes}
+            startTimes={routeStartTimes}
+            onTimeChange={(routeId, time) => setRouteStartTimes((prev) => ({ ...prev, [routeId]: time }))}
+            onConfirm={() => {
+              setSelectedDrivers((prev) => ({ ...prev, [driverConflictModal.routeId]: driverConflictModal.pendingDriver }))
+              setDriverConflictModal(null)
+            }}
+            onCancel={() => setDriverConflictModal(null)}
+          />
+        )
+      })()}
+
+      {/* ── Route Start Time Modal (Modal 3) ───────────────────────────────── */}
+      {routeStartTimeModal && (() => {
+        const routeId = routeStartTimeModal
+        const route = mockRoutes.find((r) => r.id === routeId)
+        const truck = selectedTrucks[routeId]
+        const driver = selectedDrivers[routeId]
+        const conflictIds = driver
+          ? getDriverConflicts(selectedDrivers, routeId, driver.id)
+          : []
+        const conflictRoutes = conflictIds.map((rid) => {
+          const r = mockRoutes.find((ro) => ro.id === rid)
+          const t = selectedTrucks[rid]
+          const orderCount = selectedOrders.filter((o) => o.routeId === rid).length
+          return {
+            id: rid,
+            truckName: t?.name ?? r?.truckName ?? "No Truck Selected",
+            orderCount,
+            color: r?.color ?? "#9A7BC7",
+            startTime: routeStartTimes[rid],
+          }
+        })
+        return (
+          <RouteStartTimeModal
+            isOpen={true}
+            routeId={routeId}
+            routeLabel={truck?.name ?? route?.truckName ?? "Route"}
+            conflictRoutes={conflictRoutes}
+            currentTime={routeStartTimes[routeId] ?? ""}
+            onTimeChange={(time) => setRouteStartTimes((prev) => ({ ...prev, [routeId]: time }))}
+            onConfirm={() => setRouteStartTimeModal(null)}
+            onCancel={() => setRouteStartTimeModal(null)}
           />
         )
       })()}

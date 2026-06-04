@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSettings } from "@/contexts/settings-context"
-import { X, ChevronDown, ChevronLeft, ChevronRight, RotateCw, Search, Package, Calendar, Clock, Maximize2, Minimize2 } from "lucide-react"
+import { X, ChevronDown, ChevronLeft, ChevronRight, RotateCw, Search, Package, Calendar, Maximize2, Minimize2 } from "lucide-react"
+import { TimePicker } from "@/components/time-picker"
 import { mockExtractionOrders, shipTosWithoutOrders, mockHubs, mockDrivers, type ExtractionOrder } from "@/lib/mock-data"
 
 // ─── Derived customer + shipTo data ──────────────────────────────────────────
@@ -536,8 +537,6 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ]
 const DAY_HEADERS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
-const TP_ITEM_H = 32
-
 // ─── DatePicker ───────────────────────────────────────────────────────────────
 
 function DatePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -692,154 +691,6 @@ function DatePicker({ value, onChange }: { value: string; onChange: (v: string) 
                 </button>
               )
             })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── TimePicker ───────────────────────────────────────────────────────────────
-
-function TimePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({})
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const rootRef = useRef<HTMLDivElement>(null)
-  const hourScrollRef = useRef<HTMLDivElement>(null)
-  const minScrollRef = useRef<HTMLDivElement>(null)
-
-  const [draftH, setDraftH] = useState(() => value ? parseInt(value.split(":")[0], 10) : new Date().getHours())
-  const [draftM, setDraftM] = useState(() => value ? parseInt(value.split(":")[1], 10) : new Date().getMinutes())
-
-  const draftStr = `${pad2(draftH)}:${pad2(draftM)}`
-  const hasChange = !value || value !== draftStr
-
-  const displayLabel = useMemo(() => {
-    if (!value) return "Select Time"
-    return formatTimeLabel(value)
-  }, [value])
-
-  useEffect(() => {
-    if (!open) return
-    const rect = triggerRef.current?.getBoundingClientRect()
-    if (rect) {
-      if (window.innerHeight - rect.bottom < 280) {
-        setPanelStyle({ bottom: window.innerHeight - rect.top + 4, left: rect.left })
-      } else {
-        setPanelStyle({ top: rect.bottom + 4, left: rect.left })
-      }
-    }
-    const h = value ? parseInt(value.split(":")[0], 10) : new Date().getHours()
-    const m = value ? parseInt(value.split(":")[1], 10) : new Date().getMinutes()
-    setDraftH(h)
-    setDraftM(m)
-    requestAnimationFrame(() => {
-      if (hourScrollRef.current) hourScrollRef.current.scrollTop = h * TP_ITEM_H
-      if (minScrollRef.current) minScrollRef.current.scrollTop = m * TP_ITEM_H
-    })
-  }, [open, value])
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  const colScrollStyle: React.CSSProperties = { maxHeight: 160, overflowY: "auto", scrollbarWidth: "none" }
-
-  const colLabelStyle: React.CSSProperties = {
-    height: 32, display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 12, fontWeight: 500, color: "#A3A3A3",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
-  }
-
-  function renderScrollItem(n: number, selected: boolean, onClick: () => void) {
-    return (
-      <button key={n} type="button" onClick={onClick}
-        style={{
-          width: "100%", height: TP_ITEM_H, display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 14, fontWeight: selected ? 500 : 400,
-          color: selected ? "#E5E5E5" : "#FAFAFA",
-          backgroundColor: selected ? "#333" : "transparent",
-          border: "none", borderRadius: 2, cursor: "pointer", fontFamily: "inherit",
-        }}
-        onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)" }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "#333" : "transparent" }}
-      >
-        {pad2(n)}
-      </button>
-    )
-  }
-
-  return (
-    <div ref={rootRef} style={{ position: "relative", width: "100%" }}>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", gap: 8,
-          padding: "8px 12px", backgroundColor: "transparent", border: "1px solid #333",
-          borderRadius: 4, color: value ? "#E5E5E5" : "#737373", fontSize: 14,
-          textAlign: "left", cursor: "pointer", fontFamily: "inherit", outline: "none", boxSizing: "border-box",
-        }}
-      >
-        <Clock size={14} color="#A3A3A3" style={{ flexShrink: 0 }} />
-        <span style={{ flex: 1 }}>{displayLabel}</span>
-        <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-      </button>
-
-      {open && (
-        <div
-          style={{
-            position: "fixed", ...panelStyle,
-            backgroundColor: "#282828", border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 4, zIndex: 9999, width: 200, overflow: "hidden",
-          }}
-        >
-          <div style={{ display: "flex" }}>
-            {/* Hours */}
-            <div style={{ flex: 1 }}>
-              <div style={colLabelStyle}>Hours</div>
-              <div ref={hourScrollRef} className="tp-col" style={colScrollStyle}>
-                {Array.from({ length: 24 }, (_, h) => renderScrollItem(h, h === draftH, () => setDraftH(h)))}
-              </div>
-            </div>
-            <div style={{ width: 1, backgroundColor: "rgba(255,255,255,0.06)" }} />
-            {/* Minutes */}
-            <div style={{ flex: 1 }}>
-              <div style={colLabelStyle}>Minutes</div>
-              <div ref={minScrollRef} className="tp-col" style={colScrollStyle}>
-                {Array.from({ length: 60 }, (_, m) => renderScrollItem(m, m === draftM, () => setDraftM(m)))}
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div style={{ display: "flex", gap: 8, padding: 8, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <button type="button"
-              onClick={() => { onChange(""); setOpen(false) }}
-              style={{
-                flex: 1, height: 32, fontSize: 13, fontWeight: 500, color: "#E5E5E5",
-                backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4,
-                cursor: "pointer", fontFamily: "inherit",
-                opacity: hasChange ? 1 : 0, pointerEvents: hasChange ? "auto" : "none",
-                transition: "opacity 150ms",
-              }}
-            >Clear</button>
-            <button type="button"
-              onClick={() => { onChange(draftStr); setOpen(false) }}
-              style={{
-                flex: 1, height: 32, fontSize: 13, fontWeight: 500, color: "#171717",
-                backgroundColor: "#E5E5E5", border: "none", borderRadius: 4,
-                cursor: hasChange ? "pointer" : "default", fontFamily: "inherit",
-                opacity: hasChange ? 1 : 0.5, transition: "opacity 150ms",
-              }}
-            >Apply</button>
           </div>
         </div>
       )}
