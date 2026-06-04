@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Compass, Minus, Plus, Lasso, Layers } from "lucide-react"
+import { Minus, Plus, LassoSelect, Layers, MapPinned } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Entity visibility state type
@@ -143,6 +143,10 @@ export function MapControls({
 }: MapControlsProps) {
   const [isLayersOpen, setIsLayersOpen] = useState(false)
   const layersRef = useRef<HTMLDivElement>(null)
+  const [hasSavedView, setHasSavedView] = useState(false)
+  useEffect(() => {
+    setHasSavedView(!!localStorage.getItem("rb-saved-map-view"))
+  }, [])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -191,7 +195,7 @@ export function MapControls({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="h-10 w-10 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                className="h-8 w-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
                 style={{
                   backgroundColor: isLayersOpen ? "#27272A" : "#18181B",
                   border: isLayersOpen ? "1px solid #52525B" : "1px solid #27272A",
@@ -322,62 +326,44 @@ export function MapControls({
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 rounded-none border-b border-border"
+          className="h-8 w-8 rounded-none border-b border-border"
           onClick={onZoomIn}
         >
           <Plus className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none" onClick={onZoomOut}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={onZoomOut}>
           <Minus className="h-4 w-4" />
         </Button>
       </div>
-
-      {/* Compass/North */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-10 w-10 bg-card/95 backdrop-blur-sm rounded-lg border border-border"
-        onClick={onResetNorth}
-      >
-        <Compass className="h-4 w-4" />
-      </Button>
-
-      {/* Locate button - commented out for now */}
-      {/* <Button
-        variant="ghost"
-        size="icon"
-        className="h-10 w-10 bg-card/95 backdrop-blur-sm rounded-lg border border-border"
-        onClick={onLocate}
-      >
-        <Locate className="h-4 w-4" />
-      </Button> */}
 
       {/* Lasso Tool */}
       {onLassoToggle && (
         <TooltipProvider>
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`w-9 h-9 rounded-lg transition-all ${isLassoActive ? "text-[#FA6400]" : "text-white hover:bg-[#C75000]"}`}
-                style={
-                  isLassoActive
+              <button
+                type="button"
+                onClick={onLassoToggle}
+                className="flex items-center justify-center rounded-lg transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                style={{
+                  width: 32,
+                  height: 32,
+                  flexShrink: 0,
+                  ...(isLassoActive
                     ? {
                         border: "2px solid rgba(250, 100, 0, 0.70)",
                         background: "rgba(250, 100, 0, 0.15)",
-                        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                        color: "#FA6400",
                       }
                     : {
                         border: "1px solid #FF9752",
                         background: "#FA6400",
-                        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-                      }
-                }
-                onClick={onLassoToggle}
+                        color: "#fff",
+                      }),
+                }}
               >
-                <Lasso className="h-4 w-4" />
-              </Button>
+                <LassoSelect size={16} />
+              </button>
             </TooltipTrigger>
             <TooltipContent side="left" className="z-[1001]">
               <p>{isLassoActive ? "Disable lasso [Esc]" : "Lasso (Shift + L)"}</p>
@@ -385,6 +371,37 @@ export function MapControls({
           </Tooltip>
         </TooltipProvider>
       )}
+
+      {/* Save Map View */}
+      <TooltipProvider>
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+              style={{
+                backgroundColor: "#111",
+                border: "1px solid #27272A",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#27272A" }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#111" }}
+              onClick={() => {
+                if (hasSavedView) {
+                  ;(window as any).__goToSavedView?.()
+                } else {
+                  ;(window as any).__saveMapView?.()
+                  setHasSavedView(true)
+                }
+              }}
+            >
+              <MapPinned className="h-4 w-4 text-white" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="z-[1001]">
+            <p>{hasSavedView ? "Go to saved view" : "Save view as default"}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   )
 }

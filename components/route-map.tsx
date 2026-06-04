@@ -420,6 +420,40 @@ export function RouteMap({
         })
       }
     }
+
+    // Save / restore map view — called by the MapPinned button in MapControls.
+    // Saved state: { center: [lng, lat], zoom, bearing, pitch } in localStorage.
+    ;(window as any).__saveMapView = () => {
+      const map = mapRef.current
+      if (!map) return
+      const view = {
+        center: map.getCenter().toArray(),
+        zoom: map.getZoom(),
+        bearing: map.getBearing(),
+        pitch: map.getPitch(),
+      }
+      localStorage.setItem("rb-saved-map-view", JSON.stringify(view))
+    }
+
+    ;(window as any).__goToSavedView = () => {
+      const map = mapRef.current
+      if (!map) return
+      const raw = localStorage.getItem("rb-saved-map-view")
+      if (!raw) return
+      try {
+        const view = JSON.parse(raw)
+        map.flyTo({
+          center: view.center,
+          zoom: view.zoom,
+          bearing: view.bearing,
+          pitch: view.pitch,
+          duration: 800,
+          easing: (t: number) => 1 - Math.pow(1 - t, 3),
+        })
+      } catch {
+        // Corrupted stored value — ignore
+      }
+    }
   }, [mapReady])
 
   // ── lasso: disable/enable map interaction ────────────────────────────────
