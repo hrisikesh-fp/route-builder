@@ -1,6 +1,7 @@
 "use client"
 
-import { X } from "lucide-react"
+import { useRef, useLayoutEffect } from "react"
+import { X, Truck } from "lucide-react"
 import { TimePicker } from "@/components/time-picker"
 
 interface SequenceRoute {
@@ -39,19 +40,44 @@ export function RouteSequenceModal({
   onConfirm,
   onCancel,
 }: RouteSequenceModalProps) {
-  if (!isOpen) return null
+  const blockRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const prevTops = useRef<Record<string, number>>({})
 
   const orderedIds = deriveOrder(routes, startTimes)
   const allTimesSet = routes.every((r) => !!startTimes[r.id])
 
-  // For each route, compute which times are "taken" by the other routes (collision prevention)
   function disabledForRoute(routeId: string): string[] {
     return routes.filter((r) => r.id !== routeId && startTimes[r.id]).map((r) => startTimes[r.id])
   }
 
+  // FLIP animation: after each render, detect position changes and animate
+  useLayoutEffect(() => {
+    orderedIds.forEach((id) => {
+      const el = blockRefs.current[id]
+      if (!el) return
+      const newTop = el.getBoundingClientRect().top
+      const prevTop = prevTops.current[id]
+      if (prevTop !== undefined && Math.abs(prevTop - newTop) > 1) {
+        const delta = prevTop - newTop
+        el.style.transition = "none"
+        el.style.transform = `translateY(${delta}px)`
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            el.style.transition = "transform 300ms ease-in-out"
+            el.style.transform = "translateY(0px)"
+          })
+        })
+      }
+      prevTops.current[id] = newTop
+    })
+  })
+
+  if (!isOpen) return null
+
   return (
     <div
       onClick={onCancel}
+      onMouseDown={(e) => e.stopPropagation()}
       style={{
         position: "fixed", inset: 0, zIndex: 10100,
         backgroundColor: "rgba(0,0,0,0.55)",
@@ -99,48 +125,53 @@ export function RouteSequenceModal({
           </p>
         </div>
 
-        {/* Body: sequence badges + route blocks */}
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-          {/* Left: sequence badge column */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 8, paddingBottom: 8, gap: 4 }}>
-            {/* 24px stub above first badge */}
-            <div style={{ width: 1, height: 24, backgroundColor: "#404040" }} />
+        {/* Body */}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {orderedIds.map((id, idx) => {
+            const route = routes.find((r) => r.id === id)!
+            const hasTime = !!startTimes[id]
+            const isLast = idx === orderedIds.length - 1
 
-            {orderedIds.map((id, idx) => {
-              const hasTime = !!startTimes[id]
-              return (
-                <div key={id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            return (
+              <div
+                key={id}
+                style={{ display: "flex", gap: 12, alignItems: "stretch" }}
+              >
+                {/* Left: badge + connector column */}
+                <div style={{
+                  width: 32, flexShrink: 0,
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                }}>
+                  {/* Top stub: positions badge center at the vertical center of the route row (~20px) */}
+                  <div style={{ width: 1, height: 12, backgroundColor: "#404040", flexShrink: 0 }} />
                   {/* Badge */}
                   <div style={{
-                    width: 16, height: 16,
-                    borderRadius: "50%",
+                    width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
                     backgroundColor: hasTime ? "#A3A3A3" : "#404040",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0,
+                    transition: "background-color 200ms ease-in-out",
                   }}>
                     <span style={{ fontSize: 10, fontWeight: 500, color: "#171717", lineHeight: 1 }}>
                       {idx + 1}
                     </span>
                   </div>
-
-                  {/* Connector line between badges (not after the last one) */}
-                  {idx < orderedIds.length - 1 && (
-                    <div style={{ width: 1, flex: 1, minHeight: 56, backgroundColor: "#404040" }} />
-                  )}
+                  {/* Bottom connector: continues line through time picker + block gap */}
+                  <div style={{
+                    width: 1, flex: 1,
+                    backgroundColor: isLast ? "transparent" : "#404040",
+                    minHeight: 4,
+                  }} />
                 </div>
-              )
-            })}
 
-            {/* 24px stub below last badge */}
-            <div style={{ width: 1, height: 24, backgroundColor: "#404040" }} />
-          </div>
-
-          {/* Right: route blocks */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-            {orderedIds.map((id) => {
-              const route = routes.find((r) => r.id === id)!
-              return (
-                <div key={id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* Right: route block — paddingBottom creates the inter-block gap so the connector line runs through it */}
+                <div
+                  ref={(el) => { blockRefs.current[id] = el }}
+                  style={{
+                    flex: 1, minWidth: 0,
+                    display: "flex", flexDirection: "column", gap: 8,
+                    paddingBottom: isLast ? 0 : 16,
+                  }}
+                >
                   {/* Route row */}
                   <div style={{
                     position: "relative",
@@ -150,16 +181,9 @@ export function RouteSequenceModal({
                     overflow: "hidden",
                     display: "flex", alignItems: "center", gap: 4,
                   }}>
-                    {/* Left rail */}
-                    <div style={{
-                      position: "absolute", top: 0, left: 0, bottom: 0, width: 6,
-                      backgroundColor: route.color,
-                    }} />
-                    {/* Truck icon + name */}
+                    <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 6, backgroundColor: route.color }} />
                     <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-                        <path d="M1.333 11.333h.667a2 2 0 004 0h4a2 2 0 004 0h.667V7.333l-2.334-3H10V3.333a.667.667 0 00-.667-.666H2A.667.667 0 001.333 3.333v8zM5.333 12a.667.667 0 110-1.334.667.667 0 010 1.334zM11.333 12a.667.667 0 110-1.334.667.667 0 010 1.334z" stroke="#A3A3A3" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
+                      <Truck size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
                       <span style={{
                         fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px",
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -167,7 +191,6 @@ export function RouteSequenceModal({
                         {route.truckName}
                       </span>
                     </div>
-                    {/* Orders badge */}
                     <div style={{
                       backgroundColor: "#111", borderRadius: 4,
                       padding: "2px 8px", flexShrink: 0,
@@ -184,9 +207,9 @@ export function RouteSequenceModal({
                     disabledTimes={disabledForRoute(id)}
                   />
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
         </div>
 
         {/* Footer */}

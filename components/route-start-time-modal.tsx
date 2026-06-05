@@ -1,6 +1,6 @@
 "use client"
 
-import { X } from "lucide-react"
+import { X, Truck } from "lucide-react"
 import { TimePicker } from "@/components/time-picker"
 
 interface ConflictRouteReadOnly {
@@ -39,6 +39,7 @@ export function RouteStartTimeModal({
   return (
     <div
       onClick={onCancel}
+      onMouseDown={(e) => e.stopPropagation()}
       style={{
         position: "fixed", inset: 0, zIndex: 10100,
         backgroundColor: "rgba(0,0,0,0.55)",
@@ -119,9 +120,7 @@ export function RouteStartTimeModal({
                 }} />
                 {/* Truck icon + name */}
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-                    <path d="M1.333 11.333h.667a2 2 0 004 0h4a2 2 0 004 0h.667V7.333l-2.334-3H10V3.333a.667.667 0 00-.667-.666H2A.667.667 0 001.333 3.333v8zM5.333 12a.667.667 0 110-1.334.667.667 0 010 1.334zM11.333 12a.667.667 0 110-1.334.667.667 0 010 1.334z" stroke="#A3A3A3" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <Truck size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
                   <span style={{
                     fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",

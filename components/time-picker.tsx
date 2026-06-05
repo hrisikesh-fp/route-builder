@@ -109,9 +109,12 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
         onClick={() => setOpen(v => !v)}
         style={{
           width: "100%", display: "flex", alignItems: "center", gap: 8,
-          padding: "8px 12px", backgroundColor: "transparent", border: "1px solid #333",
+          padding: "8px 12px", backgroundColor: "transparent",
+          border: open ? "1px solid #A3A3A3" : "1px solid #333",
+          boxShadow: open ? "0px 0px 0px 3px rgba(163,163,163,0.5)" : "none",
           borderRadius: 4, color: value ? "#E5E5E5" : "#737373", fontSize: 16,
           textAlign: "left", cursor: "pointer", fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+          transition: "border-color 150ms, box-shadow 150ms",
         }}
       >
         <Clock size={16} color="#737373" style={{ flexShrink: 0 }} />
@@ -133,8 +136,7 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
               <div style={colLabelStyle}>Hours</div>
               <div ref={hourScrollRef} className="tp-col" style={colScrollStyle}>
                 {Array.from({ length: 24 }, (_, h) => {
-                  const isDisabled = disabledTimes.some(t => t.startsWith(`${pad2(h)}:`))
-                  return renderScrollItem(h, h === draftH, () => setDraftH(h), isDisabled)
+                  return renderScrollItem(h, h === draftH, () => setDraftH(h), false)
                 })}
               </div>
             </div>

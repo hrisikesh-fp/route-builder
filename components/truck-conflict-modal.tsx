@@ -25,6 +25,7 @@ export function TruckConflictModal({ isOpen, truckName, conflictRoutes, onConfir
   return (
     <div
       onClick={onCancel}
+      onMouseDown={(e) => e.stopPropagation()}
       style={{
         position: "fixed", inset: 0, zIndex: 10100,
         backgroundColor: "rgba(0,0,0,0.55)",
