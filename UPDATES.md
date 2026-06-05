@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-06-04
+
+- **Multi-route conflict — Modal 1 (Truck)**: same truck selected for two routes now fires a read-only caution modal. Shows the conflicting route card. Confirm proceeds; Cancel reverts.
+- **Multi-route conflict — Modal 2 (Driver sequence)**: same driver on two routes fires a hard-block modal. Confirm stays disabled until both routes have a start time. Sequence badges (1, 2) derive from start time live — earlier start = Route 1. Already-taken times are blocked in the picker.
+- **Multi-route conflict — Modal 3 (Route Start Time)**: ⋮ menu on any route card shows "Route Start Time" when that driver has a conflict. Opens a single-time-input modal; same-driver routes shown read-only for context.
+- **Save Map View**: new MapPinned button in the floating map controls. Click to save camera position (center, zoom, bearing, pitch) to localStorage; click again to fly back. Persists across refreshes.
+- **Lasso icon updated** to `LassoSelect` (cursor variant). Compass button removed. All map control buttons standardised to 32px.
+
+---
+
 ## 2026-06-03
 
 - **Edit Order — customer card redesign**: the read-only customer/ship-to card at the top of the Edit Order modal now matches Figma — `#282828` bg, 4px radius, no border, customer name and ship-to on one row separated by a grey dot, map pin icon at 16px.
