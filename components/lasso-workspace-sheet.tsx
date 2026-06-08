@@ -574,9 +574,9 @@ function RouteCardCollapsed({
               {/* Right: L1 capacity delta — dotted underline, tooltip on hover */}
               {validation && validation.collapsedBannerType === "orange" && validation.l1.status !== "ok" && validation.collapsedBannerDelta && (
                 <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, cursor: "default", marginLeft: 8 }}>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger style={{ background: "none", border: "none", padding: 0, cursor: "default" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 8 }}>
                         {validation.l1.status === "exceeding"
                           ? <ArrowUp size={16} color="#fb923c" style={{ flexShrink: 0 }} />
                           : <ArrowDown size={16} color="#fb923c" style={{ flexShrink: 0 }} />}
@@ -590,7 +590,7 @@ function RouteCardCollapsed({
                         </span>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>
+                    <TooltipContent side="top" sideOffset={4}>
                       {validation.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"}
                     </TooltipContent>
                   </Tooltip>
