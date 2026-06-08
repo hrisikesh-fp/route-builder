@@ -4116,7 +4116,7 @@ export function LassoWorkspaceSheet({
                                   ...(truckDropupEnabled
                                     ? { bottom: "calc(100% - 44px)", top: "auto" }
                                     : { top: 44, bottom: "auto" }),
-                                  right: 0, width: 520, zIndex: 999,
+                                  right: 0, width: 480, zIndex: 999,
                                   backgroundColor: "#1b1b1b",
                                   border: "1px solid #333", borderRadius: 4,
                                   boxShadow: "0 8px 24px rgba(0,0,0,0.6)", overflow: "hidden",
