@@ -19,6 +19,7 @@ import {
   MapPinIcon,
   Truck,
   Droplet,
+  Gauge,
 } from "lucide-react"
 import { mockHubs, mockExtractionOrders, shipTosWithoutOrders, mockDrivers, mockRoutes } from "@/lib/mock-data"
 
@@ -456,6 +457,10 @@ export function FilterSideSheet({
   const [transferChecked, setTransferChecked] = useState(false)
   const [extractionChecked, setExtractionChecked] = useState(false)
   
+  // Order Creation Type checkboxes
+  const [tankMonitorsChecked, setTankMonitorsChecked] = useState(false)
+  const [othersChecked, setOthersChecked] = useState(false)
+
   // Order Status checkboxes
   const [scheduledChecked, setScheduledChecked] = useState(false)
   const [unassignedChecked, setUnassignedChecked] = useState(false)
@@ -476,8 +481,9 @@ export function FilterSideSheet({
     appliedTrucks.size > 0,
     appliedDrivers.size > 0,
     appliedProducts.size > 0,
-    deliveryChecked, loadChecked, transferChecked, extractionChecked,
     scheduledChecked, unassignedChecked,
+    tankMonitorsChecked, othersChecked,
+    deliveryChecked, loadChecked, transferChecked, extractionChecked,
     highChecked, mediumChecked, lowChecked, naChecked,
   ].filter(Boolean).length
 
@@ -579,12 +585,14 @@ export function FilterSideSheet({
     setAppliedDrivers(new Set())
     setAppliedTrucks(new Set())
     setAppliedProducts(new Set())
+    setScheduledChecked(false)
+    setUnassignedChecked(false)
+    setTankMonitorsChecked(false)
+    setOthersChecked(false)
     setDeliveryChecked(false)
     setLoadChecked(false)
     setTransferChecked(false)
     setExtractionChecked(false)
-    setScheduledChecked(false)
-    setUnassignedChecked(false)
     setHighChecked(false)
     setMediumChecked(false)
     setLowChecked(false)
@@ -914,9 +922,89 @@ export function FilterSideSheet({
                 </div>
               </div>
 
-              {/* Order Type & Status Section */}
+              {/* Order Status & Type Section */}
               <div className="space-y-4">
-                <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Order Type & Status</h3>
+                <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Order Status & Type</h3>
+
+                {/* Order Status */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-[#A3A3A3]">
+                    <ClipboardList className="w-5 h-5" />
+                    <span style={{ fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Order Status</span>
+                  </div>
+
+                  <div className="space-y-1 pl-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id="scheduled"
+                          checked={scheduledChecked}
+                          onCheckedChange={(checked) => setScheduledChecked(checked as boolean)}
+                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                        />
+                        <label htmlFor="scheduled" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                          Scheduled
+                        </label>
+                      </div>
+                      <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>37</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id="unassigned"
+                          checked={unassignedChecked}
+                          onCheckedChange={(checked) => setUnassignedChecked(checked as boolean)}
+                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                        />
+                        <label htmlFor="unassigned" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                          Unassigned
+                        </label>
+                      </div>
+                      <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>9</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Creation Type */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-[#A3A3A3]">
+                    <Gauge className="w-5 h-5" />
+                    <span style={{ fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Order Creation Type</span>
+                  </div>
+
+                  <div className="space-y-1 pl-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id="tank-monitors"
+                          checked={tankMonitorsChecked}
+                          onCheckedChange={(checked) => setTankMonitorsChecked(checked as boolean)}
+                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                        />
+                        <label htmlFor="tank-monitors" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                          Tank Monitors
+                        </label>
+                      </div>
+                      <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>46</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id="others"
+                          checked={othersChecked}
+                          onCheckedChange={(checked) => setOthersChecked(checked as boolean)}
+                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                        />
+                        <label htmlFor="others" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                          Others
+                        </label>
+                      </div>
+                      <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>0</span>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Order Type */}
                 <div className="space-y-3">
@@ -988,61 +1076,24 @@ export function FilterSideSheet({
                   </div>
                 </div>
 
-                {/* Order Status */}
+                {/* Product */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-[#A3A3A3]">
-                    <ClipboardList className="w-5 h-5" />
-                    <span style={{ fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Order Status</span>
+                    <Droplet className="w-5 h-5" />
+                    <span style={{ fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Product</span>
                   </div>
-
-                  <div className="space-y-1 pl-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id="scheduled"
-                          checked={scheduledChecked}
-                          onCheckedChange={(checked) => setScheduledChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
-                        />
-                        <label htmlFor="scheduled" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
-                          Scheduled
-                        </label>
-                      </div>
-                      <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>37</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id="unassigned"
-                          checked={unassignedChecked}
-                          onCheckedChange={(checked) => setUnassignedChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
-                        />
-                        <label htmlFor="unassigned" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
-                          Unassigned
-                        </label>
-                      </div>
-                      <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>9</span>
-                    </div>
-                  </div>
+                  <MultiSelectFilterDropdown
+                    label="Product"
+                    icon={<Droplet className="w-5 h-5" />}
+                    sections={productSections}
+                    applied={appliedProducts}
+                    onApplyChange={(next) => {
+                      setAppliedProducts(next)
+                      onProductSelectionChange?.(next)
+                    }}
+                    searchPlaceholder="Search Products"
+                  />
                 </div>
-              </div>
-
-              {/* Product Section */}
-              <div className="space-y-4">
-                <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Product</h3>
-                <MultiSelectFilterDropdown
-                  label="Product"
-                  icon={<Droplet className="w-5 h-5" />}
-                  sections={productSections}
-                  applied={appliedProducts}
-                  onApplyChange={(next) => {
-                    setAppliedProducts(next)
-                    onProductSelectionChange?.(next)
-                  }}
-                  searchPlaceholder="Search Products"
-                />
               </div>
 
               {/* Assets Section */}
