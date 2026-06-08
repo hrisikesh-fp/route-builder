@@ -3023,6 +3023,9 @@ export function LassoWorkspaceSheet({
   const [cardTruckSearch, setCardTruckSearch] = useState("")
   const [truckSearchExpanded, setTruckSearchExpanded] = useState(false)
   const [truckSearchAnchorRect, setTruckSearchAnchorRect] = useState<DOMRect | null>(null)
+  const [truckRowHovered, setTruckRowHovered] = useState(false)
+  const [trailerRowHovered, setTrailerRowHovered] = useState<0 | 1 | 2>(0)
+  const [infoTooltipTarget, setInfoTooltipTarget] = useState<{ x: number; y: number } | null>(null)
 
   // Trailer state
   const [selectedTrailers, setSelectedTrailers] = useState<Record<string, { t1: TrailerItem | null; t2: TrailerItem | null }>>({})
@@ -4116,12 +4119,12 @@ export function LassoWorkspaceSheet({
                                   boxShadow: "0 8px 24px rgba(0,0,0,0.6)", overflow: "hidden",
                                 }}
                               >
-                                {/* Primary view: header + warning + truck pill + specs + trailers + add trailer */}
+                                {/* Primary view */}
                                 {showPrimaryView && (
                                   <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
-                                    {/* Capacity warning row */}
+                                    {/* Capacity warning banner */}
                                     {showWarning && (
-                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(251,146,60,0.05)", borderRadius: 4, padding: "6px 12px" }}>
                                         <span style={{ fontSize: 14, color: warnColor, lineHeight: "20px" }}>{warnText}</span>
                                         <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                                           {validation!.l1.status === "exceeding" ? <ArrowUp size={16} color={warnColor} /> : <ArrowDown size={16} color={warnColor} />}
@@ -4130,128 +4133,168 @@ export function LassoWorkspaceSheet({
                                       </div>
                                     )}
 
-                                    {/* Body */}
-                                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                                      {/* Truck group */}
-                                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                        {/* Truck field pill — opens truck search as fixed layer on top */}
+                                    {/* Body: truck card + trailer cards + add trailer */}
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+                                      {/* Truck card */}
+                                      <div
+                                        style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
+                                        onClick={(e) => {
+                                          if ((e.target as HTMLElement).closest("button")) return
+                                          if (truckSearchExpanded) {
+                                            setTruckSearchExpanded(false); setTruckSearchAnchorRect(null); setCardTruckSearch("")
+                                          } else {
+                                            setTruckSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect())
+                                            setTruckSearchExpanded(true); setCardTruckSearch("")
+                                          }
+                                        }}
+                                      >
                                         <div
-                                          onClick={(e) => {
-                                            if (truckSearchExpanded) {
-                                              setTruckSearchExpanded(false)
-                                              setTruckSearchAnchorRect(null)
-                                              setCardTruckSearch("")
-                                            } else {
-                                              setTruckSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect())
-                                              setTruckSearchExpanded(true)
-                                              setCardTruckSearch("")
-                                            }
-                                          }}
-                                          style={{
-                                            height: 40, display: "flex", alignItems: "center", gap: 8,
-                                            padding: "8px 12px",
-                                            border: truckSearchExpanded ? "1px solid #737373" : "1px solid #333",
-                                            borderRadius: 4, cursor: "pointer", background: "transparent",
-                                            boxShadow: truckSearchExpanded ? "0px 0px 0px 3px rgba(115,115,115,0.3)" : "0px 1px 2px rgba(0,0,0,0.05)",
-                                            transition: "border-color 0.15s, box-shadow 0.15s",
-                                          }}
-                                          onMouseEnter={(e) => { if (!truckSearchExpanded) (e.currentTarget as HTMLElement).style.borderColor = "#737373" }}
-                                          onMouseLeave={(e) => { if (!truckSearchExpanded) (e.currentTarget as HTMLElement).style.borderColor = "#333" }}
+                                          style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: truckRowHovered ? "#282828" : "transparent", transition: "background-color 0.1s" }}
+                                          onMouseEnter={() => setTruckRowHovered(true)}
+                                          onMouseLeave={() => { setTruckRowHovered(false); setInfoTooltipTarget(null) }}
                                         >
-                                          <Truck size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                                          <span style={{ flex: 1, fontSize: 16, lineHeight: "24px", color: currentTruck ? "#e5e5e5" : "#737373", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                            {currentTruck?.name ?? "Select Truck"}
-                                          </span>
-                                          {truckSearchExpanded ? <ChevronUp size={16} color="#A3A3A3" style={{ flexShrink: 0 }} /> : <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />}
-                                        </div>
-                                        {/* Specs row */}
-                                        {currentTruck && currentTruck.capacity && (
-                                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                            <div style={{ display: "flex", alignItems: "center" }}>
-                                              <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.capacity}</span>
-                                              <SpecsDot />
-                                              <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.compartments}</span>
-                                            </div>
-                                            <TypeBadge label={currentTruck.badge} />
+                                          {/* Left: name + specs */}
+                                          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                                            <span style={{ fontSize: 16, lineHeight: "24px", color: currentTruck ? "#e5e5e5" : "#737373", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                              {currentTruck?.name ?? "Select Truck"}
+                                            </span>
+                                            {currentTruck?.capacity && (
+                                              <div style={{ display: "flex", alignItems: "center" }}>
+                                                <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.capacity}</span>
+                                                <SpecsDot />
+                                                <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.compartments}</span>
+                                              </div>
+                                            )}
                                           </div>
-                                        )}
+                                          {/* Right: TypeBadge (fades on hover) + Info button (appears on hover) + Chevron */}
+                                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                                            {currentTruck && (
+                                              <div style={{ opacity: truckRowHovered ? 0 : 1, transition: "opacity 0.1s", pointerEvents: truckRowHovered ? "none" : "auto" }}>
+                                                <TypeBadge label={currentTruck.badge} />
+                                              </div>
+                                            )}
+                                            {currentTruck && truckRowHovered && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                                  setTruckDetailsAnchorLeft(r.left)
+                                                  setTruckDetailsAnchorRight(r.right)
+                                                  setTruckDetailsAnchorY(r.bottom)
+                                                  setTruckDetailsRouteId(routeId)
+                                                }}
+                                                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
+                                                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0 }}
+                                              >
+                                                <Info size={16} color="#fafafa" />
+                                              </button>
+                                            )}
+                                            <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0, transform: truckSearchExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                                          </div>
+                                        </div>
                                       </div>
 
-                                      {/* Trailer 1 */}
+                                      {/* Trailer 1 card */}
                                       {currentTruck && currentTrailers.t1 && (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                        <div style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
+                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setCardTrailerSlot(1); setCardTrailerSearch("") }}>
                                           <div
-                                            onClick={() => { setCardTrailerSlot(1); setCardTrailerSearch("") }}
-                                            style={{
-                                              height: 40, display: "flex", alignItems: "center", gap: 8,
-                                              padding: "8px 12px", border: "1px solid #333", borderRadius: 4,
-                                              cursor: "pointer", background: "transparent",
-                                              boxShadow: "0px 1px 2px rgba(0,0,0,0.05)", transition: "border-color 0.15s",
-                                            }}
-                                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#737373" }}
-                                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#333" }}
+                                            style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: trailerRowHovered === 1 ? "#282828" : "transparent", transition: "background-color 0.1s" }}
+                                            onMouseEnter={() => setTrailerRowHovered(1)}
+                                            onMouseLeave={() => { setTrailerRowHovered(0); setInfoTooltipTarget(null) }}
                                           >
-                                            <Caravan size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                                            <span style={{ flex: 1, fontSize: 16, lineHeight: "24px", color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTrailers.t1.name}</span>
-                                            <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                                          </div>
-                                          {currentTrailers.t1.capacity && (
-                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                              <div style={{ display: "flex", alignItems: "center" }}>
-                                                <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t1.capacity}</span>
-                                                <SpecsDot />
-                                                <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t1.compartments}</span>
-                                              </div>
-                                              <TypeBadge label="Trailer" />
+                                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                                              <span style={{ fontSize: 16, lineHeight: "24px", color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTrailers.t1.name}</span>
+                                              {currentTrailers.t1.capacity && (
+                                                <div style={{ display: "flex", alignItems: "center" }}>
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t1.capacity}</span>
+                                                  <SpecsDot />
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t1.compartments}</span>
+                                                </div>
+                                              )}
                                             </div>
-                                          )}
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                                              <div style={{ opacity: trailerRowHovered === 1 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: trailerRowHovered === 1 ? "none" : "auto" }}>
+                                                <TypeBadge label="Trailer" />
+                                              </div>
+                                              {trailerRowHovered === 1 && (
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
+                                                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                  style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0 }}
+                                                >
+                                                  <Info size={16} color="#fafafa" />
+                                                </button>
+                                              )}
+                                              <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                                            </div>
+                                          </div>
                                         </div>
                                       )}
 
-                                      {/* Trailer 2 */}
+                                      {/* Trailer 2 card */}
                                       {currentTruck && currentTrailers.t2 && (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                        <div style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
+                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setCardTrailerSlot(2); setCardTrailerSearch("") }}>
                                           <div
-                                            onClick={() => { setCardTrailerSlot(2); setCardTrailerSearch("") }}
-                                            style={{
-                                              height: 40, display: "flex", alignItems: "center", gap: 8,
-                                              padding: "8px 12px", border: "1px solid #333", borderRadius: 4,
-                                              cursor: "pointer", background: "transparent",
-                                              boxShadow: "0px 1px 2px rgba(0,0,0,0.05)", transition: "border-color 0.15s",
-                                            }}
-                                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#737373" }}
-                                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#333" }}
+                                            style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: trailerRowHovered === 2 ? "#282828" : "transparent", transition: "background-color 0.1s" }}
+                                            onMouseEnter={() => setTrailerRowHovered(2)}
+                                            onMouseLeave={() => { setTrailerRowHovered(0); setInfoTooltipTarget(null) }}
                                           >
-                                            <Caravan size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                                            <span style={{ flex: 1, fontSize: 16, lineHeight: "24px", color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTrailers.t2.name}</span>
-                                            <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                                          </div>
-                                          {currentTrailers.t2.capacity && (
-                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                              <div style={{ display: "flex", alignItems: "center" }}>
-                                                <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t2.capacity}</span>
-                                                <SpecsDot />
-                                                <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t2.compartments}</span>
-                                              </div>
-                                              <TypeBadge label="Trailer" />
+                                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                                              <span style={{ fontSize: 16, lineHeight: "24px", color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTrailers.t2.name}</span>
+                                              {currentTrailers.t2.capacity && (
+                                                <div style={{ display: "flex", alignItems: "center" }}>
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t2.capacity}</span>
+                                                  <SpecsDot />
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t2.compartments}</span>
+                                                </div>
+                                              )}
                                             </div>
-                                          )}
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                                              <div style={{ opacity: trailerRowHovered === 2 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: trailerRowHovered === 2 ? "none" : "auto" }}>
+                                                <TypeBadge label="Trailer" />
+                                              </div>
+                                              {trailerRowHovered === 2 && (
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
+                                                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                  style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0 }}
+                                                >
+                                                  <Info size={16} color="#fafafa" />
+                                                </button>
+                                              )}
+                                              <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                                            </div>
+                                          </div>
                                         </div>
                                       )}
 
                                       {/* Add Trailer button */}
                                       {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
-                                        <div
+                                        <button
                                           onClick={() => { setCardTrailerSlot(currentTrailers.t1 ? 2 : 1); setCardTrailerSearch("") }}
-                                          style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", width: "fit-content" }}
+                                          style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", background: "transparent", border: "none", padding: "4px 0", borderRadius: 4 }}
                                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7" }}
                                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1" }}
                                         >
                                           <Plus size={16} color="#e5e5e5" style={{ flexShrink: 0 }} />
                                           <span style={{ fontSize: 14, fontWeight: 500, color: "#e5e5e5", lineHeight: "20px" }}>Add Trailer</span>
-                                        </div>
+                                        </button>
                                       )}
                                     </div>
+                                  </div>
+                                )}
+
+                                {/* Info button "View Details" tooltip — fixed position, escapes overflow */}
+                                {infoTooltipTarget && (
+                                  <div style={{ position: "fixed", top: infoTooltipTarget.y - 42, left: infoTooltipTarget.x, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 9999 }}>
+                                    <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>View Details</div>
+                                    <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
                                   </div>
                                 )}
 
@@ -4377,32 +4420,6 @@ export function LassoWorkspaceSheet({
                                   </>
                                 )}
 
-                                {/* Footer: View Details — only in primary view when truck is selected */}
-                                {showPrimaryView && currentTruck && (
-                                  <div style={{ borderTop: "1px solid #333", height: 56, padding: "12px 16px", display: "flex", alignItems: "center" }}>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        const btnRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                                        setTruckDetailsAnchorLeft(btnRect.left)
-                                        setTruckDetailsAnchorRight(btnRect.right)
-                                        setTruckDetailsAnchorY(btnRect.top)
-                                        setTruckDetailsRouteId(routeId)
-                                        setTruckDropdownRouteId(null)
-                                      }}
-                                      style={{
-                                        height: 32, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8,
-                                        background: "transparent", border: "none", borderRadius: 4,
-                                        cursor: "pointer", color: "#fafafa", fontSize: 14, fontWeight: 500,
-                                        lineHeight: "20px", fontFamily: "Geist, sans-serif",
-                                      }}
-                                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)" }}
-                                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-                                    >
-                                      View Details
-                                    </button>
-                                  </div>
-                                )}
                               </div>
                               )
                             })()}
