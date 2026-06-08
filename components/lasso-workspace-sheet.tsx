@@ -574,7 +574,7 @@ function RouteCardCollapsed({
                 )}
               </div>
               {/* Right: L1 capacity delta — dotted underline + hover tooltip */}
-              {validation && validation.collapsedBannerType === "orange" && validation.l1.status !== "ok" && validation.collapsedBannerDelta && (
+              {validation && validation.l1.status !== "ok" && validation.collapsedBannerDelta && (
                 <div style={{ position: "relative", flexShrink: 0, marginLeft: 8 }}
                   onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setDeltaTooltipPos({ x: r.left + r.width / 2, y: r.bottom }) }}
                   onMouseLeave={() => setDeltaTooltipPos(null)}
