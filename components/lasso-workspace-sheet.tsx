@@ -386,6 +386,8 @@ function RouteCardCollapsed({
   onRouteStartTimeClick?: () => void
   validation?: ValidationResult | null
 }) {
+  const [deltaHovered, setDeltaHovered] = useState(false)
+
   // Determine config
   const config: "A" | "B" | "C" | "D" | "E" = !hasTruck ? "E"
     : !hasFuelCapacity ? "D"
@@ -571,33 +573,37 @@ function RouteCardCollapsed({
                   </>
                 )}
               </div>
-              {/* Right: L1 capacity delta — dotted underline, tooltip on hover */}
+              {/* Right: L1 capacity delta — dotted underline + hover tooltip */}
               {validation && validation.collapsedBannerType === "orange" && validation.l1.status !== "ok" && validation.collapsedBannerDelta && (
-                <TooltipProvider>
-                  <Tooltip delayDuration={200}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        style={{ background: "none", border: "none", padding: 0, cursor: "default", display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 8 }}
-                      >
-                        {validation.l1.status === "exceeding"
-                          ? <ArrowUp size={16} color="#fb923c" style={{ flexShrink: 0 }} />
-                          : <ArrowDown size={16} color="#fb923c" style={{ flexShrink: 0 }} />}
-                        <span style={{
-                          fontSize: 14, fontWeight: 400, color: "#fb923c", lineHeight: "20px",
-                          textDecoration: "underline dotted", textDecorationColor: "#fb923c",
-                          textUnderlinePosition: "from-font", textDecorationSkipInk: "none",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {validation.collapsedBannerDelta}
-                        </span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={4}>
+                <div style={{ position: "relative", flexShrink: 0, marginLeft: 8 }}
+                  onMouseEnter={() => setDeltaHovered(true)}
+                  onMouseLeave={() => setDeltaHovered(false)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, cursor: "default" }}>
+                    {validation.l1.status === "exceeding"
+                      ? <ArrowUp size={16} color="#fb923c" style={{ flexShrink: 0 }} />
+                      : <ArrowDown size={16} color="#fb923c" style={{ flexShrink: 0 }} />}
+                    <span style={{
+                      fontSize: 14, fontWeight: 400, color: "#fb923c", lineHeight: "20px",
+                      textDecoration: "underline dotted", textDecorationColor: "#fb923c",
+                      textUnderlinePosition: "from-font", textDecorationSkipInk: "none",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {validation.collapsedBannerDelta}
+                    </span>
+                  </div>
+                  {deltaHovered && (
+                    <div style={{
+                      position: "absolute", bottom: "calc(100% + 6px)", right: 0,
+                      backgroundColor: "#18181b", border: "1px solid #333",
+                      borderRadius: 6, padding: "4px 10px",
+                      fontSize: 12, fontWeight: 500, color: "#fafafa",
+                      whiteSpace: "nowrap", zIndex: 9999, pointerEvents: "none",
+                    }}>
                       {validation.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
