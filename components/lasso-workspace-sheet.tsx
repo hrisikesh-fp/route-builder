@@ -4095,12 +4095,9 @@ export function LassoWorkspaceSheet({
                               const currentTrailers = selectedTrailers[routeId] ?? { t1: null, t2: null }
                               const filteredTrucks = TRUCKS.filter((t) => t.name.toLowerCase().includes(cardTruckSearch.toLowerCase()))
 
-                              // Capacity warning info
-                              const isOrangeWarn = validation && validation.zoneB.visible && validation.collapsedBannerType === "orange"
-                              const isAmberWarn = validation && validation.zoneB.visible && validation.collapsedBannerType === "amber"
-                              const isRedWarn = validation && validation.zoneB.visible && validation.collapsedBannerType === "red"
-                              const showWarning = currentTruck && (isOrangeWarn || isAmberWarn || isRedWarn) && validation?.l1.status !== "ok"
-                              const warnColor = isRedWarn ? "#f87171" : isAmberWarn ? "#eab308" : "#fb923c"
+                              // Capacity warning — L1 only, always orange
+                              const showWarning = currentTruck && validation?.l1.status !== "ok"
+                              const warnColor = "#fb923c"
                               const warnText = validation?.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"
 
                               const showPrimaryView = cardTrailerSlot === 0
