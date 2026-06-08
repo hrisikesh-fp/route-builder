@@ -4112,6 +4112,7 @@ export function LassoWorkspaceSheet({
                               return (
                               <div
                                 data-truck-dropdown
+                                onClick={() => { if (trailerSearchSlot !== null) { setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch("") } }}
                                 style={{
                                   position: "absolute",
                                   ...(truckDropupEnabled
@@ -4305,7 +4306,7 @@ export function LassoWorkspaceSheet({
                                       {/* Add Trailer — ghost button */}
                                       {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
                                         <button
-                                          onClick={(e) => { const slot = currentTrailers.t1 ? 2 : 1; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(slot as 1|2); setCardTrailerSearch("") }}
+                                          onClick={(e) => { if (trailerSearchSlot !== null) { setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch(""); return; } const slot = currentTrailers.t1 ? 2 : 1; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(slot as 1|2); setCardTrailerSearch("") }}
                                           style={{ display: "inline-flex", alignItems: "center", alignSelf: "flex-start", gap: 8, cursor: "pointer", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif",
                                             background: trailerSearchSlot !== null ? "#282828" : "transparent" }}
                                           onMouseEnter={(e) => { if (!trailerSearchSlot) (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
@@ -4388,6 +4389,7 @@ export function LassoWorkspaceSheet({
                                 {trailerSearchSlot !== null && trailerSearchAnchorRect && (
                                   <div
                                     data-truck-dropdown
+                                    onClick={(e) => e.stopPropagation()}
                                     style={{
                                       position: "fixed",
                                       top: trailerSearchAnchorRect.bottom + 4,
