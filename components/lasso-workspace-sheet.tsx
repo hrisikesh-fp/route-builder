@@ -4349,9 +4349,11 @@ export function LassoWorkspaceSheet({
                                       <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
                                       <input type="text" placeholder="Search Truck" value={cardTruckSearch} onChange={(e) => setCardTruckSearch(e.target.value)} autoFocus
                                         style={{ flex: 1, fontSize: 14, fontWeight: 400, color: "#E5E5E5", background: "none", border: "none", outline: "none", lineHeight: "20px", padding: 0, fontFamily: "Geist, sans-serif" }} />
-                                      <button onClick={() => { setTruckSearchExpanded(false); setTruckSearchAnchorRect(null); setCardTruckSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
-                                        <X size={16} />
-                                      </button>
+                                      {cardTruckSearch && (
+                                        <button onClick={() => { setTruckSearchExpanded(false); setTruckSearchAnchorRect(null); setCardTruckSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
+                                          <X size={16} />
+                                        </button>
+                                      )}
                                     </div>
                                     <div style={{ padding: 4, maxHeight: 260, overflowY: "auto" }}>
                                       {filteredTrucks.map((truck) => {
@@ -4407,9 +4409,11 @@ export function LassoWorkspaceSheet({
                                       <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
                                       <input autoFocus value={cardTrailerSearch} onChange={(e) => setCardTrailerSearch(e.target.value)} placeholder="Search Trailer"
                                         style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif", padding: 0, lineHeight: "20px" }} />
-                                      <button onClick={() => { setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
-                                        <X size={16} />
-                                      </button>
+                                      {cardTrailerSearch && (
+                                        <button onClick={() => { setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
+                                          <X size={16} />
+                                        </button>
+                                      )}
                                     </div>
                                     <div style={{ padding: 4, maxHeight: 260, overflowY: "auto" }}>
                                       {TRAILERS.filter(t => t.name.toLowerCase().includes(cardTrailerSearch.toLowerCase())).map((t) => {
