@@ -594,13 +594,14 @@ function RouteCardCollapsed({
                   </div>
                   {deltaHovered && (
                     <div style={{
-                      position: "absolute", top: "calc(100% + 6px)", right: 0,
-                      backgroundColor: "#ffffff", borderRadius: 6, padding: "4px 10px",
-                      fontSize: 12, fontWeight: 500, color: "#09090b",
-                      whiteSpace: "nowrap", zIndex: 9999, pointerEvents: "none",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                      position: "absolute", top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      pointerEvents: "none", zIndex: 9999,
                     }}>
-                      {validation.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"}
+                      <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderBottom: "6px solid #E5E5E5" }} />
+                      <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+                        {validation.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"}
+                      </div>
                     </div>
                   )}
                 </div>
