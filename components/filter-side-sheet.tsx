@@ -19,7 +19,8 @@ import {
   MapPinIcon,
   Truck,
   Droplet,
-  Gauge,
+  ClipboardPlus,
+  ClipboardType,
 } from "lucide-react"
 import { mockHubs, mockExtractionOrders, shipTosWithoutOrders, mockDrivers, mockRoutes } from "@/lib/mock-data"
 
@@ -928,36 +929,34 @@ export function FilterSideSheet({
 
                 {/* Order Status */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-[#A3A3A3]">
-                    <ClipboardList className="w-5 h-5" />
+                  <div className="flex items-center gap-[6px] text-[#A3A3A3]">
+                    <ClipboardList className="w-4 h-4 flex-shrink-0" />
                     <span style={{ fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Order Status</span>
                   </div>
-
-                  <div className="space-y-1 pl-1">
+                  <div className="space-y-[4px]">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="scheduled"
                           checked={scheduledChecked}
                           onCheckedChange={(checked) => setScheduledChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                          className="bg-[#111] border-[#333] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                         />
-                        <label htmlFor="scheduled" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                        <label htmlFor="scheduled" className="cursor-pointer" style={{ color: "#E5E5E5", fontSize: "16px", fontWeight: 300, lineHeight: "24px" }}>
                           Scheduled
                         </label>
                       </div>
                       <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>37</span>
                     </div>
-
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="unassigned"
                           checked={unassignedChecked}
                           onCheckedChange={(checked) => setUnassignedChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                          className="bg-[#111] border-[#333] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                         />
-                        <label htmlFor="unassigned" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                        <label htmlFor="unassigned" className="cursor-pointer" style={{ color: "#E5E5E5", fontSize: "16px", fontWeight: 300, lineHeight: "24px" }}>
                           Unassigned
                         </label>
                       </div>
@@ -968,36 +967,34 @@ export function FilterSideSheet({
 
                 {/* Order Creation Type */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-[#A3A3A3]">
-                    <Gauge className="w-5 h-5" />
+                  <div className="flex items-center gap-[6px] text-[#A3A3A3]">
+                    <ClipboardPlus className="w-4 h-4 flex-shrink-0" />
                     <span style={{ fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Order Creation Type</span>
                   </div>
-
-                  <div className="space-y-1 pl-1">
+                  <div className="space-y-[4px]">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="tank-monitors"
                           checked={tankMonitorsChecked}
                           onCheckedChange={(checked) => setTankMonitorsChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                          className="bg-[#111] border-[#333] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                         />
-                        <label htmlFor="tank-monitors" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                        <label htmlFor="tank-monitors" className="cursor-pointer" style={{ color: "#E5E5E5", fontSize: "16px", fontWeight: 300, lineHeight: "24px" }}>
                           Tank Monitors
                         </label>
                       </div>
                       <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>46</span>
                     </div>
-
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="others"
                           checked={othersChecked}
                           onCheckedChange={(checked) => setOthersChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                          className="bg-[#111] border-[#333] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                         />
-                        <label htmlFor="others" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                        <label htmlFor="others" className="cursor-pointer" style={{ color: "#E5E5E5", fontSize: "16px", fontWeight: 300, lineHeight: "24px" }}>
                           Others
                         </label>
                       </div>
@@ -1008,66 +1005,62 @@ export function FilterSideSheet({
 
                 {/* Order Type */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-[#A3A3A3]">
-                    <OrderTypeIcon className="w-5 h-5" />
+                  <div className="flex items-center gap-[6px] text-[#A3A3A3]">
+                    <ClipboardType className="w-4 h-4 flex-shrink-0" />
                     <span style={{ fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Order Type</span>
                   </div>
-
-                  <div className="space-y-1 pl-1">
+                  <div className="space-y-[4px]">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="delivery"
                           checked={deliveryChecked}
                           onCheckedChange={(checked) => setDeliveryChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                          className="bg-[#111] border-[#333] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                         />
-                        <label htmlFor="delivery" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                        <label htmlFor="delivery" className="cursor-pointer" style={{ color: "#E5E5E5", fontSize: "16px", fontWeight: 300, lineHeight: "24px" }}>
                           Delivery
                         </label>
                       </div>
                       <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>34</span>
                     </div>
-
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="load"
                           checked={loadChecked}
                           onCheckedChange={(checked) => setLoadChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                          className="bg-[#111] border-[#333] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                         />
-                        <label htmlFor="load" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                        <label htmlFor="load" className="cursor-pointer" style={{ color: "#E5E5E5", fontSize: "16px", fontWeight: 300, lineHeight: "24px" }}>
                           Load
                         </label>
                       </div>
                       <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>5</span>
                     </div>
-
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="transfer"
                           checked={transferChecked}
                           onCheckedChange={(checked) => setTransferChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                          className="bg-[#111] border-[#333] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                         />
-                        <label htmlFor="transfer" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                        <label htmlFor="transfer" className="cursor-pointer" style={{ color: "#E5E5E5", fontSize: "16px", fontWeight: 300, lineHeight: "24px" }}>
                           Transfer
                         </label>
                       </div>
                       <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>7</span>
                     </div>
-
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Checkbox
                           id="extraction"
                           checked={extractionChecked}
                           onCheckedChange={(checked) => setExtractionChecked(checked as boolean)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
+                          className="bg-[#111] border-[#333] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                         />
-                        <label htmlFor="extraction" className="text-white cursor-pointer" style={{ fontSize: "14px", fontWeight: 400, lineHeight: "20px" }}>
+                        <label htmlFor="extraction" className="cursor-pointer" style={{ color: "#E5E5E5", fontSize: "16px", fontWeight: 300, lineHeight: "24px" }}>
                           Extraction
                         </label>
                       </div>
@@ -1077,14 +1070,11 @@ export function FilterSideSheet({
                 </div>
 
                 {/* Product */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-[#A3A3A3]">
-                    <Droplet className="w-5 h-5" />
-                    <span style={{ fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Product</span>
-                  </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <span style={{ color: "#A3A3A3", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>Product</span>
                   <MultiSelectFilterDropdown
                     label="Product"
-                    icon={<Droplet className="w-5 h-5" />}
+                    icon={<Droplet className="w-4 h-4" />}
                     sections={productSections}
                     applied={appliedProducts}
                     onApplyChange={(next) => {
