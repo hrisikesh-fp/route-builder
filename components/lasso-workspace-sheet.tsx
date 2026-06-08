@@ -4117,7 +4117,7 @@ export function LassoWorkspaceSheet({
                                     ? { bottom: "calc(100% - 44px)", top: "auto" }
                                     : { top: 44, bottom: "auto" }),
                                   right: 0, width: 520, zIndex: 999,
-                                  backgroundColor: "#111",
+                                  backgroundColor: "#1b1b1b",
                                   border: "1px solid #333", borderRadius: 4,
                                   boxShadow: "0 8px 24px rgba(0,0,0,0.6)", overflow: "hidden",
                                 }}
@@ -4278,13 +4278,13 @@ export function LassoWorkspaceSheet({
                                         </div>
                                       )}
 
-                                      {/* Add Trailer button */}
+                                      {/* Add Trailer — ghost button */}
                                       {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
                                         <button
                                           onClick={() => { setCardTrailerSlot(currentTrailers.t1 ? 2 : 1); setCardTrailerSearch("") }}
-                                          style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", background: "transparent", border: "none", padding: "4px 0", borderRadius: 4 }}
-                                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7" }}
-                                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1" }}
+                                          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer", background: "transparent", border: "1px solid #333", borderRadius: 4, height: 32, padding: "0 12px", width: "100%" }}
+                                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.04)" }}
+                                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
                                         >
                                           <Plus size={16} color="#e5e5e5" style={{ flexShrink: 0 }} />
                                           <span style={{ fontSize: 14, fontWeight: 500, color: "#e5e5e5", lineHeight: "20px" }}>Add Trailer</span>
