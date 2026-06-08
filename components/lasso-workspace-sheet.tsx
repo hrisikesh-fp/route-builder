@@ -4190,7 +4190,7 @@ export function LassoWorkspaceSheet({
                                                         } else {
                                                           setTruckSearchExpanded(false); setTruckSearchAnchorRect(null); setCardTruckSearch("")
                                                           const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                                                          setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId)
+                                                          setTruckDetailsAnchorLeft(r.right + 4); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId)
                                                         }
                                                       }}
                                                       onMouseEnter={(e) => {
@@ -4241,7 +4241,7 @@ export function LassoWorkspaceSheet({
                                                 </div>
                                                 <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", opacity: trailerRowHovered === 1 ? 1 : 0, transition: "opacity 0.1s" }}>
                                                   <button
-                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.right + 4); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
                                                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
                                                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
                                                     style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer" }}
@@ -4282,7 +4282,7 @@ export function LassoWorkspaceSheet({
                                                 </div>
                                                 <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", opacity: trailerRowHovered === 2 ? 1 : 0, transition: "opacity 0.1s" }}>
                                                   <button
-                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.right + 4); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
                                                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
                                                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
                                                     style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer" }}
