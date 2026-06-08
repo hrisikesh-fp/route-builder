@@ -4105,6 +4105,9 @@ export function LassoWorkspaceSheet({
 
                               const showPrimaryView = cardTrailerSlot === 0
 
+                              // Product counts from TRUCK_CAPACITIES
+                              const truckProductCount = currentTruck ? (TRUCK_CAPACITIES[currentTruck.id] ? Object.keys(TRUCK_CAPACITIES[currentTruck.id].productCapacities).length : 0) : 0
+
                               return (
                               <div
                                 data-truck-dropdown
@@ -4113,8 +4116,8 @@ export function LassoWorkspaceSheet({
                                   ...(truckDropupEnabled
                                     ? { bottom: "calc(100% - 44px)", top: "auto" }
                                     : { top: 44, bottom: "auto" }),
-                                  left: 20, right: 16, zIndex: 999,
-                                  backgroundColor: "#1b1b1b",
+                                  right: 0, width: 520, zIndex: 999,
+                                  backgroundColor: "#111",
                                   border: "1px solid #333", borderRadius: 4,
                                   boxShadow: "0 8px 24px rgba(0,0,0,0.6)", overflow: "hidden",
                                 }}
@@ -4164,6 +4167,7 @@ export function LassoWorkspaceSheet({
                                                 <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.capacity}</span>
                                                 <SpecsDot />
                                                 <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.compartments}</span>
+                                                {truckProductCount > 0 && <><SpecsDot /><span style={{ fontSize: 14, color: "#a3a3a3" }}>{truckProductCount} Products</span></>}
                                               </div>
                                             )}
                                           </div>
@@ -4343,6 +4347,7 @@ export function LassoWorkspaceSheet({
                                               {truck.capacity && (
                                                 <div style={{ display: "flex", alignItems: "center" }}>
                                                   <span style={{ fontSize: 14, color: "#A3A3A3" }}>{truck.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{truck.compartments}</span>
+                                                  {TRUCK_CAPACITIES[truck.id] && Object.keys(TRUCK_CAPACITIES[truck.id].productCapacities).length > 0 && <><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{Object.keys(TRUCK_CAPACITIES[truck.id].productCapacities).length} Products</span></>}
                                                 </div>
                                               )}
                                             </div>
