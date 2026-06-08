@@ -4108,9 +4108,6 @@ export function LassoWorkspaceSheet({
                                 {/* Primary view: header + warning + truck pill + specs + trailers + add trailer */}
                                 {showPrimaryView && (
                                   <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
-                                    {/* Header */}
-                                    <span style={{ fontSize: 18, fontWeight: 500, color: "#e5e5e5", lineHeight: "28px", fontFamily: "Geist, sans-serif" }}>Truck</span>
-
                                     {/* Capacity warning row */}
                                     {showWarning && (
                                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
