@@ -3026,6 +3026,8 @@ export function LassoWorkspaceSheet({
   const [truckRowHovered, setTruckRowHovered] = useState(false)
   const [trailerRowHovered, setTrailerRowHovered] = useState<0 | 1 | 2>(0)
   const [infoTooltipTarget, setInfoTooltipTarget] = useState<{ x: number; y: number } | null>(null)
+  const [trailerSearchAnchorRect, setTrailerSearchAnchorRect] = useState<DOMRect | null>(null)
+  const [trailerSearchSlot, setTrailerSearchSlot] = useState<1 | 2 | null>(null)
 
   // Trailer state
   const [selectedTrailers, setSelectedTrailers] = useState<Record<string, { t1: TrailerItem | null; t2: TrailerItem | null }>>({})
@@ -3213,6 +3215,8 @@ export function LassoWorkspaceSheet({
         setTruckSearchAnchorRect(null)
         setCardTrailerSlot(0)
         setCardTrailerSearch("")
+        setTrailerSearchSlot(null)
+        setTrailerSearchAnchorRect(null)
         document.querySelectorAll<HTMLElement>("[data-truck-dropdown]").forEach((el) => {
           el.style.backgroundColor = "transparent"
         })
@@ -4100,7 +4104,7 @@ export function LassoWorkspaceSheet({
                               const warnColor = "#fb923c"
                               const warnText = validation?.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"
 
-                              const showPrimaryView = cardTrailerSlot === 0
+                              const showPrimaryView = true
 
                               // Product counts from TRUCK_CAPACITIES
                               const truckProductCount = currentTruck ? (TRUCK_CAPACITIES[currentTruck.id] ? Object.keys(TRUCK_CAPACITIES[currentTruck.id].productCapacities).length : 0) : 0
@@ -4146,6 +4150,7 @@ export function LassoWorkspaceSheet({
                                           onClick={(e) => {
                                             if ((e.target as HTMLElement).closest("button")) return
                                             setTruckDetailsRouteId(null)
+                                            setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null)
                                             if (truckSearchExpanded) {
                                               setTruckSearchExpanded(false); setTruckSearchAnchorRect(null); setCardTruckSearch("")
                                             } else {
@@ -4218,7 +4223,7 @@ export function LassoWorkspaceSheet({
                                       {/* Trailer 1 card */}
                                       {currentTruck && currentTrailers.t1 && (
                                         <div style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
-                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setCardTrailerSlot(1); setCardTrailerSearch("") }}>
+                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(1); setCardTrailerSearch("") }}>
                                           <div
                                             style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: trailerRowHovered === 1 ? "#282828" : "transparent", transition: "background-color 0.1s" }}
                                             onMouseEnter={() => setTrailerRowHovered(1)}
@@ -4259,7 +4264,7 @@ export function LassoWorkspaceSheet({
                                       {/* Trailer 2 card */}
                                       {currentTruck && currentTrailers.t2 && (
                                         <div style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
-                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setCardTrailerSlot(2); setCardTrailerSearch("") }}>
+                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(2); setCardTrailerSearch("") }}>
                                           <div
                                             style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: trailerRowHovered === 2 ? "#282828" : "transparent", transition: "background-color 0.1s" }}
                                             onMouseEnter={() => setTrailerRowHovered(2)}
@@ -4300,7 +4305,7 @@ export function LassoWorkspaceSheet({
                                       {/* Add Trailer — ghost button */}
                                       {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
                                         <button
-                                          onClick={() => { setCardTrailerSlot(currentTrailers.t1 ? 2 : 1); setCardTrailerSearch("") }}
+                                          onClick={(e) => { const slot = currentTrailers.t1 ? 2 : 1; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(slot as 1|2); setCardTrailerSearch("") }}
                                           style={{ display: "inline-flex", alignItems: "center", alignSelf: "flex-start", gap: 8, cursor: "pointer", background: "transparent", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif" }}
                                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
                                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
@@ -4378,23 +4383,42 @@ export function LassoWorkspaceSheet({
                                   </div>
                                 )}
 
-                                {/* Trailer 1 search */}
-                                {cardTrailerSlot === 1 && (
-                                  <>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333", backgroundColor: "#111" }}>
+                                {/* Trailer search — fixed layer, same pattern as truck search */}
+                                {trailerSearchSlot !== null && trailerSearchAnchorRect && (
+                                  <div
+                                    data-truck-dropdown
+                                    style={{
+                                      position: "fixed",
+                                      top: trailerSearchAnchorRect.bottom + 4,
+                                      left: trailerSearchAnchorRect.left,
+                                      width: trailerSearchAnchorRect.width,
+                                      zIndex: 1100,
+                                      backgroundColor: "#111",
+                                      border: "1px solid #333",
+                                      borderRadius: 4,
+                                      boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #282828" }}>
                                       <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
                                       <input autoFocus value={cardTrailerSearch} onChange={(e) => setCardTrailerSearch(e.target.value)} placeholder="Search Trailer"
-                                        style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }} />
-                                      <button onClick={() => { setCardTrailerSlot(0); setCardTrailerSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
+                                        style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif", padding: 0, lineHeight: "20px" }} />
+                                      <button onClick={() => { setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
                                         <X size={16} />
                                       </button>
                                     </div>
-                                    <div style={{ padding: 4, maxHeight: 220, overflowY: "auto", backgroundColor: "#111" }}>
+                                    <div style={{ padding: 4, maxHeight: 260, overflowY: "auto" }}>
                                       {TRAILERS.filter(t => t.name.toLowerCase().includes(cardTrailerSearch.toLowerCase())).map((t) => {
-                                        const currentTrailers2 = selectedTrailers[routeId] ?? { t1: null, t2: null }
-                                        const isSelected = currentTrailers2.t1?.id === t.id
+                                        const ct = selectedTrailers[routeId] ?? { t1: null, t2: null }
+                                        const isSelected = trailerSearchSlot === 1 ? ct.t1?.id === t.id : ct.t2?.id === t.id
                                         return (
-                                          <div key={t.id} onClick={() => { setSelectedTrailers(prev => ({ ...prev, [routeId]: { ...currentTrailers, t1: t } })); setCardTrailerSlot(0); setCardTrailerSearch("") }}
+                                          <div key={t.id} onClick={() => {
+                                            const ct2 = selectedTrailers[routeId] ?? { t1: null, t2: null }
+                                            if (trailerSearchSlot === 1) setSelectedTrailers(prev => ({ ...prev, [routeId]: { ...ct2, t1: t } }))
+                                            else setSelectedTrailers(prev => ({ ...prev, [routeId]: { ...ct2, t2: t } }))
+                                            setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch("")
+                                          }}
                                             style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: isSelected ? "rgba(255,255,255,0.06)" : "transparent" }}
                                             onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.08)"}
                                             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? "rgba(255,255,255,0.06)" : "transparent" }}
@@ -4408,40 +4432,7 @@ export function LassoWorkspaceSheet({
                                         )
                                       })}
                                     </div>
-                                  </>
-                                )}
-
-                                {/* Trailer 2 search */}
-                                {cardTrailerSlot === 2 && (
-                                  <>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333", backgroundColor: "#111" }}>
-                                      <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
-                                      <input autoFocus value={cardTrailerSearch} onChange={(e) => setCardTrailerSearch(e.target.value)} placeholder="Search Trailer"
-                                        style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }} />
-                                      <button onClick={() => { setCardTrailerSlot(0); setCardTrailerSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
-                                        <X size={16} />
-                                      </button>
-                                    </div>
-                                    <div style={{ padding: 4, maxHeight: 220, overflowY: "auto", backgroundColor: "#111" }}>
-                                      {TRAILERS.filter(t => t.name.toLowerCase().includes(cardTrailerSearch.toLowerCase())).map((t) => {
-                                        const currentTrailers2 = selectedTrailers[routeId] ?? { t1: null, t2: null }
-                                        const isSelected = currentTrailers2.t2?.id === t.id
-                                        return (
-                                          <div key={t.id} onClick={() => { setSelectedTrailers(prev => ({ ...prev, [routeId]: { ...currentTrailers, t2: t } })); setCardTrailerSlot(0); setCardTrailerSearch("") }}
-                                            style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: isSelected ? "rgba(255,255,255,0.06)" : "transparent" }}
-                                            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.08)"}
-                                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? "rgba(255,255,255,0.06)" : "transparent" }}
-                                          >
-                                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                              <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                                              {t.capacity && <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.compartments}</span></div>}
-                                            </div>
-                                            <TypeBadge label="Trailer" />
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  </>
+                                  </div>
                                 )}
 
                               </div>
