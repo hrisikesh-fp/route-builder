@@ -4096,7 +4096,7 @@ export function LassoWorkspaceSheet({
                               const filteredTrucks = TRUCKS.filter((t) => t.name.toLowerCase().includes(cardTruckSearch.toLowerCase()))
 
                               // Capacity warning — L1 only, always orange
-                              const showWarning = currentTruck && validation?.l1.status !== "ok"
+                              const showWarning = !!currentTruck && !!validation && validation.l1.status !== "ok"
                               const warnColor = "#fb923c"
                               const warnText = validation?.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"
 
