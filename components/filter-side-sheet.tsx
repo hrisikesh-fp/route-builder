@@ -1086,22 +1086,6 @@ export function FilterSideSheet({
                 </div>
               </div>
 
-              {/* Product Section */}
-              <div className="space-y-4">
-                <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Product</h3>
-                <MultiSelectFilterDropdown
-                  label="Product"
-                  icon={<Droplet className="w-5 h-5" />}
-                  sections={productSections}
-                  applied={appliedProducts}
-                  onApplyChange={(next) => {
-                    setAppliedProducts(next)
-                    onProductSelectionChange?.(next)
-                  }}
-                  searchPlaceholder="Search Products"
-                />
-              </div>
-
               {/* Assets Section */}
               <div className="space-y-4">
                 <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Assets</h3>
