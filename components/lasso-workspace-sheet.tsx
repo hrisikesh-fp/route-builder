@@ -4305,10 +4305,11 @@ export function LassoWorkspaceSheet({
                                       {/* Add Trailer — ghost button */}
                                       {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
                                         <button
-                                          onClick={(e) => { const slot = currentTrailers.t1 ? 2 : 1; const panel = (e.currentTarget as HTMLElement).closest("[data-truck-dropdown]") as HTMLElement; setTrailerSearchAnchorRect(panel ? panel.getBoundingClientRect() : (e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(slot as 1|2); setCardTrailerSearch("") }}
-                                          style={{ display: "inline-flex", alignItems: "center", alignSelf: "flex-start", gap: 8, cursor: "pointer", background: "transparent", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif" }}
-                                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
-                                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
+                                          onClick={(e) => { const slot = currentTrailers.t1 ? 2 : 1; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(slot as 1|2); setCardTrailerSearch("") }}
+                                          style={{ display: "inline-flex", alignItems: "center", alignSelf: "flex-start", gap: 8, cursor: "pointer", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif",
+                                            background: trailerSearchSlot !== null ? "#282828" : "transparent" }}
+                                          onMouseEnter={(e) => { if (!trailerSearchSlot) (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
+                                          onMouseLeave={(e) => { if (!trailerSearchSlot) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
                                         >
                                           <Plus size={16} color="#e5e5e5" style={{ flexShrink: 0 }} />
                                           <span style={{ fontSize: 14, fontWeight: 500, color: "#e5e5e5", lineHeight: "20px" }}>Add Trailer</span>
@@ -4383,7 +4384,7 @@ export function LassoWorkspaceSheet({
                                   </div>
                                 )}
 
-                                {/* Trailer search — fixed layer, same pattern as truck search */}
+                                {/* Trailer search — fixed layer anchored below Add Trailer button */}
                                 {trailerSearchSlot !== null && trailerSearchAnchorRect && (
                                   <div
                                     data-truck-dropdown
@@ -4391,7 +4392,7 @@ export function LassoWorkspaceSheet({
                                       position: "fixed",
                                       top: trailerSearchAnchorRect.bottom + 4,
                                       left: trailerSearchAnchorRect.left,
-                                      width: trailerSearchAnchorRect.width,
+                                      width: 480,
                                       zIndex: 1100,
                                       backgroundColor: "#111",
                                       border: "1px solid #333",
