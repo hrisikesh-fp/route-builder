@@ -4223,7 +4223,7 @@ export function LassoWorkspaceSheet({
                                       {/* Trailer 1 card */}
                                       {currentTruck && currentTrailers.t1 && (
                                         <div style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
-                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(1); setCardTrailerSearch("") }}>
+                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; const panel = (e.currentTarget as HTMLElement).closest("[data-truck-dropdown]") as HTMLElement; setTrailerSearchAnchorRect(panel ? panel.getBoundingClientRect() : (e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(1); setCardTrailerSearch("") }}>
                                           <div
                                             style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: trailerRowHovered === 1 ? "#282828" : "transparent", transition: "background-color 0.1s" }}
                                             onMouseEnter={() => setTrailerRowHovered(1)}
@@ -4264,7 +4264,7 @@ export function LassoWorkspaceSheet({
                                       {/* Trailer 2 card */}
                                       {currentTruck && currentTrailers.t2 && (
                                         <div style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
-                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(2); setCardTrailerSearch("") }}>
+                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; const panel = (e.currentTarget as HTMLElement).closest("[data-truck-dropdown]") as HTMLElement; setTrailerSearchAnchorRect(panel ? panel.getBoundingClientRect() : (e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(2); setCardTrailerSearch("") }}>
                                           <div
                                             style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: trailerRowHovered === 2 ? "#282828" : "transparent", transition: "background-color 0.1s" }}
                                             onMouseEnter={() => setTrailerRowHovered(2)}
@@ -4305,7 +4305,7 @@ export function LassoWorkspaceSheet({
                                       {/* Add Trailer — ghost button */}
                                       {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
                                         <button
-                                          onClick={(e) => { const slot = currentTrailers.t1 ? 2 : 1; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(slot as 1|2); setCardTrailerSearch("") }}
+                                          onClick={(e) => { const slot = currentTrailers.t1 ? 2 : 1; const panel = (e.currentTarget as HTMLElement).closest("[data-truck-dropdown]") as HTMLElement; setTrailerSearchAnchorRect(panel ? panel.getBoundingClientRect() : (e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(slot as 1|2); setCardTrailerSearch("") }}
                                           style={{ display: "inline-flex", alignItems: "center", alignSelf: "flex-start", gap: 8, cursor: "pointer", background: "transparent", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif" }}
                                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
                                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
