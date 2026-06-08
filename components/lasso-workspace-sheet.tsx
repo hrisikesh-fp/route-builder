@@ -350,6 +350,7 @@ function RouteCardCollapsed({
   isSummaryOpen = false,
   hasDriverConflict = false,
   onRouteStartTimeClick,
+  validation = null,
 }: {
   color: string
   driverName: string
@@ -383,6 +384,7 @@ function RouteCardCollapsed({
   isSummaryOpen?: boolean
   hasDriverConflict?: boolean
   onRouteStartTimeClick?: () => void
+  validation?: ValidationResult | null
 }) {
   // Determine config
   const config: "A" | "B" | "C" | "D" | "E" = !hasTruck ? "E"
@@ -546,25 +548,53 @@ function RouteCardCollapsed({
           ) : config === "D" ? (
             <span style={{ fontSize: 14, fontWeight: 400, color: "#737373", lineHeight: "20px" }}>Selected truck has no fuel capacity</span>
           ) : (
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-                {cumulative ? cumulative.totalGal : truckCapacity}
-              </span>
-              {(cumulative ? cumulative.totalCompartments : compartmentCount) > 0 && (
-                <>
-                  <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0, margin: "0 6px" }} />
-                  <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-                    {cumulative ? cumulative.totalCompartments : compartmentCount} Compartments
-                  </span>
-                </>
-              )}
-              {productCount > 0 && (
-                <>
-                  <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0, margin: "0 6px" }} />
-                  <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-                    {productCount} Products
-                  </span>
-                </>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              {/* Left: specs */}
+              <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+                  {cumulative ? cumulative.totalGal : truckCapacity}
+                </span>
+                {(cumulative ? cumulative.totalCompartments : compartmentCount) > 0 && (
+                  <>
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0, margin: "0 6px" }} />
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+                      {cumulative ? cumulative.totalCompartments : compartmentCount} Compartments
+                    </span>
+                  </>
+                )}
+                {productCount > 0 && (
+                  <>
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#A3A3A3", flexShrink: 0, margin: "0 6px" }} />
+                    <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
+                      {productCount} Products
+                    </span>
+                  </>
+                )}
+              </div>
+              {/* Right: L1 capacity delta — dotted underline, tooltip on hover */}
+              {validation && validation.collapsedBannerType === "orange" && validation.l1.status !== "ok" && validation.collapsedBannerDelta && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, cursor: "default", marginLeft: 8 }}>
+                        {validation.l1.status === "exceeding"
+                          ? <ArrowUp size={16} color="#fb923c" style={{ flexShrink: 0 }} />
+                          : <ArrowDown size={16} color="#fb923c" style={{ flexShrink: 0 }} />}
+                        <span style={{
+                          fontSize: 14, fontWeight: 400, color: "#fb923c", lineHeight: "20px",
+                          textDecoration: "underline dotted", textDecorationColor: "#fb923c",
+                          textUnderlinePosition: "from-font", textDecorationSkipInk: "none",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {validation.collapsedBannerDelta}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {validation.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           )}
@@ -4160,7 +4190,8 @@ export function LassoWorkspaceSheet({
                               compartmentCount={truckProfile?.compartments.length ?? 0}
                               productCount={truckProfile ? Object.keys(truckProfile.productCapacities).length : 0}
                               isHovered={hoveredRouteId === routeId}
-                              hasBanner={!!(validation && validation.zoneB.visible)}
+                              hasBanner={!!(validation && validation.zoneB.visible && validation.collapsedBannerType !== "orange")}
+                              validation={validation}
                               hasTruck={!!(userSelectedTruck ?? truckProfile ?? route?.truckName)}
                               hasFuelCapacity={userSelectedTruck ? !!userSelectedTruck.capacity : (truckProfile ? truckProfile.totalCapacity > 0 : false)}
                               trailer1={selectedTrailers[routeId]?.t1 ?? null}
@@ -4680,8 +4711,8 @@ export function LassoWorkspaceSheet({
                             })()}
                             </div>{/* end card body (wedge scope) */}
 
-                            {/* Zone B: Banner — inside card wrapper, below wedge */}
-                            {validation && validation.zoneB.visible && validation.collapsedBannerType !== "none" && (() => {
+                            {/* Zone B: Banner — amber (L3) and red (L0) only; orange (L1) is now inline on the truck pill row */}
+                            {validation && validation.zoneB.visible && validation.collapsedBannerType !== "none" && validation.collapsedBannerType !== "orange" && (() => {
                               const isRed = validation.collapsedBannerType === "red"
                               const isAmber = validation.collapsedBannerType === "amber"
                               const isOrange = validation.collapsedBannerType === "orange"
