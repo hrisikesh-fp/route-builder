@@ -3206,7 +3206,7 @@ export function LassoWorkspaceSheet({
     if (!truckDropdownRouteId) return
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      if (!target.closest("[data-truck-dropdown]")) {
+      if (!target.closest("[data-truck-dropdown]") && !target.closest("[data-truck-details-sheet]")) {
         setTruckDropdownRouteId(null)
         setCardTruckSearch("")
         setTruckSearchExpanded(false)
