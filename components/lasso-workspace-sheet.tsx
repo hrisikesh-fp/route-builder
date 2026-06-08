@@ -4282,9 +4282,9 @@ export function LassoWorkspaceSheet({
                                       {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
                                         <button
                                           onClick={() => { setCardTrailerSlot(currentTrailers.t1 ? 2 : 1); setCardTrailerSearch("") }}
-                                          style={{ display: "inline-flex", alignItems: "center", alignSelf: "flex-start", gap: 8, cursor: "pointer", background: "#282828", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif" }}
-                                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#333" }}
-                                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
+                                          style={{ display: "inline-flex", alignItems: "center", alignSelf: "flex-start", gap: 8, cursor: "pointer", background: "transparent", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif" }}
+                                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
+                                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
                                         >
                                           <Plus size={16} color="#e5e5e5" style={{ flexShrink: 0 }} />
                                           <span style={{ fontSize: 14, fontWeight: 500, color: "#e5e5e5", lineHeight: "20px" }}>Add Trailer</span>
