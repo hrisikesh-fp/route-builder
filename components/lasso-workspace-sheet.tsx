@@ -4312,7 +4312,7 @@ export function LassoWorkspaceSheet({
                                       left: truckSearchAnchorRect.left,
                                       width: truckSearchAnchorRect.width,
                                       zIndex: 1100,
-                                      backgroundColor: "#1b1b1b",
+                                      backgroundColor: "#111",
                                       border: "1px solid #333",
                                       borderRadius: 4,
                                       boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
