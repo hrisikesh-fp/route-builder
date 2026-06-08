@@ -55,6 +55,11 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [appliedFilterCustomers, setAppliedFilterCustomers] = useState<Set<string>>(new Set())
   const [appliedFilterShipTos, setAppliedFilterShipTos] = useState<Set<string>>(new Set())
 
+  // Filter state for Truck, Driver, Product (captured for future wiring)
+  const [appliedFilterTrucks, setAppliedFilterTrucks] = useState<Set<string>>(new Set())
+  const [appliedFilterDrivers, setAppliedFilterDrivers] = useState<Set<string>>(new Set())
+  const [appliedFilterProducts, setAppliedFilterProducts] = useState<Set<string>>(new Set())
+
   const shipToCoordLookup = useMemo(() => buildShipToCoordLookup(), [])
   const customerCoordLookup = useMemo(() => buildCustomerCoordLookup(), [])
 
@@ -482,6 +487,9 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onCitySelectionChange={handleCitySelectionChange}
         onCustomerSelectionChange={setAppliedFilterCustomers}
         onShipToSelectionChange={setAppliedFilterShipTos}
+        onTruckSelectionChange={setAppliedFilterTrucks}
+        onDriverSelectionChange={setAppliedFilterDrivers}
+        onProductSelectionChange={setAppliedFilterProducts}
       />
 
 

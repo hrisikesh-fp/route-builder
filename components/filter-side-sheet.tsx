@@ -17,6 +17,8 @@ import {
   Fuel,
   RouteIcon,
   MapPinIcon,
+  Truck,
+  Droplet,
 } from "lucide-react"
 import { mockHubs, mockExtractionOrders, shipTosWithoutOrders, mockDrivers, mockRoutes } from "@/lib/mock-data"
 
@@ -30,6 +32,9 @@ interface FilterSideSheetProps {
   onCitySelectionChange?: (cityName: string | null) => void
   onCustomerSelectionChange?: (ids: Set<string>) => void
   onShipToSelectionChange?: (ids: Set<string>) => void
+  onTruckSelectionChange?: (ids: Set<string>) => void
+  onDriverSelectionChange?: (ids: Set<string>) => void
+  onProductSelectionChange?: (products: Set<string>) => void
 }
 
 interface CityData {
@@ -175,6 +180,43 @@ function buildDriverSections(): FilterSection[] {
       label: d.name,
       count: mockRoutes.filter((r: any) => r.driverId === d.id).length,
     }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  return [{ id: "all", items }]
+}
+
+function buildTruckSections(): FilterSection[] {
+  // Count = # of routes this truck is assigned to.
+  const byId = new Map<string, { name: string; count: number }>()
+  for (const r of mockRoutes) {
+    if (!(r as any).truckId) continue
+    const id = (r as any).truckId as string
+    const name = ((r as any).truckName as string) ?? id
+    const existing = byId.get(id)
+    if (existing) existing.count++
+    else byId.set(id, { name, count: 1 })
+  }
+  const items: FilterItem[] = Array.from(byId.entries())
+    .map(([id, v]) => ({ id, label: v.name, count: v.count }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  return [{ id: "all", items }]
+}
+
+function buildProductSections(): FilterSection[] {
+  // Count = # of delivery orders containing that product.
+  const byProduct = new Map<string, number>()
+  for (const o of mockExtractionOrders) {
+    if (o.orderType && o.orderType !== "D") continue
+    if (!o.productBreakdown) continue
+    const seen = new Set<string>()
+    for (const pb of o.productBreakdown) {
+      if (!seen.has(pb.product)) {
+        seen.add(pb.product)
+        byProduct.set(pb.product, (byProduct.get(pb.product) ?? 0) + 1)
+      }
+    }
+  }
+  const items: FilterItem[] = Array.from(byProduct.entries())
+    .map(([product, count]) => ({ id: product, label: product, count }))
     .sort((a, b) => a.label.localeCompare(b.label))
   return [{ id: "all", items }]
 }
@@ -384,6 +426,9 @@ export function FilterSideSheet({
   onCitySelectionChange,
   onCustomerSelectionChange,
   onShipToSelectionChange,
+  onTruckSelectionChange,
+  onDriverSelectionChange,
+  onProductSelectionChange,
 }: FilterSideSheetProps) {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
   const [tempSelectedCities, setTempSelectedCities] = useState<Set<string>>(new Set())
@@ -391,15 +436,19 @@ export function FilterSideSheet({
   const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set())
   const [citySearchQuery, setCitySearchQuery] = useState("")
 
-  // Applied selections for the new Customer / ShipTo / Driver filter dropdowns
+  // Applied selections for the new Customer / ShipTo / Driver / Truck / Product filter dropdowns
   const [appliedCustomers, setAppliedCustomers] = useState<Set<string>>(new Set())
   const [appliedShipTos, setAppliedShipTos] = useState<Set<string>>(new Set())
   const [appliedDrivers, setAppliedDrivers] = useState<Set<string>>(new Set())
+  const [appliedTrucks, setAppliedTrucks] = useState<Set<string>>(new Set())
+  const [appliedProducts, setAppliedProducts] = useState<Set<string>>(new Set())
 
   // Build the data sections once per render — derived from mock data
   const customerSections = buildCustomerSections()
   const shipToSections = buildShipToSections()
   const driverSections = buildDriverSections()
+  const truckSections = buildTruckSections()
+  const productSections = buildProductSections()
   
   // Order Type checkboxes
   const [deliveryChecked, setDeliveryChecked] = useState(false)
@@ -424,7 +473,9 @@ export function FilterSideSheet({
     appliedCities.size > 0,
     appliedCustomers.size > 0,
     appliedShipTos.size > 0,
+    appliedTrucks.size > 0,
     appliedDrivers.size > 0,
+    appliedProducts.size > 0,
     deliveryChecked, loadChecked, transferChecked, extractionChecked,
     scheduledChecked, unassignedChecked,
     highChecked, mediumChecked, lowChecked, naChecked,
@@ -526,6 +577,8 @@ export function FilterSideSheet({
     setAppliedCustomers(new Set())
     setAppliedShipTos(new Set())
     setAppliedDrivers(new Set())
+    setAppliedTrucks(new Set())
+    setAppliedProducts(new Set())
     setDeliveryChecked(false)
     setLoadChecked(false)
     setTransferChecked(false)
@@ -536,6 +589,9 @@ export function FilterSideSheet({
     setMediumChecked(false)
     setLowChecked(false)
     setNaChecked(false)
+    onTruckSelectionChange?.(new Set())
+    onDriverSelectionChange?.(new Set())
+    onProductSelectionChange?.(new Set())
     onCitySelectionChange?.(null)
   }
 
@@ -567,12 +623,13 @@ export function FilterSideSheet({
               <h2 style={{ color: "#FFF", fontSize: "18px", fontWeight: 500, lineHeight: "28px" }}>Filters</h2>
               {activeFilterCount > 0 && (
                 <span
-                  className="flex items-center justify-center text-xs font-medium text-white rounded"
+                  className="flex items-center justify-center text-xs font-medium rounded"
                   style={{
                     minWidth: "20px",
                     height: "20px",
                     padding: "0 6px",
-                    backgroundColor: "#3B82F6",
+                    backgroundColor: "#E5E5E5",
+                    color: "#171717",
                   }}
                 >
                   {activeFilterCount}
@@ -828,17 +885,33 @@ export function FilterSideSheet({
                 </div>
               </div>
 
-              {/* Driver Details Section */}
+              {/* Truck & Driver Section */}
               <div className="space-y-4">
-                <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Driver Details</h3>
-                <MultiSelectFilterDropdown
-                  label="Driver Group & Drivers"
-                  icon={<UsersGroupIcon className="w-5 h-5" />}
-                  sections={driverSections}
-                  applied={appliedDrivers}
-                  onApplyChange={setAppliedDrivers}
-                  searchPlaceholder="Search Drivers"
-                />
+                <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Truck & Driver</h3>
+                <div className="space-y-2">
+                  <MultiSelectFilterDropdown
+                    label="Truck"
+                    icon={<Truck className="w-5 h-5" />}
+                    sections={truckSections}
+                    applied={appliedTrucks}
+                    onApplyChange={(next) => {
+                      setAppliedTrucks(next)
+                      onTruckSelectionChange?.(next)
+                    }}
+                    searchPlaceholder="Search Trucks"
+                  />
+                  <MultiSelectFilterDropdown
+                    label="Driver Group & Drivers"
+                    icon={<UsersGroupIcon className="w-5 h-5" />}
+                    sections={driverSections}
+                    applied={appliedDrivers}
+                    onApplyChange={(next) => {
+                      setAppliedDrivers(next)
+                      onDriverSelectionChange?.(next)
+                    }}
+                    searchPlaceholder="Search Drivers"
+                  />
+                </div>
               </div>
 
               {/* Order Type & Status Section */}
@@ -954,6 +1027,22 @@ export function FilterSideSheet({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Product Section */}
+              <div className="space-y-4">
+                <h3 style={{ color: "#FFF", fontSize: "16px", fontWeight: 500, lineHeight: "24px" }}>Product</h3>
+                <MultiSelectFilterDropdown
+                  label="Product"
+                  icon={<Droplet className="w-5 h-5" />}
+                  sections={productSections}
+                  applied={appliedProducts}
+                  onApplyChange={(next) => {
+                    setAppliedProducts(next)
+                    onProductSelectionChange?.(next)
+                  }}
+                  searchPlaceholder="Search Products"
+                />
               </div>
 
               {/* Assets Section */}
