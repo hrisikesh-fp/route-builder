@@ -4178,7 +4178,7 @@ export function LassoWorkspaceSheet({
                                                 <div style={{ opacity: truckRowHovered ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
                                                   <TypeBadge label={currentTruck.badge} />
                                                 </div>
-                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: truckRowHovered ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", opacity: truckRowHovered ? 1 : 0, transition: "opacity 0.1s" }}>
                                                   <button
                                                     onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
                                                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
@@ -4219,7 +4219,7 @@ export function LassoWorkspaceSheet({
                                                 <div style={{ opacity: trailerRowHovered === 1 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
                                                   <TypeBadge label="Trailer" />
                                                 </div>
-                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: trailerRowHovered === 1 ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", opacity: trailerRowHovered === 1 ? 1 : 0, transition: "opacity 0.1s" }}>
                                                   <button
                                                     onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
                                                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
@@ -4260,7 +4260,7 @@ export function LassoWorkspaceSheet({
                                                 <div style={{ opacity: trailerRowHovered === 2 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
                                                   <TypeBadge label="Trailer" />
                                                 </div>
-                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: trailerRowHovered === 2 ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", opacity: trailerRowHovered === 2 ? 1 : 0, transition: "opacity 0.1s" }}>
                                                   <button
                                                     onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
                                                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
