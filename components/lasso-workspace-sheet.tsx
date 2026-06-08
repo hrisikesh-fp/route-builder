@@ -4282,7 +4282,7 @@ export function LassoWorkspaceSheet({
                                       {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
                                         <button
                                           onClick={() => { setCardTrailerSlot(currentTrailers.t1 ? 2 : 1); setCardTrailerSearch("") }}
-                                          style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", background: "transparent", border: "1px solid #333", borderRadius: 4, height: 32, padding: "0 12px" }}
+                                          style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", background: "transparent", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif" }}
                                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.04)" }}
                                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
                                         >
