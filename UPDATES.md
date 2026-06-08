@@ -27,7 +27,6 @@
 
 ---
 
->>>>>>> Stashed changes
 ## 2026-06-03
 
 - **Edit Order — customer card redesign**: the read-only customer/ship-to card at the top of the Edit Order modal now matches Figma — `#282828` bg, 4px radius, no border, customer name and ship-to on one row separated by a grey dot, map pin icon at 16px.
