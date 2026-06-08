@@ -3822,7 +3822,7 @@ export function LassoWorkspaceSheet({
                                   bottom: 0,
                                   width: 6,
                                   backgroundColor: color,
-                                  borderRadius: validation && validation.zoneB.visible ? "4px 0 0 0" : "4px 0 0 4px",
+                                  borderRadius: (validation && validation.zoneB.visible && validation.collapsedBannerType !== "orange") ? "4px 0 0 0" : "4px 0 0 4px",
                                   pointerEvents: "none",
                                   zIndex: 1,
                                 }}
