@@ -313,7 +313,7 @@ function MultiSelectFilterDropdown({
           height: 40,
           borderRadius: 4,
           backgroundColor: applied.size > 0 ? "#262626" : "transparent",
-          border: "1px solid #282828",
+          border: isOpen ? "1px solid rgba(255,255,255,0.15)" : "1px solid #282828",
         }}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -345,72 +345,100 @@ function MultiSelectFilterDropdown({
 
       {isOpen && (
         <div
-          className="absolute left-0 right-0 z-[1000] overflow-hidden flex flex-col rounded-lg"
+          className="absolute left-0 right-0 z-[1000] flex flex-col"
           style={{
             top: "calc(100% + 8px)",
             maxHeight: 400,
-            backgroundColor: "#1A1A1A",
-            border: "1px solid #282828",
-            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+            backgroundColor: "#282828",
+            border: "1px solid #333",
+            borderRadius: 4,
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1)",
           }}
         >
-          <div className="p-3 border-b border-white/10 flex-shrink-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3A3A3]" />
-              <Input
-                placeholder={searchPlaceholder}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="pl-10 bg-[#171717] border-white/10 text-white placeholder:text-[#A3A3A3] h-9"
-              />
-            </div>
+          {/* Search row */}
+          <div
+            className="flex items-center gap-2 px-3 flex-shrink-0"
+            style={{ paddingTop: 10, paddingBottom: 10, borderBottom: "1px solid #333" }}
+          >
+            <Search className="w-4 h-4 flex-shrink-0" style={{ color: "#A3A3A3" }} />
+            <input
+              placeholder={searchPlaceholder}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="flex-1 bg-transparent outline-none placeholder:text-[#A3A3A3]"
+              style={{ color: "#E5E5E5", fontSize: 14, lineHeight: "20px" }}
+            />
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          {/* Items */}
+          <div className="flex-1 overflow-y-auto p-[4px]">
             {filteredSections.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-[#A3A3A3]">No matches</div>
+              <div className="px-3 py-2" style={{ color: "#A3A3A3", fontSize: 14 }}>No matches</div>
             ) : (
-              filteredSections.map((section) => (
-                <div key={section.id}>
-                  {showSectionHeaders && section.label && (
-                    <div className="px-4 py-2">
-                      <span className="text-sm font-medium text-[#A3A3A3]">{section.label}</span>
-                    </div>
-                  )}
-                  {section.items.map((it) => (
-                    <div
-                      key={it.id}
-                      className="flex items-center justify-between px-4 py-2 hover:bg-white/5"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Checkbox
-                          checked={temp.has(it.id)}
-                          onCheckedChange={() => toggle(it.id)}
-                          className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black"
-                        />
-                        <span className="text-sm font-medium text-white truncate">{it.label}</span>
+              filteredSections.map((section) => {
+                const selectedItems = section.items.filter((it) => temp.has(it.id))
+                const unselectedItems = section.items.filter((it) => !temp.has(it.id))
+                const renderItem = (it: FilterItem) => (
+                  <div
+                    key={it.id}
+                    className="flex items-center gap-2 hover:bg-white/5 cursor-pointer"
+                    style={{ padding: "6px 8px", borderRadius: 4 }}
+                    onClick={() => toggle(it.id)}
+                  >
+                    <Checkbox
+                      checked={temp.has(it.id)}
+                      onCheckedChange={() => toggle(it.id)}
+                      className="bg-[rgba(255,255,255,0.05)] border-[rgba(255,255,255,0.15)] data-[state=checked]:bg-white data-[state=checked]:border-white [&>span>svg]:text-black flex-shrink-0"
+                    />
+                    <span className="flex-1 min-w-0 truncate" style={{ color: "#E5E5E5", fontSize: 14, fontWeight: 400, lineHeight: "20px" }}>
+                      {it.label}
+                    </span>
+                    <span className="flex-shrink-0" style={{ color: "#A3A3A3", fontSize: 12, lineHeight: "16px" }}>
+                      {it.count}
+                    </span>
+                  </div>
+                )
+                return (
+                  <div key={section.id}>
+                    {showSectionHeaders && section.label && (
+                      <div style={{ padding: "6px 8px" }}>
+                        <span style={{ color: "#A3A3A3", fontSize: 12, fontWeight: 500 }}>{section.label}</span>
                       </div>
-                      {it.count > 0 && (
-                        <span className="text-sm text-[#A3A3A3] flex-shrink-0 ml-2">{it.count}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))
+                    )}
+                    {selectedItems.map(renderItem)}
+                    {selectedItems.length > 0 && unselectedItems.length > 0 && (
+                      <div style={{ height: 1, margin: "4px 0", backgroundColor: "#333" }} />
+                    )}
+                    {unselectedItems.map(renderItem)}
+                  </div>
+                )
+              })
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-2 p-3 border-t border-white/10 flex-shrink-0">
-            <Button
-              variant="outline"
-              onClick={cancel}
-              className="text-white border-white/20 hover:bg-white/10 bg-transparent h-9"
+          {/* Footer */}
+          <div className="flex items-center justify-between flex-shrink-0" style={{ padding: 8 }}>
+            {temp.size > 0 ? (
+              <button
+                onClick={() => setTemp(new Set())}
+                style={{ height: 32, padding: "0 12px", border: "1px solid #333", borderRadius: 4, color: "#FAFAFA", fontSize: 14, fontWeight: 500, background: "transparent", cursor: "pointer" }}
+              >
+                Clear {temp.size} selected
+              </button>
+            ) : (
+              <button
+                onClick={cancel}
+                style={{ height: 32, padding: "0 12px", border: "1px solid #333", borderRadius: 4, color: "#FAFAFA", fontSize: 14, fontWeight: 500, background: "transparent", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={apply}
+              style={{ height: 32, padding: "0 12px", borderRadius: 4, backgroundColor: "#E5E5E5", color: "#171717", fontSize: 14, fontWeight: 500, opacity: temp.size > 0 ? 1 : 0.5, cursor: "pointer", border: "none" }}
             >
-              Cancel
-            </Button>
-            <Button onClick={apply} className="bg-white text-black hover:bg-white/90 h-9">
               Apply
-            </Button>
+            </button>
           </div>
         </div>
       )}
