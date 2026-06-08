@@ -4171,29 +4171,24 @@ export function LassoWorkspaceSheet({
                                               </div>
                                             )}
                                           </div>
-                                          {/* Right: TypeBadge (fades on hover) + Info button (appears on hover) + Chevron */}
+                                          {/* Right: TypeBadge fades / Info button appears — same slot, no layout shift */}
                                           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                                             {currentTruck && (
-                                              <div style={{ opacity: truckRowHovered ? 0 : 1, transition: "opacity 0.1s", pointerEvents: truckRowHovered ? "none" : "auto" }}>
-                                                <TypeBadge label={currentTruck.badge} />
+                                              <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center" }}>
+                                                <div style={{ opacity: truckRowHovered ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
+                                                  <TypeBadge label={currentTruck.badge} />
+                                                </div>
+                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: truckRowHovered ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
+                                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                    style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer" }}
+                                                  >
+                                                    <Info size={16} color="#fafafa" />
+                                                  </button>
+                                                </div>
                                               </div>
-                                            )}
-                                            {currentTruck && truckRowHovered && (
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation()
-                                                  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                                                  setTruckDetailsAnchorLeft(r.left)
-                                                  setTruckDetailsAnchorRight(r.right)
-                                                  setTruckDetailsAnchorY(r.bottom)
-                                                  setTruckDetailsRouteId(routeId)
-                                                }}
-                                                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
-                                                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
-                                                style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0 }}
-                                              >
-                                                <Info size={16} color="#fafafa" />
-                                              </button>
                                             )}
                                             <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0, transform: truckSearchExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
                                           </div>
@@ -4220,19 +4215,21 @@ export function LassoWorkspaceSheet({
                                               )}
                                             </div>
                                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                                              <div style={{ opacity: trailerRowHovered === 1 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: trailerRowHovered === 1 ? "none" : "auto" }}>
-                                                <TypeBadge label="Trailer" />
+                                              <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center" }}>
+                                                <div style={{ opacity: trailerRowHovered === 1 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
+                                                  <TypeBadge label="Trailer" />
+                                                </div>
+                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: trailerRowHovered === 1 ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
+                                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                    style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer" }}
+                                                  >
+                                                    <Info size={16} color="#fafafa" />
+                                                  </button>
+                                                </div>
                                               </div>
-                                              {trailerRowHovered === 1 && (
-                                                <button
-                                                  onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
-                                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
-                                                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
-                                                  style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0 }}
-                                                >
-                                                  <Info size={16} color="#fafafa" />
-                                                </button>
-                                              )}
                                               <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
                                             </div>
                                           </div>
@@ -4259,19 +4256,21 @@ export function LassoWorkspaceSheet({
                                               )}
                                             </div>
                                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                                              <div style={{ opacity: trailerRowHovered === 2 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: trailerRowHovered === 2 ? "none" : "auto" }}>
-                                                <TypeBadge label="Trailer" />
+                                              <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center" }}>
+                                                <div style={{ opacity: trailerRowHovered === 2 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
+                                                  <TypeBadge label="Trailer" />
+                                                </div>
+                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: trailerRowHovered === 2 ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
+                                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                    style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer" }}
+                                                  >
+                                                    <Info size={16} color="#fafafa" />
+                                                  </button>
+                                                </div>
                                               </div>
-                                              {trailerRowHovered === 2 && (
-                                                <button
-                                                  onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.left); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
-                                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
-                                                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
-                                                  style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0 }}
-                                                >
-                                                  <Info size={16} color="#fafafa" />
-                                                </button>
-                                              )}
                                               <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
                                             </div>
                                           </div>
