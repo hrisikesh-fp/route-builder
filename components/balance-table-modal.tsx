@@ -37,6 +37,7 @@ interface BalanceRow {
   type: "L" | "D" | "T"
   name: string
   balances: Record<string, number>
+  touched: Set<string>
 }
 
 function collectProducts(orders: ExtractionOrder[]): string[] {
@@ -88,15 +89,18 @@ function buildBalanceTable(
   for (const p of products) balance[p] = initialBalance[p] ?? 0
 
   const rows: BalanceRow[] = sorted.map((order) => {
+    const touched = new Set<string>()
     for (const pb of order.productBreakdown ?? []) {
       const sign = order.orderType === "L" ? 1 : -1
       balance[pb.product] = (balance[pb.product] ?? 0) + sign * pb.volume
+      touched.add(pb.product)
     }
     return {
       orderId: order.id,
       type: (order.orderType ?? "D") as "L" | "D" | "T",
       name: order.customerName,
       balances: { ...balance },
+      touched,
     }
   })
 
@@ -463,6 +467,13 @@ export function BalanceTableModal({
                   </span>
                 </td>
                 {products.map((p) => {
+                  if (!row.touched.has(p)) {
+                    return (
+                      <td key={`${row.orderId}-${p}`} style={bodyCellBase}>
+                        <span style={{ color: TEXT_4 }}>–</span>
+                      </td>
+                    )
+                  }
                   const bal = row.balances[p] ?? 0
                   const balNeg = bal < 0
                   const isFirstFailing = balNeg && firstFailingRowByProduct[p] === i
