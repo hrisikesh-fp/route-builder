@@ -420,7 +420,7 @@ export function RouteMap({
         map.setPaintProperty(layerId, "line-opacity", flickerOn ? 1 : 0.35)
       }, 250)
 
-      // 4. Clean up after 4000ms
+      // 4. Clean up after 3000ms
       setTimeout(() => {
         clearInterval(flickerInterval)
         if (activePopupRef.current === popup) {
@@ -442,7 +442,7 @@ export function RouteMap({
           isInWorkspace,
           isHighlighted,
         })
-      }, 4000)
+      }, 3000)
     }
 
     ;(window as any).__zoomToShipTo = (latitude: number, longitude: number, zoom = 13) => {
