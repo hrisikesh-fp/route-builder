@@ -390,7 +390,7 @@ export function RouteMap({
       map.fitBounds(bounds, {
         padding: { top: 100, right: 120, bottom: 100, left: 380 },
         maxZoom: 12,
-        duration: 700,
+        duration: 1400,
       })
 
       // 2. Tooltip at bounds center for 2000ms
@@ -420,7 +420,7 @@ export function RouteMap({
         map.setPaintProperty(layerId, "line-opacity", flickerOn ? 1 : 0.35)
       }, 250)
 
-      // 4. Clean up after 2000ms
+      // 4. Clean up after 4000ms
       setTimeout(() => {
         clearInterval(flickerInterval)
         if (activePopupRef.current === popup) {
@@ -442,7 +442,7 @@ export function RouteMap({
           isInWorkspace,
           isHighlighted,
         })
-      }, 2000)
+      }, 4000)
     }
 
     ;(window as any).__zoomToShipTo = (latitude: number, longitude: number, zoom = 13) => {
