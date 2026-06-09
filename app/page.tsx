@@ -60,9 +60,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [appliedFilterDrivers, setAppliedFilterDrivers] = useState<Set<string>>(new Set())
   const [appliedFilterProducts, setAppliedFilterProducts] = useState<Set<string>>(new Set())
 
-  // Route IDs that match the active truck filter — drives map highlight + zoom
-  const [filterHighlightedRouteIds, setFilterHighlightedRouteIds] = useState<string[]>([])
-
   const shipToCoordLookup = useMemo(() => buildShipToCoordLookup(), [])
   const customerCoordLookup = useMemo(() => buildCustomerCoordLookup(), [])
 
@@ -395,7 +392,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   addedLoadOrders={addedLoadOrders}
   selectedUnassignedOrderIds={selectedUnassignedIds}
   reorderedRoutes={reorderedRoutes}
-  filterHighlightedRouteIds={filterHighlightedRouteIds}
   />
 
 <MapControls
@@ -493,16 +489,12 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onShipToSelectionChange={setAppliedFilterShipTos}
         onTruckSelectionChange={(ids) => {
           setAppliedFilterTrucks(ids)
-          if (ids.size === 0) {
-            setFilterHighlightedRouteIds([])
-            return
-          }
+          if (ids.size === 0) return
           const matched = mockRoutes
             .filter((r: any) => r.truckId && ids.has(r.truckId))
             .map((r: any) => r.id)
-          setFilterHighlightedRouteIds(matched)
           if (matched.length > 0) {
-            setTimeout(() => (window as any).__zoomToRoute?.(matched[0]), 50)
+            setTimeout(() => (window as any).__flickerAndZoomToFilteredRoute?.(matched[0]), 50)
           }
         }}
         onDriverSelectionChange={setAppliedFilterDrivers}

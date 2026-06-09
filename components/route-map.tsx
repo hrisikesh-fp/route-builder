@@ -158,7 +158,6 @@ export interface RouteMapProps {
   hoveredWorkspaceOrderId?: string | null
   expandedRouteIds?: string[]
   isWorkspaceOpen?: boolean
-  filterHighlightedRouteIds?: string[]
   workspaceWidth?: number
   addedLoadOrders?: Record<string, ExtractionOrder[]>
   selectedUnassignedOrderIds?: string[]
@@ -206,7 +205,6 @@ export function RouteMap({
   selectedUnassignedOrderIds = [],
   isCreateOrderSideSheetOpen = false,
   reorderedRoutes = {},
-  filterHighlightedRouteIds = [],
 }: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null) // mapboxgl.Map
@@ -236,6 +234,9 @@ export function RouteMap({
   // Tracks the previous order count per route so we can detect "a stop was added" and run a
   // line-draw animation instead of the polyline silently snapping into place.
   const prevRouteOrderCountRef = useRef<Map<string, number>>(new Map())
+
+  const ordersRef = useRef(orders)
+  useEffect(() => { ordersRef.current = orders }, [orders])
 
   const selectedRouteIdsRef = useRef<string[]>(selectedRouteIds)
   const onRouteClickRef = useRef(onRouteClick)
@@ -371,6 +372,77 @@ export function RouteMap({
           duration: 800,
         })
       }
+    }
+
+    // Called when a truck is selected in the filter panel.
+    // Zooms to that route's bounds (with filter-panel padding) then flickers the
+    // route line + shows the tooltip for 2000ms — no other routes are dimmed.
+    ;(window as any).__flickerAndZoomToFilteredRoute = (routeId: string) => {
+      const map = mapRef.current
+      if (!map) return
+      const bounds = routeBoundsRef.current.get(routeId)
+      const layerId = `route-${routeId}`
+      if (!bounds || !map.getLayer(layerId)) return
+
+      const originalColor = findOriginalColor(routeId) ?? "#9A7BC7"
+
+      // 1. Zoom — 380px left accounts for the 320px filter panel
+      map.fitBounds(bounds, {
+        padding: { top: 100, right: 120, bottom: 100, left: 380 },
+        maxZoom: 12,
+        duration: 700,
+      })
+
+      // 2. Tooltip at bounds center for 2000ms
+      const center = bounds.getCenter()
+      const routeOrders = ordersRef.current
+        .filter((o: any) => o.routeId === routeId)
+        .sort((a: any, b: any) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
+      activePopupRef.current?.remove()
+      const tooltipHTML = renderRouteLineTooltip({ routeId, orders: routeOrders })
+      const popup = new mbRef.current.Popup({
+        closeButton: false,
+        className: "rb-route-popup",
+        offset: 8,
+      })
+        .setLngLat(center)
+        .setHTML(tooltipHTML)
+        .addTo(map)
+      activePopupRef.current = popup
+
+      // 3. Flicker the route line — toggle bright/dim every 250ms for 2000ms
+      let flickerOn = true
+      const flickerInterval = setInterval(() => {
+        if (!map.getLayer(layerId)) { clearInterval(flickerInterval); return }
+        flickerOn = !flickerOn
+        map.setPaintProperty(layerId, "line-color", originalColor)
+        map.setPaintProperty(layerId, "line-width", flickerOn ? 5 : 3)
+        map.setPaintProperty(layerId, "line-opacity", flickerOn ? 1 : 0.35)
+      }, 250)
+
+      // 4. Clean up after 2000ms
+      setTimeout(() => {
+        clearInterval(flickerInterval)
+        if (activePopupRef.current === popup) {
+          popup.remove()
+          activePopupRef.current = null
+        }
+        // Restore normal route style
+        if (!map.getLayer(layerId)) return
+        const settings = (window as any).__v0MapSettings ?? {}
+        const isInWorkspace = selectedRouteIdsRef.current.includes(routeId)
+        const isHighlighted =
+          (settings.checkedRouteIds?.includes(routeId) ?? false) ||
+          settings.hoveredWorkspaceRouteId === routeId ||
+          (settings.expandedRouteIds?.includes(routeId) ?? false)
+        applyRouteStyle(map, layerId, originalColor, {
+          routeLineDisplay: settings.routeLineDisplay ?? "grayscale",
+          reducedOpacity: settings.reducedOpacity ?? false,
+          isWorkspaceOpen: settings.isWorkspaceOpen ?? false,
+          isInWorkspace,
+          isHighlighted,
+        })
+      }, 2000)
     }
 
     ;(window as any).__zoomToShipTo = (latitude: number, longitude: number, zoom = 13) => {
@@ -1237,9 +1309,6 @@ export function RouteMap({
         checkedRouteIds.includes(routeId) ||
         hoveredWorkspaceRouteId === routeId ||
         expandedRouteIds.includes(routeId)
-      const isFilterMatch = filterHighlightedRouteIds.length > 0
-        ? filterHighlightedRouteIds.includes(routeId)
-        : null // null = filter not active
 
       applyRouteStyle(map, layerId, originalColor, {
         routeLineDisplay,
@@ -1247,10 +1316,9 @@ export function RouteMap({
         isWorkspaceOpen,
         isInWorkspace,
         isHighlighted,
-        isFilterMatch,
       })
     })
-  }, [selectedRouteIds, checkedRouteIds, hoveredWorkspaceRouteId, expandedRouteIds, routeLineDisplay, reducedOpacity, isWorkspaceOpen, mapReady, filterHighlightedRouteIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedRouteIds, checkedRouteIds, hoveredWorkspaceRouteId, expandedRouteIds, routeLineDisplay, reducedOpacity, isWorkspaceOpen, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── order pin hover from workspace ────────────────────────────────────────
   useEffect(() => {
@@ -1405,7 +1473,6 @@ interface RouteStyleOptions {
   isWorkspaceOpen: boolean
   isInWorkspace: boolean
   isHighlighted: boolean
-  isFilterMatch?: boolean | null // null = filter not active
 }
 
 function applyRouteStyle(
@@ -1414,17 +1481,7 @@ function applyRouteStyle(
   originalColor: string,
   opts: RouteStyleOptions,
 ) {
-  const { routeLineDisplay, reducedOpacity, isWorkspaceOpen, isInWorkspace, isHighlighted, isFilterMatch } = opts
-
-  // Filter-highlight mode: matching routes pop, non-matching routes fade to near-invisible.
-  if (isFilterMatch !== null && isFilterMatch !== undefined) {
-    if (map.getLayer(layerId)) {
-      map.setPaintProperty(layerId, "line-color", originalColor)
-      map.setPaintProperty(layerId, "line-width", isFilterMatch ? 5 : 2)
-      map.setPaintProperty(layerId, "line-opacity", isFilterMatch ? 1 : 0.08)
-    }
-    return
-  }
+  const { routeLineDisplay, reducedOpacity, isWorkspaceOpen, isInWorkspace, isHighlighted } = opts
   let color = DEFAULT_GREY
   let opacity = 0.8
   let weight = 3
