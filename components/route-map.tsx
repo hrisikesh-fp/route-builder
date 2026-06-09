@@ -420,14 +420,9 @@ export function RouteMap({
         map.setPaintProperty(layerId, "line-opacity", flickerOn ? 1 : 0.35)
       }, 250)
 
-      // 4. Clean up after 3000ms
+      // 4a. Stop flicker + restore route style after 3000ms
       setTimeout(() => {
         clearInterval(flickerInterval)
-        if (activePopupRef.current === popup) {
-          popup.remove()
-          activePopupRef.current = null
-        }
-        // Restore normal route style
         if (!map.getLayer(layerId)) return
         const settings = (window as any).__v0MapSettings ?? {}
         const isInWorkspace = selectedRouteIdsRef.current.includes(routeId)
@@ -443,6 +438,14 @@ export function RouteMap({
           isHighlighted,
         })
       }, 3000)
+
+      // 4b. Dismiss tooltip after 4000ms
+      setTimeout(() => {
+        if (activePopupRef.current === popup) {
+          popup.remove()
+          activePopupRef.current = null
+        }
+      }, 4000)
     }
 
     ;(window as any).__zoomToShipTo = (latitude: number, longitude: number, zoom = 13) => {
