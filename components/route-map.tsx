@@ -158,6 +158,7 @@ export interface RouteMapProps {
   hoveredWorkspaceOrderId?: string | null
   expandedRouteIds?: string[]
   isWorkspaceOpen?: boolean
+  filterHighlightedRouteIds?: string[]
   workspaceWidth?: number
   addedLoadOrders?: Record<string, ExtractionOrder[]>
   selectedUnassignedOrderIds?: string[]
@@ -205,6 +206,7 @@ export function RouteMap({
   selectedUnassignedOrderIds = [],
   isCreateOrderSideSheetOpen = false,
   reorderedRoutes = {},
+  filterHighlightedRouteIds = [],
 }: RouteMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null) // mapboxgl.Map
@@ -1235,6 +1237,9 @@ export function RouteMap({
         checkedRouteIds.includes(routeId) ||
         hoveredWorkspaceRouteId === routeId ||
         expandedRouteIds.includes(routeId)
+      const isFilterMatch = filterHighlightedRouteIds.length > 0
+        ? filterHighlightedRouteIds.includes(routeId)
+        : null // null = filter not active
 
       applyRouteStyle(map, layerId, originalColor, {
         routeLineDisplay,
@@ -1242,9 +1247,10 @@ export function RouteMap({
         isWorkspaceOpen,
         isInWorkspace,
         isHighlighted,
+        isFilterMatch,
       })
     })
-  }, [selectedRouteIds, checkedRouteIds, hoveredWorkspaceRouteId, expandedRouteIds, routeLineDisplay, reducedOpacity, isWorkspaceOpen, mapReady]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedRouteIds, checkedRouteIds, hoveredWorkspaceRouteId, expandedRouteIds, routeLineDisplay, reducedOpacity, isWorkspaceOpen, mapReady, filterHighlightedRouteIds]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── order pin hover from workspace ────────────────────────────────────────
   useEffect(() => {
@@ -1399,6 +1405,7 @@ interface RouteStyleOptions {
   isWorkspaceOpen: boolean
   isInWorkspace: boolean
   isHighlighted: boolean
+  isFilterMatch?: boolean | null // null = filter not active
 }
 
 function applyRouteStyle(
@@ -1407,7 +1414,17 @@ function applyRouteStyle(
   originalColor: string,
   opts: RouteStyleOptions,
 ) {
-  const { routeLineDisplay, reducedOpacity, isWorkspaceOpen, isInWorkspace, isHighlighted } = opts
+  const { routeLineDisplay, reducedOpacity, isWorkspaceOpen, isInWorkspace, isHighlighted, isFilterMatch } = opts
+
+  // Filter-highlight mode: matching routes pop, non-matching routes fade to near-invisible.
+  if (isFilterMatch !== null && isFilterMatch !== undefined) {
+    if (map.getLayer(layerId)) {
+      map.setPaintProperty(layerId, "line-color", originalColor)
+      map.setPaintProperty(layerId, "line-width", isFilterMatch ? 5 : 2)
+      map.setPaintProperty(layerId, "line-opacity", isFilterMatch ? 1 : 0.08)
+    }
+    return
+  }
   let color = DEFAULT_GREY
   let opacity = 0.8
   let weight = 3

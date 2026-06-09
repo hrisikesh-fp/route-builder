@@ -186,26 +186,59 @@ function buildDriverSections(): FilterSection[] {
   return [{ id: "all", items }]
 }
 
+// All H-* trucks from the workspace (excludes trailers and tractors)
+const ALL_TRUCKS: Array<{ id: string; name: string }> = [
+  { id: "H-109", name: "H-109 - 2018 Lube Box Truck" },
+  { id: "H-118", name: "H-118 - 2019 Kenworth Tank Wagon" },
+  { id: "H-107", name: "H-107 - 2017 Chevrolet Silverado 2500" },
+  { id: "H-215", name: "H-215 - 2022 Freightliner Cascadia" },
+  { id: "H-133", name: "H-133 - 2016 International ProStar" },
+  { id: "H-177", name: "H-177 - 2015 Mack Pinnacle Tank Wagon" },
+  { id: "H-162", name: "H-162 - 2019 Peterbilt 389 Flatbed" },
+  { id: "H-301", name: "H-301 - 2021 Peterbilt 389 Tanker" },
+  { id: "H-205", name: "H-205 - 2021 Peterbilt Tanker" },
+  { id: "H-310", name: "H-310 - 2020 Freightliner Tanker" },
+  { id: "H-442", name: "H-442 - 2018 Mack Tanker" },
+  { id: "H-556", name: "H-556 - 2022 International Tanker" },
+]
+
 function buildTruckSections(): FilterSection[] {
-  // Count = # of routes this truck is assigned to.
-  const byId = new Map<string, { name: string; count: number }>()
+  // Count = # of delivery stops on the route assigned to this truck.
+  const routeTruckMap = new Map<string, string>()
   for (const r of mockRoutes) {
-    if (!(r as any).truckId) continue
-    const id = (r as any).truckId as string
-    const name = ((r as any).truckName as string) ?? id
-    const existing = byId.get(id)
-    if (existing) existing.count++
-    else byId.set(id, { name, count: 1 })
+    if ((r as any).truckId) routeTruckMap.set(r.id, (r as any).truckId)
   }
-  const items: FilterItem[] = Array.from(byId.entries())
-    .map(([id, v]) => ({ id, label: v.name, count: v.count }))
-    .sort((a, b) => a.label.localeCompare(b.label))
+  const orderCountByTruck = new Map<string, number>()
+  for (const o of mockExtractionOrders) {
+    if (!o.routeId) continue
+    if (o.orderType && o.orderType !== "D") continue
+    const truckId = routeTruckMap.get(o.routeId)
+    if (!truckId) continue
+    orderCountByTruck.set(truckId, (orderCountByTruck.get(truckId) ?? 0) + 1)
+  }
+  const items: FilterItem[] = ALL_TRUCKS.map((t) => ({
+    id: t.id,
+    label: t.name,
+    count: orderCountByTruck.get(t.id) ?? 0,
+  }))
   return [{ id: "all", items }]
 }
 
+// Full product list — existing fuel types + additional mock products
+const ALL_PRODUCTS: Array<{ id: string; label: string }> = [
+  { id: "200*DIESEL-OFFROAD RED",    label: "200* Diesel Off-Road Red" },
+  { id: "200*DIESEL-ONROAD CLEAR",   label: "200* Diesel On-Road Clear" },
+  { id: "87 OCT W/ 10% ETH",        label: "87 Oct w/ 10% Ethanol" },
+  { id: "ULSD CLEAR DIESEL",        label: "ULSD Clear Diesel" },
+  { id: "DEF PACKAGED",             label: "DEF Packaged" },
+  { id: "PREMIUM-93",               label: "Premium Unleaded 93 Oct" },
+  { id: "JET-A",                    label: "Jet A" },
+  { id: "BIODIESEL-B20",            label: "Biodiesel B20" },
+]
+
 function buildProductSections(): FilterSection[] {
   // Count = # of delivery orders containing that product.
-  const byProduct = new Map<string, number>()
+  const countByProduct = new Map<string, number>()
   for (const o of mockExtractionOrders) {
     if (o.orderType && o.orderType !== "D") continue
     if (!o.productBreakdown) continue
@@ -213,13 +246,15 @@ function buildProductSections(): FilterSection[] {
     for (const pb of o.productBreakdown) {
       if (!seen.has(pb.product)) {
         seen.add(pb.product)
-        byProduct.set(pb.product, (byProduct.get(pb.product) ?? 0) + 1)
+        countByProduct.set(pb.product, (countByProduct.get(pb.product) ?? 0) + 1)
       }
     }
   }
-  const items: FilterItem[] = Array.from(byProduct.entries())
-    .map(([product, count]) => ({ id: product, label: product, count }))
-    .sort((a, b) => a.label.localeCompare(b.label))
+  const items: FilterItem[] = ALL_PRODUCTS.map((p) => ({
+    id: p.id,
+    label: p.label,
+    count: countByProduct.get(p.id) ?? 0,
+  }))
   return [{ id: "all", items }]
 }
 

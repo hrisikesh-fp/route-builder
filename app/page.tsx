@@ -55,10 +55,13 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [appliedFilterCustomers, setAppliedFilterCustomers] = useState<Set<string>>(new Set())
   const [appliedFilterShipTos, setAppliedFilterShipTos] = useState<Set<string>>(new Set())
 
-  // Filter state for Truck, Driver, Product (captured for future wiring)
+  // Filter state for Truck, Driver, Product
   const [appliedFilterTrucks, setAppliedFilterTrucks] = useState<Set<string>>(new Set())
   const [appliedFilterDrivers, setAppliedFilterDrivers] = useState<Set<string>>(new Set())
   const [appliedFilterProducts, setAppliedFilterProducts] = useState<Set<string>>(new Set())
+
+  // Route IDs that match the active truck filter — drives map highlight + zoom
+  const [filterHighlightedRouteIds, setFilterHighlightedRouteIds] = useState<string[]>([])
 
   const shipToCoordLookup = useMemo(() => buildShipToCoordLookup(), [])
   const customerCoordLookup = useMemo(() => buildCustomerCoordLookup(), [])
@@ -392,6 +395,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   addedLoadOrders={addedLoadOrders}
   selectedUnassignedOrderIds={selectedUnassignedIds}
   reorderedRoutes={reorderedRoutes}
+  filterHighlightedRouteIds={filterHighlightedRouteIds}
   />
 
 <MapControls
@@ -487,7 +491,20 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onCitySelectionChange={handleCitySelectionChange}
         onCustomerSelectionChange={setAppliedFilterCustomers}
         onShipToSelectionChange={setAppliedFilterShipTos}
-        onTruckSelectionChange={setAppliedFilterTrucks}
+        onTruckSelectionChange={(ids) => {
+          setAppliedFilterTrucks(ids)
+          if (ids.size === 0) {
+            setFilterHighlightedRouteIds([])
+            return
+          }
+          const matched = mockRoutes
+            .filter((r: any) => r.truckId && ids.has(r.truckId))
+            .map((r: any) => r.id)
+          setFilterHighlightedRouteIds(matched)
+          if (matched.length > 0) {
+            setTimeout(() => (window as any).__zoomToRoute?.(matched[0]), 50)
+          }
+        }}
         onDriverSelectionChange={setAppliedFilterDrivers}
         onProductSelectionChange={setAppliedFilterProducts}
       />
