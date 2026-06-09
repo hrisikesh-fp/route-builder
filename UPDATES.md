@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-06-08
+
+- **Truck selection moved into the route card (major)**: truck/trailer selection now happens in a 480px dropdown on the card, not the expanded view. Bordered truck/trailer rows; hover swaps the type badge for an info button → opens the Truck Details drawer beside it while the dropdown stays open. Truck/trailer search open as layers on top so the selection view never disappears. Ghost "Add Trailer" button.
+- **Capacity warning now inline**: total truck capacity (L1) over/under shows as an orange ↑/↓ delta with dotted underline + tooltip on the truck specs row (and atop the dropdown) instead of a banner. Route card banners are now reserved for stop runouts (amber) and product incompatibility (red). The delta shows even when a runout warning is also present.
+- **Filter panel expansion (RB-1.4)**: added Truck & Product filters, restructured Order Status & Type + new Order Creation Type filter, and redesigned the multi-select filter dropdowns to match Figma.
+- **Dev handoff package (RB-1.4)**: three plug-and-play handoff docs (truck dropdown, route card, validation framework) with file refs, code, Figma nodes, and tokens — bundled into PR #5.
+
+---
+
 ## 2026-06-05
 
 > Product-discovery / research-ops (not app code).

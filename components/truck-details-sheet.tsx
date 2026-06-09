@@ -145,6 +145,7 @@ export function TruckDetailsSheet({
         />
       )}
       <div
+        data-truck-details-sheet
         style={{
           ...containerStyle,
           backgroundColor: "#1f1f1f",

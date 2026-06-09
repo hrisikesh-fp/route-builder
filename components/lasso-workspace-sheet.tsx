@@ -386,6 +386,8 @@ function RouteCardCollapsed({
   onRouteStartTimeClick?: () => void
   validation?: ValidationResult | null
 }) {
+  const [deltaTooltipPos, setDeltaTooltipPos] = useState<{ x: number; y: number } | null>(null)
+
   // Determine config
   const config: "A" | "B" | "C" | "D" | "E" = !hasTruck ? "E"
     : !hasFuelCapacity ? "D"
@@ -407,7 +409,7 @@ function RouteCardCollapsed({
   return (
     <div
       style={{
-        borderRadius: hasBanner ? "4px 4px 0px 0px" : "4px 4px 0px 4px",
+        borderRadius: hasBanner ? "4px 4px 0px 0px" : "4px",
         boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
         overflow: "hidden",
         display: "flex",
@@ -571,30 +573,39 @@ function RouteCardCollapsed({
                   </>
                 )}
               </div>
-              {/* Right: L1 capacity delta — dotted underline, tooltip on hover */}
-              {validation && validation.collapsedBannerType === "orange" && validation.l1.status !== "ok" && validation.collapsedBannerDelta && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, cursor: "default", marginLeft: 8 }}>
-                        {validation.l1.status === "exceeding"
-                          ? <ArrowUp size={16} color="#fb923c" style={{ flexShrink: 0 }} />
-                          : <ArrowDown size={16} color="#fb923c" style={{ flexShrink: 0 }} />}
-                        <span style={{
-                          fontSize: 14, fontWeight: 400, color: "#fb923c", lineHeight: "20px",
-                          textDecoration: "underline dotted", textDecorationColor: "#fb923c",
-                          textUnderlinePosition: "from-font", textDecorationSkipInk: "none",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {validation.collapsedBannerDelta}
-                        </span>
+              {/* Right: L1 capacity delta — dotted underline + hover tooltip */}
+              {validation && validation.l1.status !== "ok" && validation.l1.diff !== 0 && (
+                <div style={{ position: "relative", flexShrink: 0, marginLeft: 8 }}
+                  onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setDeltaTooltipPos({ x: r.left + r.width / 2, y: r.bottom }) }}
+                  onMouseLeave={() => setDeltaTooltipPos(null)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, cursor: "default" }}>
+                    {validation.l1.status === "exceeding"
+                      ? <ArrowUp size={16} color="#fb923c" style={{ flexShrink: 0 }} />
+                      : <ArrowDown size={16} color="#fb923c" style={{ flexShrink: 0 }} />}
+                    <span style={{
+                      fontSize: 14, fontWeight: 400, color: "#fb923c", lineHeight: "20px",
+                      textDecoration: "underline dotted", textDecorationColor: "#fb923c",
+                      textUnderlinePosition: "from-font", textDecorationSkipInk: "none",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {Math.abs(validation.l1.diff).toLocaleString()} gal
+                    </span>
+                  </div>
+                  {deltaTooltipPos && (
+                    <div style={{
+                      position: "fixed", top: deltaTooltipPos.y + 8, left: deltaTooltipPos.x,
+                      transform: "translateX(-50%)",
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      pointerEvents: "none", zIndex: 9999,
+                    }}>
+                      <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderBottom: "6px solid #E5E5E5" }} />
+                      <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>
+                        {validation.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"}
                       </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {validation.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -1008,13 +1019,12 @@ function SeqLineBridge() {
   )
 }
 
-// Starting hub row: truck + hub combined card, arm at bottom-20 (hub row center), vertical line going DOWN only
-function TruckHubStartRow({ truckName, hubName, onTruckChange, validation, hasLoadOrders, onViewTruckDetails }: { truckName: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void; validation?: ValidationResult | null; hasLoadOrders?: boolean; onViewTruckDetails?: (cardLeft: number, cardRight: number, btnTop: number) => void }) {
+// Starting hub row: hub-only card, arm at bottom-20 (hub row center), vertical line going DOWN only
+function TruckHubStartRow({ hubName }: { hubName: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "row", gap: SEQ_TO_CARD_GAP }}>
       {/* Seq col: arm + vertical segment going DOWN from arm only */}
       <div style={{ width: SEQ_COL_W, flexShrink: 0, alignSelf: "stretch", position: "relative", overflow: "visible" }}>
-        {/* Horizontal arm — from SEQ_CENTER going right, at hub row center (bottom: HUB_ARM_OFFSET) */}
         <div
           style={{
             position: "absolute",
@@ -1026,7 +1036,6 @@ function TruckHubStartRow({ truckName, hubName, onTruckChange, validation, hasLo
             pointerEvents: "none",
           }}
         />
-        {/* Vertical line from arm down to bottom of row only (no upward overflow) */}
         <div
           style={{
             position: "absolute",
@@ -1040,387 +1049,16 @@ function TruckHubStartRow({ truckName, hubName, onTruckChange, validation, hasLo
         />
       </div>
 
-      {/* Truck + Hub combined card */}
-      <TruckHubCard truckNameProp={truckName} hubName={hubName} onTruckChange={onTruckChange} validation={validation} hasLoadOrders={hasLoadOrders} onViewTruckDetails={onViewTruckDetails} />
+      {/* Hub-only card */}
+      <TruckHubCard hubName={hubName} />
     </div>
   )
 }
 
-function TruckHubCard({ truckNameProp, hubName, onTruckChange, validation, hasLoadOrders, onViewTruckDetails }: { truckNameProp: string | null; hubName: string; onTruckChange?: (truck: TruckItem) => void; validation?: ValidationResult | null; hasLoadOrders?: boolean; onViewTruckDetails?: (cardLeft: number, cardRight: number, btnTop: number) => void }) {
-  const [selectedTruck, setSelectedTruck] = useState<TruckItem | null>(
-    () => (truckNameProp ? TRUCKS.find((t) => t.name === truckNameProp) ?? null : null)
-  )
-  const [trailer1, setTrailer1] = useState<TrailerItem | null>(null)
-  const [trailer2, setTrailer2] = useState<TrailerItem | null>(null)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [truckSearch, setTruckSearch] = useState(false)
-  const [truckQuery, setTruckQuery] = useState("")
-  const [trailerSlot, setTrailerSlot] = useState<0 | 1 | 2>(0)
-  const [trailerQuery, setTrailerQuery] = useState("")
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const truckSearchRef = useRef<HTMLInputElement>(null)
-  const trailerSearchRef = useRef<HTMLInputElement>(null)
-
-  // Initialize from prop
-  const displayName = selectedTruck ? selectedTruck.name : truckNameProp
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
-        setTruckSearch(false)
-        setTrailerSlot(0)
-        setTruckQuery("")
-        setTrailerQuery("")
-      }
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
-
-  useEffect(() => {
-    if (truckSearch) setTimeout(() => truckSearchRef.current?.focus(), 30)
-  }, [truckSearch])
-
-  useEffect(() => {
-    if (trailerSlot > 0) setTimeout(() => trailerSearchRef.current?.focus(), 30)
-  }, [trailerSlot])
-
-  const filteredTrucks = TRUCKS.filter((t) => t.name.toLowerCase().includes(truckQuery.toLowerCase()))
-  const filteredTrailers = TRAILERS.filter((t) => t.name.toLowerCase().includes(trailerQuery.toLowerCase()))
-
-  const handleSelectTruck = (item: TruckItem) => {
-    setSelectedTruck(item)
-    setTruckSearch(false)
-    setTruckQuery("")
-    setTrailer1(null)
-    setTrailer2(null)
-    setTrailerSlot(0)
-    onTruckChange?.(item)
-  }
-
-  // SpecsDot and TypeBadge are now module-level
-
+function TruckHubCard({ hubName }: { hubName: string }) {
   return (
     <div style={{ flex: 1 }}>
       <div style={{ backgroundColor: "#1F1F1F", borderRadius: 4, boxShadow: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.06)" }}>
-
-        {/* Truck row with dropdown */}
-        <div style={{ padding: 4, borderBottom: "1px solid #282828" }}>
-          <div ref={dropdownRef} style={{ position: "relative" }}>
-            {/* Trigger */}
-            <div
-              onClick={() => { setDropdownOpen((o) => !o); if (!dropdownOpen) setTruckSearch(false) }}
-              style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 4, backgroundColor: "transparent", cursor: "pointer" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <Truck size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 400, color: displayName ? "#E5E5E5" : "#737373", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {displayName ?? "Select Truck"}
-              </span>
-              <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0, transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
-            </div>
-
-            {/* Dropdown */}
-            {dropdownOpen && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0,
-                backgroundColor: (truckSearch || trailerSlot > 0) ? "#111" : "#1B1B1B",
-                border: "1px solid #333", borderRadius: 4, zIndex: 200,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.6)", overflow: "hidden",
-              }}>
-
-                {/* No truck selected state */}
-                {!selectedTruck && (
-                  <>
-                    {/* Always #1B1B1B so it visually floats above the #111 search area */}
-                    <div style={{ padding: 4, backgroundColor: "#1B1B1B", borderBottom: "1px solid #333" }}>
-                      <div
-                        onClick={() => setTruckSearch((s) => !s)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
-                          borderRadius: 2, cursor: "pointer", justifyContent: "space-between",
-                          backgroundColor: truckSearch ? "#282828" : "transparent",
-                        }}
-                        onMouseEnter={(e) => { if (!truckSearch) (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
-                        onMouseLeave={(e) => { if (!truckSearch) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
-                      >
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                          <span style={{ fontSize: 16, color: "#E5E5E5" }}>No truck selected</span>
-                          <span style={{ fontSize: 14, color: "#A3A3A3" }}>Last used: Truck #347</span>
-                        </div>
-                        <Plus size={20} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                      </div>
-                    </div>
-                    {truckSearch && (
-                      <>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
-                          <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
-                          <input ref={truckSearchRef} value={truckQuery} onChange={(e) => setTruckQuery(e.target.value)} placeholder="Search Truck" style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }} />
-                        </div>
-                        <div style={{ padding: 4, borderBottom: "1px solid #333", maxHeight: 220, overflowY: "auto" }}>
-                          {filteredTrucks.map((t) => (
-                            <div key={t.id} onClick={() => handleSelectTruck(t)}
-                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: "transparent" }}
-                              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.05)"}
-                              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"}
-                            >
-                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                                {t.capacity && (
-                                  <div style={{ display: "flex", alignItems: "center" }}>
-                                    <span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.compartments}</span>
-                                  </div>
-                                )}
-                              </div>
-                              <TypeBadge label={t.badge} />
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                    {!truckSearch && (
-                      <div style={{ padding: "8px 12px 10px" }}>
-                        <span style={{ fontSize: 14, color: "#737373" }}>Trailers can be added only after adding a Truck</span>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Truck selected state */}
-                {selectedTruck && (
-                  <>
-                    <div style={{ padding: 4, borderBottom: "1px solid #333" }}>
-                      <div onClick={() => { setTruckSearch((s) => !s); setTruckQuery("") }}
-                        style={{ display: "flex", alignItems: "center", gap: 16, padding: "6px 8px", borderRadius: 2, backgroundColor: "#1B1B1B", cursor: "pointer" }}
-                        onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#242424"}
-                        onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#1B1B1B"}
-                      >
-                        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                          <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedTruck.name}</span>
-                          <div style={{ display: "flex", alignItems: "center" }}>
-                            <span style={{ fontSize: 14, color: "#A3A3A3" }}>{selectedTruck.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{selectedTruck.compartments}</span>
-                          </div>
-                        </div>
-                        <TypeBadge label={selectedTruck.badge} />
-                        <ChevronDown size={16} color="#737373" style={{ flexShrink: 0 }} />
-                      </div>
-                    </div>
-
-                    {/* Change truck search */}
-                    {truckSearch && (
-                      <>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
-                          <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
-                          <input ref={truckSearchRef} value={truckQuery} onChange={(e) => setTruckQuery(e.target.value)} placeholder="Search Truck" style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }} />
-                        </div>
-                        <div style={{ padding: 4, borderBottom: "1px solid #333", maxHeight: 200, overflowY: "auto", backgroundColor: "#111" }}>
-                          {filteredTrucks.map((t) => (
-                            <div key={t.id} onClick={() => handleSelectTruck(t)}
-                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: t.id === selectedTruck.id ? "rgba(255,255,255,0.06)" : "transparent" }}
-                              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.08)"}
-                              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = t.id === selectedTruck.id ? "rgba(255,255,255,0.06)" : "transparent"}
-                            >
-                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                                {t.capacity && (
-                                  <div style={{ display: "flex", alignItems: "center" }}>
-                                    <span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.compartments}</span>
-                                  </div>
-                                )}
-                              </div>
-                              <TypeBadge label={t.badge} />
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-
-                    {/* Trailer section */}
-                    {!truckSearch && (
-                      <>
-                        {/* Trailer 1 selected */}
-                        {trailer1 && (
-                          <div style={{ padding: 4, borderBottom: "1px solid #333" }}>
-                            <div onClick={() => { setTrailerSlot(trailerSlot === 1 ? 0 : 1); setTrailerQuery("") }}
-                              style={{ display: "flex", alignItems: "center", gap: 16, padding: "6px 8px", borderRadius: 2, backgroundColor: "#1B1B1B", cursor: "pointer" }}
-                              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#242424"}
-                              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#1B1B1B"}
-                            >
-                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{trailer1.name}</span>
-                                <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{trailer1.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{trailer1.compartments}</span></div>
-                              </div>
-                              <TypeBadge label="Trailer" />
-                              <ChevronDown size={16} color="#737373" style={{ flexShrink: 0 }} />
-                            </div>
-                          </div>
-                        )}
-                        {trailerSlot === 1 && (
-                          <div style={{ borderBottom: "1px solid #333" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
-                              <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
-                              <input ref={trailerSearchRef} value={trailerQuery} onChange={(e) => setTrailerQuery(e.target.value)} placeholder="Search Trailer" style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }} />
-                            </div>
-                            <div style={{ padding: 4, maxHeight: 180, overflowY: "auto", backgroundColor: "#111" }}>
-                              {filteredTrailers.map((t) => (
-                                <div key={t.id} onClick={() => { setTrailer1(t); setTrailerSlot(0); setTrailerQuery("") }}
-                                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: "transparent" }}
-                                  onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.05)"}
-                                  onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"}
-                                >
-                                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                    <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                                    {t.capacity && <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.compartments}</span></div>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {/* Trailer 2 selected */}
-                        {trailer2 && (
-                          <div style={{ padding: 4, borderBottom: "1px solid #333" }}>
-                            <div onClick={() => { setTrailerSlot(trailerSlot === 2 ? 0 : 2); setTrailerQuery("") }}
-                              style={{ display: "flex", alignItems: "center", gap: 16, padding: "6px 8px", borderRadius: 2, backgroundColor: "#1B1B1B", cursor: "pointer" }}
-                              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#242424"}
-                              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#1B1B1B"}
-                            >
-                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{trailer2.name}</span>
-                                <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{trailer2.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{trailer2.compartments}</span></div>
-                              </div>
-                              <TypeBadge label="Trailer" />
-                              <ChevronDown size={16} color="#737373" style={{ flexShrink: 0 }} />
-                            </div>
-                          </div>
-                        )}
-                        {trailerSlot === 2 && (
-                          <div style={{ borderBottom: "1px solid #333" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
-                              <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
-                              <input ref={trailerSearchRef} value={trailerQuery} onChange={(e) => setTrailerQuery(e.target.value)} placeholder="Search Trailer" style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }} />
-                            </div>
-                            <div style={{ padding: 4, maxHeight: 180, overflowY: "auto", backgroundColor: "#111" }}>
-                              {filteredTrailers.map((t) => (
-                                <div key={t.id} onClick={() => { setTrailer2(t); setTrailerSlot(0); setTrailerQuery("") }}
-                                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: "transparent" }}
-                                  onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.05)"}
-                                  onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"}
-                                >
-                                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                    <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                                    {t.capacity && <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.compartments}</span></div>}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {/* Add Trailer button */}
-                        {!(trailer1 && trailer2) && trailerSlot === 0 && (
-                          <div style={{ padding: 4 }}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setTrailerQuery(""); if (!trailer1) setTrailerSlot(1); else setTrailerSlot(2) }}
-                              style={{ width: "100%", height: 32, display: "flex", alignItems: "center", gap: 8, padding: "0 12px", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer", color: "#FAFAFA", fontSize: 14, fontWeight: 500 }}
-                              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.06)"}
-                              onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"}
-                            >
-                              <Plus size={16} style={{ flexShrink: 0 }} /> Add Trailer
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          {/* Zone A: L2 info under truck row */}
-          {validation?.zoneA && validation.zoneA.color !== "none" && validation.zoneA.lines.length > 0 && (
-            <div style={{ paddingLeft: 36, paddingTop: 4, paddingBottom: 8 }}>
-              {validation.zoneA.lines.map((line, i) => (
-                <div key={i} style={{
-                  fontSize: 14,
-                  fontWeight: 400,
-                  color: "#fb923c",
-                  lineHeight: "20px",
-                }}>
-                  {line}
-                </div>
-              ))}
-            </div>
-          )}
-          {/* "No fuel loaded" — only when no validation AND no load orders */}
-          {(selectedTruck || truckNameProp) && hasLoadOrders === false && !validation && (
-            <div style={{ padding: "2px 12px 2px 36px" }}>
-              <span style={{ fontSize: 13, fontWeight: 400, color: "#fb923c" }}>
-                No fuel loaded. Add a load order to supply this route.
-              </span>
-            </div>
-          )}
-          {/* Truck message — mirrors banner: text left, arrow + delta far right.
-              Delta computed from l1.diff directly so it shows even when L3 is also firing. */}
-          {validation && validation.truckMessage && validation.zoneA.color === "none" && (
-            <div style={{ padding: "2px 12px 2px 36px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 14, fontWeight: 400, color: "#fb923c" }}>
-                {validation.truckMessage}
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                {validation.l1.status === "exceeding" && <ArrowUp size={16} color="#fb923c" />}
-                {validation.l1.status === "below" && <ArrowDown size={16} color="#fb923c" />}
-                {validation.l1.status !== "ok" && (
-                  <span style={{ fontSize: 14, fontWeight: 400, color: "#fb923c" }}>
-                    {Math.abs(validation.l1.diff).toLocaleString()} gal
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-          {/* View Truck Details — ghost button below truck row + messages.
-              4px top gap from preceding element via padding. Only rendered when a truck is selected. */}
-          {(selectedTruck || truckNameProp) && (
-            <div style={{ padding: "4px 0px 0px 24px" }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  // Anchor to the BUTTON itself (not the route card) so the sheet sits
-                  // right next to where the user clicked, not way off at the card's left edge.
-                  const btnRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                  onViewTruckDetails?.(
-                    btnRect.left,
-                    btnRect.right,
-                    btnRect.top,
-                  )
-                }}
-                style={{
-                  height: 32,
-                  padding: "8px 12px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  color: "#E5E5E5",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  fontFamily: "Geist, sans-serif",
-                  lineHeight: "20px",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.06)" }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
-              >
-                View Truck Details
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Hub row */}
         <div style={{ padding: 4 }}>
           <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 4, backgroundColor: "transparent", cursor: "pointer" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
             <Home size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
@@ -1732,8 +1370,8 @@ function ExpandedRouteCard({
   return (
     <div style={{ paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column" }}>
 
-      {/* Starting hub: truck + hub combined, arm → down only */}
-      <TruckHubStartRow truckName={truckName} hubName={hubName} onTruckChange={onTruckChange} validation={validation} hasLoadOrders={hasLoadOrders} onViewTruckDetails={onViewTruckDetails} />
+      {/* Starting hub row — arm down only */}
+      <TruckHubStartRow hubName={hubName} />
 
       {/* Bridge gap between starting hub and orders */}
       <SeqLineBridge />
@@ -3384,6 +3022,12 @@ export function LassoWorkspaceSheet({
   const [truckDropdownRouteId, setTruckDropdownRouteId] = useState<string | null>(null)
   const [cardTruckSearch, setCardTruckSearch] = useState("")
   const [truckSearchExpanded, setTruckSearchExpanded] = useState(false)
+  const [truckSearchAnchorRect, setTruckSearchAnchorRect] = useState<DOMRect | null>(null)
+  const [truckRowHovered, setTruckRowHovered] = useState(false)
+  const [trailerRowHovered, setTrailerRowHovered] = useState<0 | 1 | 2>(0)
+  const [infoTooltipTarget, setInfoTooltipTarget] = useState<{ x: number; y: number } | null>(null)
+  const [trailerSearchAnchorRect, setTrailerSearchAnchorRect] = useState<DOMRect | null>(null)
+  const [trailerSearchSlot, setTrailerSearchSlot] = useState<1 | 2 | null>(null)
 
   // Trailer state
   const [selectedTrailers, setSelectedTrailers] = useState<Record<string, { t1: TrailerItem | null; t2: TrailerItem | null }>>({})
@@ -3564,12 +3208,15 @@ export function LassoWorkspaceSheet({
     if (!truckDropdownRouteId) return
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      if (!target.closest("[data-truck-dropdown]")) {
+      if (!target.closest("[data-truck-dropdown]") && !target.closest("[data-truck-details-sheet]")) {
         setTruckDropdownRouteId(null)
         setCardTruckSearch("")
         setTruckSearchExpanded(false)
+        setTruckSearchAnchorRect(null)
         setCardTrailerSlot(0)
         setCardTrailerSearch("")
+        setTrailerSearchSlot(null)
+        setTrailerSearchAnchorRect(null)
         document.querySelectorAll<HTMLElement>("[data-truck-dropdown]").forEach((el) => {
           el.style.backgroundColor = "transparent"
         })
@@ -4175,7 +3822,7 @@ export function LassoWorkspaceSheet({
                                   bottom: 0,
                                   width: 6,
                                   backgroundColor: color,
-                                  borderRadius: validation && validation.zoneB.visible ? "4px 0 0 0" : "4px 0 0 4px",
+                                  borderRadius: (validation && validation.zoneB.visible && validation.collapsedBannerType !== "orange") ? "4px 0 0 0" : "4px 0 0 4px",
                                   pointerEvents: "none",
                                   zIndex: 1,
                                 }}
@@ -4446,78 +4093,276 @@ export function LassoWorkspaceSheet({
                               </div>
                             )}
 
-                            {/* Equipment dropdown — two-level: primary (selected truck + add trailer) → expanded (search + list) */}
+                            {/* Truck dropdown — Figma RB-1.4 design */}
                             {truckDropdownRouteId === routeId && (() => {
                               const currentTruck = selectedTrucks[routeId] ?? (truckId ? TRUCKS.find(t => t.id === truckId) : null) ?? null
                               const currentTrailers = selectedTrailers[routeId] ?? { t1: null, t2: null }
                               const filteredTrucks = TRUCKS.filter((t) => t.name.toLowerCase().includes(cardTruckSearch.toLowerCase()))
-                              const filteredTrailers = TRAILERS.filter((t) => t.name.toLowerCase().includes(cardTrailerSearch.toLowerCase()))
+
+                              // Capacity warning — L1 only, always orange
+                              const showWarning = !!currentTruck && !!validation && validation.l1.status !== "ok"
+                              const warnColor = "#fb923c"
+                              const warnText = validation?.l1.status === "exceeding" ? "Exceeds Truck Capacity" : "Below Truck Capacity"
+
+                              const showPrimaryView = true
+
+                              // Product counts from TRUCK_CAPACITIES
+                              const truckProductCount = currentTruck ? (TRUCK_CAPACITIES[currentTruck.id] ? Object.keys(TRUCK_CAPACITIES[currentTruck.id].productCapacities).length : 0) : 0
+
                               return (
                               <div
                                 data-truck-dropdown
+                                onClick={() => { if (trailerSearchSlot !== null) { setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch("") } }}
                                 style={{
                                   position: "absolute",
                                   ...(truckDropupEnabled
                                     ? { bottom: "calc(100% - 44px)", top: "auto" }
                                     : { top: 44, bottom: "auto" }),
-                                  left: 20, right: 16, zIndex: 999,
-                                  backgroundColor: truckSearchExpanded ? "#111" : "#1B1B1B",
+                                  right: 0, width: 480, zIndex: 999,
+                                  backgroundColor: "#1b1b1b",
                                   border: "1px solid #333", borderRadius: 4,
                                   boxShadow: "0 8px 24px rgba(0,0,0,0.6)", overflow: "hidden",
                                 }}
                               >
-                                {/* Selected truck row (or "No truck selected") */}
-                                <div style={{ padding: 4, backgroundColor: "#1B1B1B", borderBottom: "1px solid #333" }}>
-                                  <div
-                                    onClick={() => { setTruckSearchExpanded(s => !s); setCardTruckSearch("") }}
-                                    style={{
-                                      display: "flex", alignItems: "center", gap: 16, padding: "6px 8px",
-                                      borderRadius: 2, cursor: "pointer",
-                                      backgroundColor: truckSearchExpanded ? "#282828" : "transparent",
-                                    }}
-                                    onMouseEnter={(e) => { if (!truckSearchExpanded) (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
-                                    onMouseLeave={(e) => { if (!truckSearchExpanded) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
-                                  >
-                                    {currentTruck ? (
-                                      <>
-                                        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                          <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTruck.name}</span>
-                                          {currentTruck.capacity && (
-                                            <div style={{ display: "flex", alignItems: "center" }}>
-                                              <span style={{ fontSize: 14, color: "#A3A3A3" }}>{currentTruck.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{currentTruck.compartments}</span>
-                                            </div>
-                                          )}
+                                {/* Primary view */}
+                                {showPrimaryView && (
+                                  <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+                                    {/* Capacity warning banner */}
+                                    {showWarning && (
+                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(251,146,60,0.05)", borderRadius: 4, padding: "6px 12px" }}>
+                                        <span style={{ fontSize: 14, color: warnColor, lineHeight: "20px" }}>{warnText}</span>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                          {validation!.l1.status === "exceeding" ? <ArrowUp size={16} color={warnColor} /> : <ArrowDown size={16} color={warnColor} />}
+                                          <span style={{ fontSize: 14, color: warnColor, whiteSpace: "nowrap" }}>{Math.abs(validation!.l1.diff).toLocaleString()} gal</span>
                                         </div>
-                                        <TypeBadge label={currentTruck.badge} />
-                                        <ChevronDown size={16} color="#737373" style={{ flexShrink: 0, transform: truckSearchExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
-                                      </>
-                                    ) : (
-                                      <>
-                                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-                                          <span style={{ fontSize: 16, color: "#E5E5E5" }}>No truck selected</span>
-                                          <span style={{ fontSize: 14, color: "#A3A3A3" }}>Click to search trucks</span>
-                                        </div>
-                                        <Plus size={20} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                                      </>
+                                      </div>
                                     )}
-                                  </div>
-                                </div>
 
-                                {/* Truck search + list (expanded) */}
-                                {truckSearchExpanded && (
-                                  <>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
+                                    {/* Body: truck card + trailer cards + add trailer */}
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+                                      {/* Truck card */}
+                                      {(() => {
+                                        const isDetailsOpen = truckDetailsRouteId === routeId
+                                        const showInfoBtn = truckRowHovered || isDetailsOpen
+                                        return (
+                                        <div
+                                          style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
+                                          onClick={(e) => {
+                                            if ((e.target as HTMLElement).closest("button")) return
+                                            setTruckDetailsRouteId(null)
+                                            setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null)
+                                            if (truckSearchExpanded) {
+                                              setTruckSearchExpanded(false); setTruckSearchAnchorRect(null); setCardTruckSearch("")
+                                            } else {
+                                              setTruckSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect())
+                                              setTruckSearchExpanded(true); setCardTruckSearch("")
+                                            }
+                                          }}
+                                        >
+                                          <div
+                                            style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: truckRowHovered ? "#282828" : "transparent", transition: "background-color 0.1s" }}
+                                            onMouseEnter={() => setTruckRowHovered(true)}
+                                            onMouseLeave={() => { setTruckRowHovered(false); setInfoTooltipTarget(null) }}
+                                          >
+                                            {/* Left: name + specs */}
+                                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                                              <span style={{ fontSize: 16, lineHeight: "24px", color: currentTruck ? "#e5e5e5" : "#737373", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                {currentTruck?.name ?? "Select Truck"}
+                                              </span>
+                                              {currentTruck?.capacity && (
+                                                <div style={{ display: "flex", alignItems: "center" }}>
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.capacity}</span>
+                                                  <SpecsDot />
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.compartments}</span>
+                                                  {truckProductCount > 0 && <><SpecsDot /><span style={{ fontSize: 14, color: "#a3a3a3" }}>{truckProductCount} Products</span></>}
+                                                </div>
+                                              )}
+                                            </div>
+                                            {/* Right: TypeBadge fades / Info button appears — same slot, no layout shift */}
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                                              {currentTruck && (
+                                                <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center" }}>
+                                                  <div style={{ opacity: showInfoBtn ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
+                                                    <TypeBadge label={currentTruck.badge} />
+                                                  </div>
+                                                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", opacity: showInfoBtn ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setInfoTooltipTarget(null)
+                                                        if (isDetailsOpen) {
+                                                          setTruckDetailsRouteId(null)
+                                                        } else {
+                                                          setTruckSearchExpanded(false); setTruckSearchAnchorRect(null); setCardTruckSearch("")
+                                                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                                                          setTruckDetailsAnchorLeft(r.right + 4); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId)
+                                                        }
+                                                      }}
+                                                      onMouseEnter={(e) => {
+                                                        if (!isDetailsOpen) (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"
+                                                        if (!isDetailsOpen) { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }
+                                                      }}
+                                                      onMouseLeave={(e) => { if (!isDetailsOpen) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                      style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0,
+                                                        background: isDetailsOpen ? "#404040" : "transparent",
+                                                        outline: isDetailsOpen ? "1px solid #737373" : "none",
+                                                      }}
+                                                    >
+                                                      <Info size={16} color="#fafafa" />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              )}
+                                              <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0, transform: truckSearchExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        )
+                                      })()}
+
+                                      {/* Trailer 1 card */}
+                                      {currentTruck && currentTrailers.t1 && (
+                                        <div style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
+                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; const panel = (e.currentTarget as HTMLElement).closest("[data-truck-dropdown]") as HTMLElement; setTrailerSearchAnchorRect(panel ? panel.getBoundingClientRect() : (e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(1); setCardTrailerSearch("") }}>
+                                          <div
+                                            style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: trailerRowHovered === 1 ? "#282828" : "transparent", transition: "background-color 0.1s" }}
+                                            onMouseEnter={() => setTrailerRowHovered(1)}
+                                            onMouseLeave={() => { setTrailerRowHovered(0); setInfoTooltipTarget(null) }}
+                                          >
+                                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                                              <span style={{ fontSize: 16, lineHeight: "24px", color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTrailers.t1.name}</span>
+                                              {currentTrailers.t1.capacity && (
+                                                <div style={{ display: "flex", alignItems: "center" }}>
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t1.capacity}</span>
+                                                  <SpecsDot />
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t1.compartments}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                                              <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center" }}>
+                                                <div style={{ opacity: trailerRowHovered === 1 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
+                                                  <TypeBadge label="Trailer" />
+                                                </div>
+                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", opacity: trailerRowHovered === 1 ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.right + 4); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
+                                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                    style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer" }}
+                                                  >
+                                                    <Info size={16} color="#fafafa" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                              <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Trailer 2 card */}
+                                      {currentTruck && currentTrailers.t2 && (
+                                        <div style={{ border: "1px solid #333", borderRadius: 4, padding: 4, cursor: "pointer" }}
+                                          onClick={(e) => { if ((e.target as HTMLElement).closest("button")) return; const panel = (e.currentTarget as HTMLElement).closest("[data-truck-dropdown]") as HTMLElement; setTrailerSearchAnchorRect(panel ? panel.getBoundingClientRect() : (e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(2); setCardTrailerSearch("") }}>
+                                          <div
+                                            style={{ borderRadius: 2, padding: "6px 8px", display: "flex", alignItems: "center", gap: 8, backgroundColor: trailerRowHovered === 2 ? "#282828" : "transparent", transition: "background-color 0.1s" }}
+                                            onMouseEnter={() => setTrailerRowHovered(2)}
+                                            onMouseLeave={() => { setTrailerRowHovered(0); setInfoTooltipTarget(null) }}
+                                          >
+                                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                                              <span style={{ fontSize: 16, lineHeight: "24px", color: "#e5e5e5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTrailers.t2.name}</span>
+                                              {currentTrailers.t2.capacity && (
+                                                <div style={{ display: "flex", alignItems: "center" }}>
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t2.capacity}</span>
+                                                  <SpecsDot />
+                                                  <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTrailers.t2.compartments}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                                              <div style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center" }}>
+                                                <div style={{ opacity: trailerRowHovered === 2 ? 0 : 1, transition: "opacity 0.1s", pointerEvents: "none" }}>
+                                                  <TypeBadge label="Trailer" />
+                                                </div>
+                                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", opacity: trailerRowHovered === 2 ? 1 : 0, transition: "opacity 0.1s" }}>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setTruckDetailsAnchorLeft(r.right + 4); setTruckDetailsAnchorRight(r.right); setTruckDetailsAnchorY(r.bottom); setTruckDetailsRouteId(routeId) }}
+                                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "#404040"; const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setInfoTooltipTarget({ x: r.left + r.width / 2, y: r.top }) }}
+                                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; setInfoTooltipTarget(null) }}
+                                                    style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 4, cursor: "pointer" }}
+                                                  >
+                                                    <Info size={16} color="#fafafa" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                              <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Add Trailer — ghost button */}
+                                      {currentTruck && !(currentTrailers.t1 && currentTrailers.t2) && (
+                                        <button
+                                          onClick={(e) => { if (trailerSearchSlot !== null) { setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch(""); return; } const slot = currentTrailers.t1 ? 2 : 1; setTrailerSearchAnchorRect((e.currentTarget as HTMLElement).getBoundingClientRect()); setTrailerSearchSlot(slot as 1|2); setCardTrailerSearch("") }}
+                                          style={{ display: "inline-flex", alignItems: "center", alignSelf: "flex-start", gap: 8, cursor: "pointer", border: "none", borderRadius: 4, height: 32, padding: "8px 12px", fontFamily: "Geist, sans-serif",
+                                            background: trailerSearchSlot !== null ? "#282828" : "transparent" }}
+                                          onMouseEnter={(e) => { if (!trailerSearchSlot) (e.currentTarget as HTMLElement).style.backgroundColor = "#282828" }}
+                                          onMouseLeave={(e) => { if (!trailerSearchSlot) (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
+                                        >
+                                          <Plus size={16} color="#e5e5e5" style={{ flexShrink: 0 }} />
+                                          <span style={{ fontSize: 14, fontWeight: 500, color: "#e5e5e5", lineHeight: "20px" }}>Add Trailer</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Info button "View Details" tooltip — fixed position, escapes overflow */}
+                                {infoTooltipTarget && truckDetailsRouteId !== routeId && (
+                                  <div style={{ position: "fixed", top: infoTooltipTarget.y - 42, left: infoTooltipTarget.x, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 9999 }}>
+                                    <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, whiteSpace: "nowrap", fontFamily: "Geist, sans-serif" }}>View Details</div>
+                                    <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #E5E5E5" }} />
+                                  </div>
+                                )}
+
+                                {/* Truck search — fixed layer on top of primary dropdown, anchored to the truck pill */}
+                                {truckSearchExpanded && truckSearchAnchorRect && (
+                                  <div
+                                    data-truck-dropdown
+                                    style={{
+                                      position: "fixed",
+                                      top: truckSearchAnchorRect.bottom + 4,
+                                      left: truckSearchAnchorRect.left,
+                                      width: truckSearchAnchorRect.width,
+                                      zIndex: 1100,
+                                      backgroundColor: "#111",
+                                      border: "1px solid #333",
+                                      borderRadius: 4,
+                                      boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #282828" }}>
                                       <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
                                       <input type="text" placeholder="Search Truck" value={cardTruckSearch} onChange={(e) => setCardTruckSearch(e.target.value)} autoFocus
                                         style={{ flex: 1, fontSize: 14, fontWeight: 400, color: "#E5E5E5", background: "none", border: "none", outline: "none", lineHeight: "20px", padding: 0, fontFamily: "Geist, sans-serif" }} />
+                                      {cardTruckSearch && (
+                                        <button onClick={() => { setTruckSearchExpanded(false); setTruckSearchAnchorRect(null); setCardTruckSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
+                                          <X size={16} />
+                                        </button>
+                                      )}
                                     </div>
-                                    <div style={{ padding: 4, maxHeight: 220, overflowY: "auto", borderBottom: "1px solid #333" }}>
+                                    <div style={{ padding: 4, maxHeight: 260, overflowY: "auto" }}>
                                       {filteredTrucks.map((truck) => {
                                         const isSelected = currentTruck?.id === truck.id
                                         return (
                                           <div key={truck.id} onClick={() => {
                                             handleTruckSelect(routeId, truck)
                                             setTruckSearchExpanded(false)
+                                            setTruckSearchAnchorRect(null)
                                             setCardTruckSearch("")
                                           }}
                                             style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer",
@@ -4530,6 +4375,7 @@ export function LassoWorkspaceSheet({
                                               {truck.capacity && (
                                                 <div style={{ display: "flex", alignItems: "center" }}>
                                                   <span style={{ fontSize: 14, color: "#A3A3A3" }}>{truck.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{truck.compartments}</span>
+                                                  {TRUCK_CAPACITIES[truck.id] && Object.keys(TRUCK_CAPACITIES[truck.id].productCapacities).length > 0 && <><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{Object.keys(TRUCK_CAPACITIES[truck.id].productCapacities).length} Products</span></>}
                                                 </div>
                                               )}
                                             </div>
@@ -4538,119 +4384,64 @@ export function LassoWorkspaceSheet({
                                         )
                                       })}
                                     </div>
-                                  </>
-                                )}
-
-                                {/* Trailer section — mirrors TruckHubCard (only when truck search NOT expanded) */}
-                                {!truckSearchExpanded && currentTruck && (
-                                  <>
-                                    {/* Trailer 1 selected row */}
-                                    {currentTrailers.t1 && (
-                                      <div style={{ padding: 4, borderBottom: "1px solid #333" }}>
-                                        <div
-                                          onClick={() => { setCardTrailerSlot(cardTrailerSlot === 1 ? 0 : 1); setCardTrailerSearch("") }}
-                                          style={{ display: "flex", alignItems: "center", gap: 16, padding: "6px 8px", borderRadius: 2, backgroundColor: "#1B1B1B", cursor: "pointer" }}
-                                          onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#242424"}
-                                          onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#1B1B1B"}
-                                        >
-                                          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                            <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTrailers.t1.name}</span>
-                                            {currentTrailers.t1.capacity && <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{currentTrailers.t1.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{currentTrailers.t1.compartments}</span></div>}
-                                          </div>
-                                          <TypeBadge label="Trailer" />
-                                          <ChevronDown size={16} color="#737373" style={{ flexShrink: 0, transform: cardTrailerSlot === 1 ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Trailer 1 search */}
-                                    {cardTrailerSlot === 1 && (
-                                      <div style={{ borderBottom: "1px solid #333" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
-                                          <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
-                                          <input autoFocus value={cardTrailerSearch} onChange={(e) => setCardTrailerSearch(e.target.value)} placeholder="Search Trailer"
-                                            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }} />
-                                        </div>
-                                        <div style={{ padding: 4, maxHeight: 180, overflowY: "auto", backgroundColor: "#111" }}>
-                                          {TRAILERS.filter(t => t.name.toLowerCase().includes(cardTrailerSearch.toLowerCase())).map((t) => (
-                                            <div key={t.id} onClick={() => { setSelectedTrailers(prev => ({ ...prev, [routeId]: { ...currentTrailers, t1: t } })); setCardTrailerSlot(0); setCardTrailerSearch("") }}
-                                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: currentTrailers.t1?.id === t.id ? "rgba(255,255,255,0.06)" : "transparent" }}
-                                              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.08)"}
-                                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = currentTrailers.t1?.id === t.id ? "rgba(255,255,255,0.06)" : "transparent" }}
-                                            >
-                                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                                <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                                                {t.capacity && <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.compartments}</span></div>}
-                                              </div>
-                                              <TypeBadge label="Trailer" />
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Trailer 2 selected row */}
-                                    {currentTrailers.t2 && (
-                                      <div style={{ padding: 4, borderBottom: "1px solid #333" }}>
-                                        <div
-                                          onClick={() => { setCardTrailerSlot(cardTrailerSlot === 2 ? 0 : 2); setCardTrailerSearch("") }}
-                                          style={{ display: "flex", alignItems: "center", gap: 16, padding: "6px 8px", borderRadius: 2, backgroundColor: "#1B1B1B", cursor: "pointer" }}
-                                          onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#242424"}
-                                          onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "#1B1B1B"}
-                                        >
-                                          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                            <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentTrailers.t2.name}</span>
-                                            {currentTrailers.t2.capacity && <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{currentTrailers.t2.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{currentTrailers.t2.compartments}</span></div>}
-                                          </div>
-                                          <TypeBadge label="Trailer" />
-                                          <ChevronDown size={16} color="#737373" style={{ flexShrink: 0, transform: cardTrailerSlot === 2 ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Trailer 2 search */}
-                                    {cardTrailerSlot === 2 && (
-                                      <div style={{ borderBottom: "1px solid #333" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #333" }}>
-                                          <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
-                                          <input autoFocus value={cardTrailerSearch} onChange={(e) => setCardTrailerSearch(e.target.value)} placeholder="Search Trailer"
-                                            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif" }} />
-                                        </div>
-                                        <div style={{ padding: 4, maxHeight: 180, overflowY: "auto", backgroundColor: "#111" }}>
-                                          {TRAILERS.filter(t => t.name.toLowerCase().includes(cardTrailerSearch.toLowerCase())).map((t) => (
-                                            <div key={t.id} onClick={() => { setSelectedTrailers(prev => ({ ...prev, [routeId]: { ...currentTrailers, t2: t } })); setCardTrailerSlot(0); setCardTrailerSearch("") }}
-                                              style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: currentTrailers.t2?.id === t.id ? "rgba(255,255,255,0.06)" : "transparent" }}
-                                              onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.08)"}
-                                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = currentTrailers.t2?.id === t.id ? "rgba(255,255,255,0.06)" : "transparent" }}
-                                            >
-                                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                                <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                                                {t.capacity && <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.compartments}</span></div>}
-                                              </div>
-                                              <TypeBadge label="Trailer" />
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                    {/* Add Trailer button — only if a slot is still free */}
-                                    {!(currentTrailers.t1 && currentTrailers.t2) && cardTrailerSlot === 0 && (
-                                      <div
-                                        onClick={() => { setCardTrailerSlot(currentTrailers.t1 ? 2 : 1); setCardTrailerSearch("") }}
-                                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", cursor: "pointer" }}
-                                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.04)" }}
-                                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent" }}
-                                      >
-                                        <Plus size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                                        <span style={{ fontSize: 14, fontWeight: 400, color: "#E5E5E5", lineHeight: "20px" }}>Add Trailer</span>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-
-                                {/* Hint when no truck selected and search not expanded */}
-                                {!truckSearchExpanded && !currentTruck && (
-                                  <div style={{ padding: "8px 12px 10px" }}>
-                                    <span style={{ fontSize: 14, color: "#737373" }}>Trailers can be added only after adding a Truck</span>
                                   </div>
                                 )}
+
+                                {/* Trailer search — fixed layer anchored below Add Trailer button */}
+                                {trailerSearchSlot !== null && trailerSearchAnchorRect && (
+                                  <div
+                                    data-truck-dropdown
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      position: "fixed",
+                                      top: trailerSearchAnchorRect.bottom + 4,
+                                      left: trailerSearchAnchorRect.left,
+                                      width: 480,
+                                      zIndex: 1100,
+                                      backgroundColor: "#111",
+                                      border: "1px solid #333",
+                                      borderRadius: 4,
+                                      boxShadow: "0 8px 24px rgba(0,0,0,0.7)",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid #282828" }}>
+                                      <Search size={16} color="#737373" style={{ flexShrink: 0 }} />
+                                      <input autoFocus value={cardTrailerSearch} onChange={(e) => setCardTrailerSearch(e.target.value)} placeholder="Search Trailer"
+                                        style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#E5E5E5", fontFamily: "Geist, sans-serif", padding: 0, lineHeight: "20px" }} />
+                                      {cardTrailerSearch && (
+                                        <button onClick={() => { setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch("") }} style={{ background: "none", border: "none", cursor: "pointer", color: "#737373", display: "flex", alignItems: "center", padding: 0 }}>
+                                          <X size={16} />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div style={{ padding: 4, maxHeight: 260, overflowY: "auto" }}>
+                                      {TRAILERS.filter(t => t.name.toLowerCase().includes(cardTrailerSearch.toLowerCase())).map((t) => {
+                                        const ct = selectedTrailers[routeId] ?? { t1: null, t2: null }
+                                        const isSelected = trailerSearchSlot === 1 ? ct.t1?.id === t.id : ct.t2?.id === t.id
+                                        return (
+                                          <div key={t.id} onClick={() => {
+                                            const ct2 = selectedTrailers[routeId] ?? { t1: null, t2: null }
+                                            if (trailerSearchSlot === 1) setSelectedTrailers(prev => ({ ...prev, [routeId]: { ...ct2, t1: t } }))
+                                            else setSelectedTrailers(prev => ({ ...prev, [routeId]: { ...ct2, t2: t } }))
+                                            setTrailerSearchSlot(null); setTrailerSearchAnchorRect(null); setCardTrailerSearch("")
+                                          }}
+                                            style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 2, cursor: "pointer", backgroundColor: isSelected ? "rgba(255,255,255,0.06)" : "transparent" }}
+                                            onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(255,255,255,0.08)"}
+                                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = isSelected ? "rgba(255,255,255,0.06)" : "transparent" }}
+                                          >
+                                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                                              <span style={{ fontSize: 14, color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+                                              {t.capacity && <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.capacity}</span><SpecsDot /><span style={{ fontSize: 14, color: "#A3A3A3" }}>{t.compartments}</span></div>}
+                                            </div>
+                                            <TypeBadge label="Trailer" />
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
                               </div>
                               )
                             })()}
