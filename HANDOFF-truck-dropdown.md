@@ -72,6 +72,20 @@ const [selectedTrailers, setSelectedTrailers] = useState<Record<string, { t1: Tr
 
 Each row is a **bordered card** (`1px #333`, radius 4, padding 4) wrapping a menu-item row. The menu-item gets `#282828` bg on hover. Anchor: the `{(() => { const isDetailsOpen = ... })()}` block (~line 4145).
 
+### Empty state (no truck selected)
+
+When `currentTruck` is null the row renders a different variant:
+
+| Part | Empty state | Truck selected |
+|---|---|---|
+| Title | `"Select Truck"` in `#a3a3a3` | truck name in `#e5e5e5` |
+| Subtitle | `"No truck selected"` in `#737373` | capacity · compartments · products in `#a3a3a3` |
+| Right icon | `<Plus size={20} color="#a3a3a3" />` | `<ChevronDown>` (rotates when search open) |
+| TypeBadge / Info btn | hidden | fades in/out on hover |
+| Inner row bg | transparent → `#282828` on hover (same as truck-selected state) | same |
+
+The **same copy** ("No truck selected") is also used on the **collapsed route card** (Config E), below the Select Truck pill. Do not use "No Truck selected yet." — that was the old string.
+
 ```tsx
 const isDetailsOpen = truckDetailsRouteId === routeId
 const showInfoBtn = truckRowHovered || isDetailsOpen   // badge hidden whenever info is showing
@@ -212,7 +226,22 @@ Both searches open as **`position: fixed`** panels anchored to a `getBoundingCli
 
 ---
 
-## 7. Add Trailer — ghost button
+## 7. No-truck helper text + Add Trailer — ghost button
+
+When no truck is selected, a helper text line appears **below the truck row card** (in place of the Add Trailer button, which only renders once a truck is set):
+
+```tsx
+{!currentTruck && (
+  <span style={{ fontSize: 14, color: "#737373", lineHeight: "20px",
+                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+    Trailers can be added only after adding a Truck
+  </span>
+)}
+```
+
+The Add Trailer button is gated on `currentTruck && !(t1 && t2)` so these two never show at the same time.
+
+### Add Trailer — ghost button
 
 Figma: `Zvutylr6lxkxIuKMXEuSX6` node `1895-129996`.
 
@@ -260,7 +289,10 @@ Info btn focused outline:#737373
 Border:                  #333
 Text primary:            #e5e5e5 / #fafafa
 Text secondary:          #a3a3a3
+Text muted:              #737373   (empty-state subtitle, helper text)
+Text placeholder:        #a3a3a3   (empty-state title "Select Truck")
 Tooltip:                 bg #E5E5E5, text #111, 12px, caret triangle
 Warning (L1):            text/arrow #fb923c, strip bg rgba(251,146,60,0.05)
 Dropdown width:          480px, right-aligned
+Empty-state Plus icon:   #a3a3a3, 20px (ChevronDown is 16px — size differs intentionally)
 ```
