@@ -546,7 +546,7 @@ function RouteCardCollapsed({
 
           {/* Row 2 — Capacity / info line */}
           {config === "E" ? (
-            <span style={{ fontSize: 14, fontWeight: 400, color: "#737373", lineHeight: "20px" }}>No Truck selected yet.</span>
+            <span style={{ fontSize: 14, fontWeight: 400, color: "#737373", lineHeight: "20px" }}>No truck selected</span>
           ) : config === "D" ? (
             <span style={{ fontSize: 14, fontWeight: 400, color: "#737373", lineHeight: "20px" }}>Selected truck has no fuel capacity</span>
           ) : (
@@ -4167,17 +4167,19 @@ export function LassoWorkspaceSheet({
                                           >
                                             {/* Left: name + specs */}
                                             <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                                              <span style={{ fontSize: 16, lineHeight: "24px", color: currentTruck ? "#e5e5e5" : "#737373", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                              <span style={{ fontSize: 16, lineHeight: "24px", color: currentTruck ? "#e5e5e5" : "#a3a3a3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                 {currentTruck?.name ?? "Select Truck"}
                                               </span>
-                                              {currentTruck?.capacity && (
+                                              {currentTruck?.capacity ? (
                                                 <div style={{ display: "flex", alignItems: "center" }}>
                                                   <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.capacity}</span>
                                                   <SpecsDot />
                                                   <span style={{ fontSize: 14, color: "#a3a3a3" }}>{currentTruck.compartments}</span>
                                                   {truckProductCount > 0 && <><SpecsDot /><span style={{ fontSize: 14, color: "#a3a3a3" }}>{truckProductCount} Products</span></>}
                                                 </div>
-                                              )}
+                                              ) : !currentTruck ? (
+                                                <span style={{ fontSize: 14, lineHeight: "20px", color: "#737373", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>No truck selected</span>
+                                              ) : null}
                                             </div>
                                             {/* Right: TypeBadge fades / Info button appears — same slot, no layout shift */}
                                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -4214,7 +4216,10 @@ export function LassoWorkspaceSheet({
                                                   </div>
                                                 </div>
                                               )}
-                                              <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0, transform: truckSearchExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                                              {currentTruck
+                                                ? <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0, transform: truckSearchExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                                                : <Plus size={20} color="#a3a3a3" style={{ flexShrink: 0 }} />
+                                              }
                                             </div>
                                           </div>
                                         </div>
@@ -4301,6 +4306,13 @@ export function LassoWorkspaceSheet({
                                             </div>
                                           </div>
                                         </div>
+                                      )}
+
+                                      {/* Helper text when no truck selected */}
+                                      {!currentTruck && (
+                                        <span style={{ fontSize: 14, color: "#737373", lineHeight: "20px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                          Trailers can be added only after adding a Truck
+                                        </span>
                                       )}
 
                                       {/* Add Trailer — ghost button */}
