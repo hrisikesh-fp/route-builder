@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-06-09
+
+- **Truck filter — real data**: Truck dropdown now lists all 12 real H-* trucks (with delivery stop counts). Product dropdown expanded to 8 products — 5 existing fuel types + Jet A, Premium 93, Biodiesel B20.
+- **Truck filter — flicker + zoom on apply**: selecting a truck and applying zooms the map to that route, flickers the route line for ~3s, and shows a tooltip at route center. All other routes stay at normal opacity. Timing: zoom 1.4s, flicker 3s, tooltip 4s.
+- **Route Summary — dash for untouched products**: stops that don't deliver a product now show `–` instead of repeating the prior running balance. PR #6 open for dev handoff.
+
+---
+
 ## 2026-06-08
 
 - **Truck selection moved into the route card (major)**: truck/trailer selection now happens in a 480px dropdown on the card, not the expanded view. Bordered truck/trailer rows; hover swaps the type badge for an info button → opens the Truck Details drawer beside it while the dropdown stays open. Truck/trailer search open as layers on top so the selection view never disappears. Ghost "Add Trailer" button.
