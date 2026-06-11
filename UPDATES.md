@@ -6,6 +6,13 @@
 
 ---
 
+## 2026-06-10
+
+- **Truck dropdown empty state**: "Select Truck" title now `#a3a3a3`; "No truck selected" subtitle added; Plus icon replaces ChevronDown; helper text "Trailers can be added only after adding a Truck" added below the card. Copy unified — collapsed card and dropdown now both say "No truck selected".
+- **Dev handoff rewritten**: `HANDOFF-truck-dropdown.md` rebuilt from code — all 8 states (empty, truck only, +1 trailer, +2 trailers, truck search, trailer search, capacity warning, info tooltip) with exact JSX and tokens. No Figma refs.
+
+---
+
 ## 2026-06-08
 
 - **Truck selection moved into the route card (major)**: truck/trailer selection now happens in a 480px dropdown on the card, not the expanded view. Bordered truck/trailer rows; hover swaps the type badge for an info button → opens the Truck Details drawer beside it while the dropdown stays open. Truck/trailer search open as layers on top so the selection view never disappears. Ghost "Add Trailer" button.
