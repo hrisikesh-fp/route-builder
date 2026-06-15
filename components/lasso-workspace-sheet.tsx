@@ -1321,7 +1321,7 @@ function ExpandedRouteCard({
   // When multiple products fail at the same stop, group them: first-failing list first,
   // then a separate sentence for already-out products if any.
   // Per-stop warnings: { l3?: string; l0?: string } — rendered as stacked strips
-  const stopWarnings: Record<number, { l3?: string; l0?: string }> = {}
+  const stopWarnings: Record<number, { l3?: string; l3Overflow?: string[]; l0?: string }> = {}
 
   if (validation?.l3) {
     const grouped: Record<number, { firstFailing: string[]; alreadyOut: string[] }> = {}
@@ -1339,14 +1339,18 @@ function ExpandedRouteCard({
 
     for (const [idx, g] of Object.entries(grouped)) {
       const parts: string[] = []
+      const overflow: string[] = []
       if (g.firstFailing.length > 0) {
         parts.push(`${fmtProducts(g.firstFailing)} will run out before this stop`)
+        if (g.firstFailing.length > 2) overflow.push(...g.firstFailing.slice(2))
       }
       if (g.alreadyOut.length > 0) {
         parts.push(`${fmtProducts(g.alreadyOut)} already ran out`)
+        if (g.alreadyOut.length > 2) overflow.push(...g.alreadyOut.slice(2))
       }
       if (!stopWarnings[Number(idx)]) stopWarnings[Number(idx)] = {}
       stopWarnings[Number(idx)].l3 = parts.join(" · ")
+      if (overflow.length > 0) stopWarnings[Number(idx)].l3Overflow = overflow
     }
   }
 
@@ -1434,6 +1438,7 @@ function ExpandedRouteCard({
 
           const stopIssues = isDelivery ? stopWarnings[currentStopIdx] : undefined
           const warning = stopIssues?.l3
+          const warningOverflow = stopIssues?.l3Overflow
           const l0Warning = stopIssues?.l0
 
           // Only the hovered card lights its own bottom-edge + (the gap below it).
@@ -1467,6 +1472,7 @@ function ExpandedRouteCard({
                   stopTime,
                   isNew: order.id === recentlyAddedOrderId,
                   warning,
+                  warningOverflow,
                   draggable: true as const,
                   isDragOver: dragOverIdx === idx,
                   onDragStart: (e: React.DragEvent) => { setDragIdx(idx); e.dataTransfer.effectAllowed = "move" },
@@ -1702,6 +1708,7 @@ function OrderStopRow({
   stopTime,
   isNew,
   warning,
+  warningOverflow,
   draggable,
   onDragStart,
   onDragOver,
@@ -1728,6 +1735,7 @@ function OrderStopRow({
   stopTime: string
   isNew?: boolean
   warning?: string
+  warningOverflow?: string[]
   draggable?: boolean
   onDragStart?: (e: React.DragEvent) => void
   onDragOver?: (e: React.DragEvent) => void
@@ -1750,6 +1758,7 @@ function OrderStopRow({
   onEditOrder?: (order: ExtractionOrder) => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [overflowTooltipPos, setOverflowTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const { showEditInFab } = useSettings()
@@ -2137,9 +2146,44 @@ function OrderStopRow({
             padding: "6px 16px 6px 20px",
             fontSize: 14, fontWeight: 400, color: "#eab308",
             display: "flex", alignItems: "center", gap: 6,
+            position: "relative",
           }}>
             <TriangleAlert size={16} color="#eab308" style={{ flexShrink: 0 }} />
-            {warning}
+            {warningOverflow?.length ? (() => {
+              const match = warning?.match(/(.*?)(\+ \d+ more)(.*)/)
+              if (!match) return <>{warning}</>
+              const [, before, pill, after] = match
+              return (
+                <>
+                  {before}
+                  <span
+                    style={{
+                      textDecoration: "underline dotted", textDecorationColor: "#eab308",
+                      textUnderlinePosition: "from-font", textDecorationSkipInk: "none",
+                      cursor: "default",
+                    }}
+                    onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setOverflowTooltipPos({ x: r.left + r.width / 2, y: r.bottom }) }}
+                    onMouseLeave={() => setOverflowTooltipPos(null)}
+                  >
+                    {pill}
+                  </span>
+                  {after}
+                  {overflowTooltipPos && (
+                    <div style={{
+                      position: "fixed", top: overflowTooltipPos.y + 8, left: overflowTooltipPos.x,
+                      transform: "translateX(-50%)",
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      pointerEvents: "none", zIndex: 9999,
+                    }}>
+                      <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderBottom: "6px solid #E5E5E5" }} />
+                      <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, fontFamily: "Geist, sans-serif", display: "flex", flexDirection: "column", gap: 2 }}>
+                        {warningOverflow.map(p => <span key={p} style={{ whiteSpace: "nowrap" }}>{p}</span>)}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })() : warning}
           </div>
         )}
       </div>
@@ -2162,6 +2206,7 @@ function OrderStopRowDetailed({
   stopTime,
   isNew,
   warning,
+  warningOverflow,
   draggable,
   onDragStart,
   onDragOver,
@@ -2188,6 +2233,7 @@ function OrderStopRowDetailed({
   stopTime: string
   isNew?: boolean
   warning?: string
+  warningOverflow?: string[]
   draggable?: boolean
   onDragStart?: (e: React.DragEvent) => void
   onDragOver?: (e: React.DragEvent) => void
@@ -2210,6 +2256,7 @@ function OrderStopRowDetailed({
   onEditOrder?: (order: ExtractionOrder) => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [overflowTooltipPos, setOverflowTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const { showEditInFab } = useSettings()
@@ -2671,9 +2718,44 @@ function OrderStopRowDetailed({
             padding: "6px 16px 6px 20px",
             fontSize: 14, fontWeight: 400, color: "#eab308",
             display: "flex", alignItems: "center", gap: 6,
+            position: "relative",
           }}>
             <TriangleAlert size={16} color="#eab308" style={{ flexShrink: 0 }} />
-            {warning}
+            {warningOverflow?.length ? (() => {
+              const match = warning?.match(/(.*?)(\+ \d+ more)(.*)/)
+              if (!match) return <>{warning}</>
+              const [, before, pill, after] = match
+              return (
+                <>
+                  {before}
+                  <span
+                    style={{
+                      textDecoration: "underline dotted", textDecorationColor: "#eab308",
+                      textUnderlinePosition: "from-font", textDecorationSkipInk: "none",
+                      cursor: "default",
+                    }}
+                    onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setOverflowTooltipPos({ x: r.left + r.width / 2, y: r.bottom }) }}
+                    onMouseLeave={() => setOverflowTooltipPos(null)}
+                  >
+                    {pill}
+                  </span>
+                  {after}
+                  {overflowTooltipPos && (
+                    <div style={{
+                      position: "fixed", top: overflowTooltipPos.y + 8, left: overflowTooltipPos.x,
+                      transform: "translateX(-50%)",
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      pointerEvents: "none", zIndex: 9999,
+                    }}>
+                      <div style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderBottom: "6px solid #E5E5E5" }} />
+                      <div style={{ backgroundColor: "#E5E5E5", color: "#111", fontSize: 12, padding: "6px 12px", borderRadius: 4, fontFamily: "Geist, sans-serif", display: "flex", flexDirection: "column", gap: 2 }}>
+                        {warningOverflow.map(p => <span key={p} style={{ whiteSpace: "nowrap" }}>{p}</span>)}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })() : warning}
           </div>
         )}
 
