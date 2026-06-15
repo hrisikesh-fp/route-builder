@@ -5,16 +5,17 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 interface RouteSheetCollapsedProps {
   onExpand: () => void
   hideExpandButton?: boolean
+  topOffset?: number
 }
 
-export function RouteSheetCollapsed({ onExpand, hideExpandButton = false }: RouteSheetCollapsedProps) {
+export function RouteSheetCollapsed({ onExpand, hideExpandButton = false, topOffset = 0 }: RouteSheetCollapsedProps) {
   return (
     <TooltipProvider>
       <div
         className="fixed right-0 z-[999] flex items-center"
         style={{
-          top: "54px",
-          height: "calc(100vh - 54px)",
+          top: 54 + topOffset,
+          height: `calc(100vh - ${54 + topOffset}px)`,
         }}
       >
         <Tooltip>

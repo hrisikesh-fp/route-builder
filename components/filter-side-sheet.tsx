@@ -37,6 +37,7 @@ interface FilterSideSheetProps {
   onTruckSelectionChange?: (ids: Set<string>) => void
   onDriverSelectionChange?: (ids: Set<string>) => void
   onProductSelectionChange?: (products: Set<string>) => void
+  topOffset?: number
 }
 
 interface CityData {
@@ -494,6 +495,7 @@ export function FilterSideSheet({
   onTruckSelectionChange,
   onDriverSelectionChange,
   onProductSelectionChange,
+  topOffset = 0,
 }: FilterSideSheetProps) {
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
   const [tempSelectedCities, setTempSelectedCities] = useState<Set<string>>(new Set())
@@ -675,8 +677,8 @@ export function FilterSideSheet({
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
-          top: "64px",
-          height: "calc(100vh - 64px)",
+          top: 64 + topOffset,
+          height: `calc(100vh - ${64 + topOffset}px)`,
           width: "320px",
           backgroundColor: "#111",
           borderRight: "1px solid #282828",

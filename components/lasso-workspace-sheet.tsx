@@ -57,6 +57,7 @@ interface LassoWorkspaceSheetProps {
   onCreateOrderSideSheetClose?: () => void
   /** Modal 3: orders created via the side sheet flow (owned by page.tsx, merged into unassigned list). */
   externalUnassignedOrders?: ExtractionOrder[]
+  topOffset?: number
 }
 
 type LoadOrderInfo = {
@@ -1330,15 +1331,19 @@ function ExpandedRouteCard({
       if (issue.isFirstFailing) grouped[issue.stopIndex].firstFailing.push(name)
       else grouped[issue.stopIndex].alreadyOut.push(name)
     }
+    // Truncate product lists to 2 names max so the strip never runs beyond 2 lines
+    const fmtProducts = (arr: string[]) =>
+      arr.length <= 2
+        ? arr.join(" and ")
+        : `${arr[0]} and ${arr[1]} + ${arr.length - 2} more`
+
     for (const [idx, g] of Object.entries(grouped)) {
       const parts: string[] = []
       if (g.firstFailing.length > 0) {
-        const names = g.firstFailing.length === 1 ? g.firstFailing[0] : g.firstFailing.join(" and ")
-        parts.push(`${names} will run out before this stop`)
+        parts.push(`${fmtProducts(g.firstFailing)} will run out before this stop`)
       }
       if (g.alreadyOut.length > 0) {
-        const names = g.alreadyOut.length === 1 ? g.alreadyOut[0] : g.alreadyOut.join(" and ")
-        parts.push(`${names} already ran out`)
+        parts.push(`${fmtProducts(g.alreadyOut)} already ran out`)
       }
       if (!stopWarnings[Number(idx)]) stopWarnings[Number(idx)] = {}
       stopWarnings[Number(idx)].l3 = parts.join(" · ")
@@ -2862,6 +2867,7 @@ export function LassoWorkspaceSheet({
   externalUnassignedOrders = [],
   openCreateOrderTrigger,
   onCreateOrderModalOpenChange,
+  topOffset = 0,
 }: LassoWorkspaceSheetProps) {
   const { orderCardView, createOrderModalView, updateCreateOrderModalView } = useSettings()
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
@@ -3491,8 +3497,9 @@ export function LassoWorkspaceSheet({
 
   return (
     <div
-      className="fixed right-0 top-[68px] bottom-0 z-[1100] flex flex-col"
+      className="fixed right-0 bottom-0 z-[1100] flex flex-col"
       style={{
+        top: 68 + topOffset,
         width: 560,
         backgroundColor: "#111111",
         borderLeft: "1px solid #282828",

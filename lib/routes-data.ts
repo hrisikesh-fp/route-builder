@@ -97,7 +97,7 @@ export const route2Orange: Route = {
   id: "route-2",
   name: "Route 2",
   color: routeColors.orange,
-  driverName: "Dwayne Johnson",
+  driverName: "Mark Ruffalo",
   stops: [
     { sequence: "A", type: "Hub", name: austinHub.name, address: austinHub.address, latitude: austinHub.latitude, longitude: austinHub.longitude, notes: "Start of day" },
     { sequence: "B", type: "Load", name: terminals.valeroTaylor.name, address: terminals.valeroTaylor.address, latitude: terminals.valeroTaylor.latitude, longitude: terminals.valeroTaylor.longitude, volume: 5000, product: "Clear, Dyed, DEF", notes: "Full load for route" },
@@ -117,7 +117,7 @@ export const route3Blue: Route = {
   id: "route-3",
   name: "Route 3",
   color: routeColors.blue,
-  driverName: "Jessica Harper",
+  driverName: "Kyle Reese",
   stops: [
     { sequence: "A", type: "Hub", name: austinHub.name, address: austinHub.address, latitude: austinHub.latitude, longitude: austinHub.longitude, notes: "Start of day" },
     { sequence: "B", type: "Load", name: terminals.magellanRoundRock.name, address: terminals.magellanRoundRock.address, latitude: terminals.magellanRoundRock.latitude, longitude: terminals.magellanRoundRock.longitude, volume: 3500, product: "Clear, Dyed", notes: "Primary load" },

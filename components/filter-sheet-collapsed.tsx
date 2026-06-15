@@ -6,16 +6,17 @@ import { SlidersHorizontal } from "lucide-react"
 interface FilterSheetCollapsedProps {
   onExpand: () => void
   appliedFiltersCount?: number
+  topOffset?: number
 }
 
-export function FilterSheetCollapsed({ onExpand, appliedFiltersCount = 0 }: FilterSheetCollapsedProps) {
+export function FilterSheetCollapsed({ onExpand, appliedFiltersCount = 0, topOffset = 0 }: FilterSheetCollapsedProps) {
   return (
     <TooltipProvider>
       <div
         className="fixed left-0 z-[999] flex items-center"
         style={{
-          top: "54px",
-          height: "calc(100vh - 54px)",
+          top: 54 + topOffset,
+          height: `calc(100vh - ${54 + topOffset}px)`,
         }}
       >
         {/* Collapsed vertical bar - 44px wide with filter icon, centered vertically */}
