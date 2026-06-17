@@ -350,11 +350,12 @@ export function renderShipToNoOrderTooltip(props: ShipToNoOrderTooltipProps): st
               color: #FAFAFA;
               border: none;
               border-radius: 4px;
-              padding: 8px 12px;
+              padding: 0 12px;
               height: 32px;
               font-size: 14px;
               font-weight: 500;
-              line-height: 20px;
+              display: flex;
+              align-items: center;
               cursor: pointer;
               font-family: inherit;
               transition: background 160ms cubic-bezier(0.32, 0.72, 0, 1);

@@ -5646,7 +5646,7 @@ export function LassoWorkspaceSheet({
           }))
           return {
             id: rid,
-            truckName: truck?.name ?? route?.truckName ?? "No Truck Selected",
+            truckName: truck?.name ?? route?.truckName ?? "",
             orderCount: routeOrders.length,
             color: route?.color ?? "#9A7BC7",
             specs: {

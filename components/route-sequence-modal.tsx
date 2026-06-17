@@ -110,36 +110,51 @@ function RouteCard({
 }) {
   const [expanded, setExpanded] = useState(true)
   const [showTable, setShowTable] = useState(false)
+  const [headerHovered, setHeaderHovered] = useState(false)
   const hasStops = !!route.stops && route.stops.length > 0
+  const hasTruck = !!route.truckName
 
   return (
-    <div style={{ position: "relative", backgroundColor: "#282828", borderRadius: 4, overflow: "hidden", width: "100%" }}>
+    <div style={{ position: "relative", width: "100%", borderRadius: 4 }}>
       {/* Accent rail */}
-      <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 6, backgroundColor: route.color, zIndex: 3 }} />
+      <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 6, backgroundColor: route.color, zIndex: 3, borderTopLeftRadius: 4, borderBottomLeftRadius: 4 }} />
 
-      {/* Header row */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "12px 12px 12px 20px", position: "relative", zIndex: 2,
-      }}>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Truck size={16} color="#FFFFFF" style={{ flexShrink: 0 }} />
-            <span style={{
-              fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>{route.truckName}</span>
-          </div>
-          {route.specs && (route.specs.gal || route.specs.compartments || route.specs.products != null) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#a3a3a3", lineHeight: "20px" }}>
-              {route.specs.gal && <span>{route.specs.gal}</span>}
-              {route.specs.gal && route.specs.compartments && <Dot />}
-              {route.specs.compartments && <span>{route.specs.compartments}</span>}
-              {route.specs.products != null && (route.specs.gal || route.specs.compartments) && <Dot />}
-              {route.specs.products != null && <span>{route.specs.products} Products</span>}
+      {/* Header row — entire row is the click target */}
+      <div
+        onClick={() => setExpanded((v) => !v)}
+        onMouseEnter={() => setHeaderHovered(true)}
+        onMouseLeave={() => setHeaderHovered(false)}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "12px 12px 12px 20px", position: "relative", zIndex: 2,
+          cursor: "pointer",
+          backgroundColor: headerHovered ? "#333" : "#282828",
+          borderRadius: expanded ? "4px 4px 0 0" : 4,
+          transition: "background-color 150ms",
+        }}
+      >
+        {hasTruck ? (
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Truck size={16} color="#FFFFFF" style={{ flexShrink: 0 }} />
+              <span style={{
+                fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>{route.truckName}</span>
             </div>
-          )}
-        </div>
+            {route.specs && (route.specs.gal || route.specs.compartments || route.specs.products != null) && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#a3a3a3", lineHeight: "20px" }}>
+                {route.specs.gal && <span>{route.specs.gal}</span>}
+                {route.specs.gal && route.specs.compartments && <Dot />}
+                {route.specs.compartments && <span>{route.specs.compartments}</span>}
+                {route.specs.products != null && (route.specs.gal || route.specs.compartments) && <Dot />}
+                {route.specs.products != null && <span>{route.specs.products} Products</span>}
+              </div>
+            )}
+          </div>
+        ) : (
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "#737373", lineHeight: "20px" }}>No Truck Selected</span>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <div style={{
             backgroundColor: "#111", borderRadius: 4, padding: "2px 8px",
@@ -147,53 +162,49 @@ function RouteCard({
           }}>
             {route.orderCount} Orders
           </div>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", color: "#a3a3a3" }}
-          >
-            <ChevronDown
-              size={20}
-              style={{ transition: "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)", transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
-            />
-          </button>
+          <ChevronDown
+            size={20}
+            color="#a3a3a3"
+            style={{ transition: "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}
+          />
         </div>
       </div>
 
-      {/* Body — animated card collapse (grid 0fr → 1fr) */}
+      {/* Body — animated card collapse */}
       <div style={{
-        position: "relative", zIndex: 1,
-        display: "grid", gridTemplateRows: expanded ? "1fr" : "0fr",
-        transition: "grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+        overflow: "hidden",
+        maxHeight: expanded ? 600 : 0,
+        transition: "max-height 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+        borderRadius: "0 0 4px 4px",
       }}>
-        <div style={{ overflow: "hidden", minHeight: 0 }}>
-          <div style={{
-            backgroundColor: "#1f1f1f", padding: "16px 16px 16px 20px",
-            display: "flex", flexDirection: "column",
-            borderBottomLeftRadius: 4, borderBottomRightRadius: 4,
-          }}>
+        <div style={{
+          backgroundColor: "#1f1f1f", padding: "16px 16px 16px 20px",
+          display: "flex", flexDirection: "column",
+          borderRadius: "0 0 4px 4px",
+        }}>
             <div style={{ marginBottom: hasStops ? 12 : 0 }}>
               <TimePicker value={time} onChange={onTimeChange} disabledTimes={disabledTimes} />
             </div>
 
             {hasStops && (
               <>
-                {/* Orders table — animated reveal (grid 0fr → 1fr) */}
+                {/* Orders table — animated reveal */}
                 <div style={{
-                  display: "grid", gridTemplateRows: showTable ? "1fr" : "0fr",
-                  transition: "grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+                  overflow: "hidden",
+                  maxHeight: showTable ? 400 : 0,
+                  transition: "max-height 280ms cubic-bezier(0.4, 0, 0.2, 1)",
                 }}>
-                  <div style={{ overflow: "hidden", minHeight: 0 }}>
-                    <div style={{ paddingBottom: 12 }}>
-                      <OrdersTable stops={route.stops!} />
-                    </div>
+                  <div style={{ paddingBottom: 12 }}>
+                    <OrdersTable stops={route.stops!} />
                   </div>
                 </div>
 
                 <button
                   onClick={() => setShowTable((v) => !v)}
                   style={{
-                    alignSelf: "flex-start", height: 32, padding: "8px 12px", background: "none", border: "none",
+                    alignSelf: "flex-start", height: 32, padding: "0 12px", background: "none", border: "none",
                     borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#fafafa", cursor: "pointer", fontFamily: "inherit",
+                    display: "flex", alignItems: "center",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
@@ -202,7 +213,6 @@ function RouteCard({
                 </button>
               </>
             )}
-          </div>
         </div>
       </div>
     </div>
@@ -243,7 +253,7 @@ export function RouteSequenceModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 540, maxWidth: "calc(100vw - 48px)", maxHeight: "calc(100vh - 80px)",
+          width: 540, maxWidth: "calc(100vw - 48px)", maxHeight: "min(720px, calc(100vh - 80px))",
           backgroundColor: "#1B1B1B", border: "1px solid #333", borderRadius: 8,
           padding: 24, display: "flex", flexDirection: "column", gap: 20,
           boxSizing: "border-box", overflow: "hidden",
@@ -271,7 +281,7 @@ export function RouteSequenceModal({
         </div>
 
         {/* Body — route cards */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", minHeight: 0, flexShrink: 1 }}>
           {routes.map((route) => (
             <RouteCard
               key={route.id}
@@ -287,7 +297,7 @@ export function RouteSequenceModal({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <button
             onClick={onCancel}
-            style={{ height: 36, padding: "8px 16px", backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#FAFAFA", cursor: "pointer", fontFamily: "inherit" }}
+            style={{ height: 36, padding: "0 16px", backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#FAFAFA", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center" }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           >
@@ -297,8 +307,9 @@ export function RouteSequenceModal({
             onClick={allTimesSet ? onConfirm : undefined}
             disabled={!allTimesSet}
             style={{
-              height: 36, padding: "8px 16px", backgroundColor: "#E5E5E5", border: "none", borderRadius: 4,
+              height: 36, padding: "0 16px", backgroundColor: "#E5E5E5", border: "none", borderRadius: 4,
               fontSize: 14, fontWeight: 500, color: "#171717", fontFamily: "inherit",
+              display: "flex", alignItems: "center",
               cursor: allTimesSet ? "pointer" : "default", opacity: allTimesSet ? 1 : 0.5,
               transition: "opacity 150ms",
             }}
