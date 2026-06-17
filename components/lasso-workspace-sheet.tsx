@@ -5634,12 +5634,27 @@ export function LassoWorkspaceSheet({
         const modalRoutes = allRouteIds.map((rid) => {
           const route = mockRoutes.find((r) => r.id === rid)
           const truck = selectedTrucks[rid]
-          const orderCount = selectedOrders.filter((o) => o.routeId === rid).length
+          const truckProfile = truck?.id ? TRUCK_CAPACITIES[truck.id] ?? null : null
+          const routeOrders = selectedOrders
+            .filter((o) => o.routeId === rid)
+            .sort((a, b) => (a.routeSequence ?? 0) - (b.routeSequence ?? 0))
+          const stops = routeOrders.map((o, i) => ({
+            seq: o.routeSequence ?? i + 1,
+            type: (o.orderType ?? "D") as "L" | "D" | "T",
+            name: o.shipToName ?? o.customerName,
+            qty: o.volume,
+          }))
           return {
             id: rid,
             truckName: truck?.name ?? route?.truckName ?? "No Truck Selected",
-            orderCount,
+            orderCount: routeOrders.length,
             color: route?.color ?? "#9A7BC7",
+            specs: {
+              gal: truck?.capacity,
+              compartments: truck?.compartments,
+              products: truckProfile ? Object.keys(truckProfile.productCapacities).length : undefined,
+            },
+            stops,
           }
         })
         const now = new Date()
