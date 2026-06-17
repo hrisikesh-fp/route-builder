@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Truck, ChevronUp, ChevronDown } from "lucide-react"
+import { X, Truck, ChevronDown } from "lucide-react"
 import { TimePicker } from "@/components/time-picker"
 
 type StopType = "L" | "D" | "T"
@@ -151,37 +151,60 @@ function RouteCard({
             onClick={() => setExpanded((v) => !v)}
             style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", color: "#a3a3a3" }}
           >
-            {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            <ChevronDown
+              size={20}
+              style={{ transition: "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)", transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
           </button>
         </div>
       </div>
 
-      {/* Body */}
-      {expanded && (
-        <div style={{
-          position: "relative", zIndex: 1, backgroundColor: "#1f1f1f",
-          padding: "16px 16px 16px 20px", display: "flex", flexDirection: "column", gap: 12,
-          borderBottomLeftRadius: 4, borderBottomRightRadius: 4,
-        }}>
-          <TimePicker value={time} onChange={onTimeChange} disabledTimes={disabledTimes} />
+      {/* Body — animated card collapse (grid 0fr → 1fr) */}
+      <div style={{
+        position: "relative", zIndex: 1,
+        display: "grid", gridTemplateRows: expanded ? "1fr" : "0fr",
+        transition: "grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+      }}>
+        <div style={{ overflow: "hidden", minHeight: 0 }}>
+          <div style={{
+            backgroundColor: "#1f1f1f", padding: "16px 16px 16px 20px",
+            display: "flex", flexDirection: "column",
+            borderBottomLeftRadius: 4, borderBottomRightRadius: 4,
+          }}>
+            <div style={{ marginBottom: hasStops ? 12 : 0 }}>
+              <TimePicker value={time} onChange={onTimeChange} disabledTimes={disabledTimes} />
+            </div>
 
-          {showTable && hasStops && <OrdersTable stops={route.stops!} />}
+            {hasStops && (
+              <>
+                {/* Orders table — animated reveal (grid 0fr → 1fr) */}
+                <div style={{
+                  display: "grid", gridTemplateRows: showTable ? "1fr" : "0fr",
+                  transition: "grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+                }}>
+                  <div style={{ overflow: "hidden", minHeight: 0 }}>
+                    <div style={{ paddingBottom: 12 }}>
+                      <OrdersTable stops={route.stops!} />
+                    </div>
+                  </div>
+                </div>
 
-          {hasStops && (
-            <button
-              onClick={() => setShowTable((v) => !v)}
-              style={{
-                alignSelf: "flex-start", height: 32, padding: "8px 12px", background: "none", border: "none",
-                borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#fafafa", cursor: "pointer", fontFamily: "inherit",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-            >
-              {showTable ? "See less" : "See All Orders"}
-            </button>
-          )}
+                <button
+                  onClick={() => setShowTable((v) => !v)}
+                  style={{
+                    alignSelf: "flex-start", height: 32, padding: "8px 12px", background: "none", border: "none",
+                    borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#fafafa", cursor: "pointer", fontFamily: "inherit",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  {showTable ? "See less" : "See All Orders"}
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

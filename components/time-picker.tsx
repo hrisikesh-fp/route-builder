@@ -127,7 +127,7 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
           style={{
             position: "fixed", ...panelStyle,
             backgroundColor: "#282828", border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 4, zIndex: 9999, width: 200, overflow: "hidden",
+            borderRadius: 4, zIndex: 10200, width: 200, overflow: "hidden",
           }}
         >
           <div style={{ display: "flex" }}>
