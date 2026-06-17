@@ -324,6 +324,13 @@ export function RouteMap({
         maxZoom: 18,
       })
 
+      // Swallow map errors (e.g. a failed Mapbox style/tile fetch) so they don't
+      // bubble to console.error and trip the Next.js dev error overlay. The map
+      // background is non-essential for the workspace/modals — degrade quietly.
+      map.on("error", (e: any) => {
+        console.warn("[RouteMap] map error (non-fatal):", e?.error?.message ?? e)
+      })
+
       map.on("zoom", () => setCurrentZoom(map.getZoom()))
       map.on("load", () => {
         setMapReady(true)
