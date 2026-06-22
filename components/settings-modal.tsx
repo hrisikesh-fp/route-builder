@@ -1,6 +1,6 @@
 "use client"
 
-import { X, Settings, Route, Tag, Sun, Pencil } from "lucide-react"
+import { X, Settings, Route, Tag, Sun, Pencil, GitBranch } from "lucide-react"
 import { useSettings } from "@/contexts/settings-context"
 import { Switch } from "@/components/ui/switch"
 
@@ -17,12 +17,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     orderCardView,
     createOrderModalView,
     showEditInFab,
+    showDriverConflict,
     updateRouteLineDisplay,
     updateShowBadges,
     updateReducedOpacity,
     updateOrderCardView,
     updateCreateOrderModalView,
     updateShowEditInFab,
+    updateShowDriverConflict,
   } = useSettings()
 
   if (!isOpen) return null
@@ -392,6 +394,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <Switch
                   checked={showEditInFab}
                   onCheckedChange={updateShowEditInFab}
+                  className="data-[state=checked]:bg-[#6366F1] data-[state=unchecked]:bg-[#404040]"
+                />
+              </div>
+
+              {/* Driver multi-route conflict scenario (feature-flag prototype) */}
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center mt-0.5"
+                    style={{ backgroundColor: "#282828" }}
+                  >
+                    <GitBranch className="w-5 h-5 text-[#A3A3A3]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                      Driver Multi-Route Conflict
+                    </span>
+                    <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                      Show the conflict banner + Review &amp; Assign modal for drivers with multiple active routes. Simulates a feature flag for demos.
+                    </span>
+                  </div>
+                </div>
+                <Switch
+                  checked={showDriverConflict}
+                  onCheckedChange={updateShowDriverConflict}
                   className="data-[state=checked]:bg-[#6366F1] data-[state=unchecked]:bg-[#404040]"
                 />
               </div>

@@ -138,6 +138,7 @@ const DRIVERS: DriverItem[] = [
   { id: "driver-6", name: "Valerie Thomas", orderCount: 7 },
 ]
 
+// Order counts for drivers who have conflict orders needing manual assignment (mock data)
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
 }
@@ -3233,6 +3234,7 @@ export function LassoWorkspaceSheet({
     return Object.entries(drivers).filter(([rid, d]) => rid !== routeId && d.id === driverId).map(([rid]) => rid)
   }
 
+  // Surface driver-conflict summary to page.tsx for the global banner
   // Wrapped truck selection — checks for conflict before assigning
   function handleTruckSelect(routeId: string, truck: TruckItem) {
     const conflicts = getTruckConflicts(selectedTrucks, routeId, truck.id)

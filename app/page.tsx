@@ -15,7 +15,7 @@ import { FilterSheetCollapsed } from "@/components/filter-sheet-collapsed"
 import { LassoWorkspaceSheet } from "@/components/lasso-workspace-sheet"
 import { LassoCanvas } from "@/components/lasso-canvas"
 import { SettingsModal } from "@/components/settings-modal"
-import { SettingsProvider } from "@/contexts/settings-context"
+import { useSettings } from "@/contexts/settings-context"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockExtractionOrders, mockRoutes, shipTosWithoutOrders, buildShipToCoordLookup, buildCustomerCoordLookup } from "@/lib/mock-data"
 import { CheckCircle2 } from "lucide-react"
@@ -48,9 +48,16 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [isCreateOrderSideSheetOpen, setIsCreateOrderSideSheetOpen] = useState(false)
   const [modal3UnassignedOrders, setModal3UnassignedOrders] = useState<ExtractionOrder[]>([])
 
-  // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes
-  const [isConflictBannerVisible, setIsConflictBannerVisible] = useState(true)
+  // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes.
+  // Gated behind the `showDriverConflict` prototype flag (Settings → Driver Multi-Route Conflict).
+  const { showDriverConflict } = useSettings()
+  const [conflictOrdersRemaining, setConflictOrdersRemaining] = useState(5)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
+  // Flipping the flag on re-arms the full scenario so it can be re-demoed.
+  useEffect(() => {
+    if (showDriverConflict) setConflictOrdersRemaining(5)
+  }, [showDriverConflict])
+  const isConflictBannerVisible = showDriverConflict && conflictOrdersRemaining > 0
   const BANNER_HEIGHT = 95
   const topOffset = isConflictBannerVisible ? BANNER_HEIGHT : 0
 
@@ -363,7 +370,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   }
 
   return (
-    <SettingsProvider>
     <main className="relative w-full h-screen overflow-hidden">
       <MapHeader
         onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -377,6 +383,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
       {isConflictBannerVisible && (
         <ConflictAssignmentBanner
+          orderCount={conflictOrdersRemaining}
           onReviewAndAssign={() => setIsConflictModalOpen(true)}
         />
       )}
@@ -529,14 +536,13 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       <ConflictResolutionModal
-        isOpen={isConflictModalOpen}
+        isOpen={isConflictModalOpen && showDriverConflict}
         onClose={() => setIsConflictModalOpen(false)}
-        onConfirm={() => {
+        onConfirm={(unassignedCount) => {
           setIsConflictModalOpen(false)
-          setIsConflictBannerVisible(false)
+          setConflictOrdersRemaining(unassignedCount)
         }}
       />
     </main>
-    </SettingsProvider>
   )
 }

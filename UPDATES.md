@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-06-18
+
+> Design-ops / tooling — not app code.
+
+- **Design QA → ClickUp automation (new)**: paste a Figma QA frame + the day's ClickUp task → each observation gets a numbered Figma sticky, a renamed `Observation N:` section, and a matching ClickUp subtask (tagged `design-qa`, priority, Figma link) nested under that day's QA parent. Figma ↔ ClickUp stay in parity. New `/design-qa` skill + `DESIGN-QA-WORKFLOW.md`.
+- **34 observations logged & handed to dev** across June 9 (9), 10 (19, incl. 4 carry-overs from June 2-3), 15 (3), 16 (3). Dev already completing several (truck dropdown redesign, route-summary scroll/z-index, redundant Edit menu item). June 16 Obs 1 carries PR #299 (Move Orders "0 products" fix).
+
+---
+
 ## 2026-06-10
 
 - **Truck dropdown empty state**: "Select Truck" title now `#a3a3a3`; "No truck selected" subtitle added; Plus icon replaces ChevronDown; helper text "Trailers can be added only after adding a Truck" added below the card. Copy unified — collapsed card and dropdown now both say "No truck selected".

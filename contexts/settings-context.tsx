@@ -9,6 +9,7 @@ const DEFAULT_REDUCED_OPACITY = true
 const DEFAULT_ORDER_CARD_VIEW = "condensed" as const
 const DEFAULT_CREATE_ORDER_MODAL_VIEW = "modal1" as const
 const DEFAULT_SHOW_EDIT_IN_FAB = true
+const DEFAULT_SHOW_DRIVER_CONFLICT = true
 
 type RouteLineDisplayType = "grayscale" | "colored"
 type OrderCardViewType = "condensed" | "detailed"
@@ -21,12 +22,14 @@ interface SettingsContextType {
   orderCardView: OrderCardViewType
   createOrderModalView: CreateOrderModalViewType
   showEditInFab: boolean
+  showDriverConflict: boolean
   updateRouteLineDisplay: (v: RouteLineDisplayType) => void
   updateShowBadges: (v: boolean) => void
   updateReducedOpacity: (v: boolean) => void
   updateOrderCardView: (v: OrderCardViewType) => void
   updateCreateOrderModalView: (v: CreateOrderModalViewType) => void
   updateShowEditInFab: (v: boolean) => void
+  updateShowDriverConflict: (v: boolean) => void
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null)
@@ -38,6 +41,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [orderCardView, setOrderCardView] = useState<OrderCardViewType>(DEFAULT_ORDER_CARD_VIEW)
   const [createOrderModalView, setCreateOrderModalView] = useState<CreateOrderModalViewType>(DEFAULT_CREATE_ORDER_MODAL_VIEW)
   const [showEditInFab, setShowEditInFab] = useState<boolean>(DEFAULT_SHOW_EDIT_IN_FAB)
+  const [showDriverConflict, setShowDriverConflict] = useState<boolean>(DEFAULT_SHOW_DRIVER_CONFLICT)
 
   // Load persisted settings from localStorage on mount
   useEffect(() => {
@@ -51,6 +55,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
     const storedEditInFab = localStorage.getItem("showEditInFab")
     if (storedEditInFab !== null) setShowEditInFab(storedEditInFab === "true")
+    const storedDriverConflict = localStorage.getItem("showDriverConflict")
+    if (storedDriverConflict !== null) setShowDriverConflict(storedDriverConflict === "true")
   }, [])
 
   const updateRouteLineDisplay = (v: RouteLineDisplayType) => setRouteLineDisplayValue(v)
@@ -68,6 +74,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setShowEditInFab(v)
     localStorage.setItem("showEditInFab", String(v))
   }
+  const updateShowDriverConflict = (v: boolean) => {
+    setShowDriverConflict(v)
+    localStorage.setItem("showDriverConflict", String(v))
+  }
 
   return (
     <SettingsContext.Provider
@@ -78,12 +88,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         orderCardView,
         createOrderModalView,
         showEditInFab,
+        showDriverConflict,
         updateRouteLineDisplay,
         updateShowBadges,
         updateReducedOpacity,
         updateOrderCardView,
         updateCreateOrderModalView,
         updateShowEditInFab,
+        updateShowDriverConflict,
       }}
     >
       {children}
@@ -101,12 +113,14 @@ export function useSettings(): SettingsContextType {
       orderCardView: DEFAULT_ORDER_CARD_VIEW,
       createOrderModalView: DEFAULT_CREATE_ORDER_MODAL_VIEW,
       showEditInFab: DEFAULT_SHOW_EDIT_IN_FAB,
+      showDriverConflict: DEFAULT_SHOW_DRIVER_CONFLICT,
       updateRouteLineDisplay: () => {},
       updateShowBadges: () => {},
       updateReducedOpacity: () => {},
       updateOrderCardView: () => {},
       updateCreateOrderModalView: () => {},
       updateShowEditInFab: () => {},
+      updateShowDriverConflict: () => {},
     }
   }
   return ctx

@@ -1,25 +1,22 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, GripVertical, Truck } from "lucide-react"
+import { X, GripVertical, Truck, Droplet, ArrowRight } from "lucide-react"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ConflictOrder {
   id: string
   customer: string
-  product: string
+  products: number
   volume: number
-  driverName: string
 }
 
 interface ConflictRoute {
   id: string
-  name: string
   truck: string
-  color: string
+  color: string // pastel accent
   existingOrders: number
-  driverName: string
 }
 
 interface DriverConflictGroup {
@@ -30,48 +27,49 @@ interface DriverConflictGroup {
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
+const ROUTE_PURPLE = "#d8b4fe"
+const ROUTE_BLUE = "#93c5fd"
+
 const CONFLICT_GROUPS: DriverConflictGroup[] = [
   {
     driverName: "Mark Ruffalo",
     orders: [
-      { id: "co-1", customer: "Mueller Construction", product: "Clear, Dyed", volume: 1000, driverName: "Mark Ruffalo" },
-      { id: "co-2", customer: "Manor Equipment Rental", product: "Clear", volume: 800, driverName: "Mark Ruffalo" },
-      { id: "co-3", customer: "Elgin Concrete", product: "Clear, Dyed", volume: 1100, driverName: "Mark Ruffalo" },
+      { id: "co-1", customer: "Mueller Construction", products: 2, volume: 1000 },
+      { id: "co-2", customer: "Manor Equipment Rental", products: 1, volume: 800 },
+      { id: "co-3", customer: "Elgin Concrete", products: 2, volume: 1100 },
     ],
     routes: [
-      { id: "route-1", name: "Route 1", truck: "H-118 · 2019 Kenworth Tank Wagon", color: "#9A7BC7", existingOrders: 6, driverName: "Mark Ruffalo" },
-      { id: "route-2", name: "Route 2", truck: "H-218 · 2021 Freightliner Cascadia", color: "#C4956A", existingOrders: 9, driverName: "Mark Ruffalo" },
+      { id: "route-1", truck: "H-118 2019 Kenworth Tank Wagon", color: ROUTE_PURPLE, existingOrders: 6 },
+      { id: "route-2", truck: "H-218 2021 Freightliner Cascadia", color: ROUTE_BLUE, existingOrders: 7 },
     ],
   },
   {
     driverName: "Kyle Reese",
     orders: [
-      { id: "co-4", customer: "Lost Creek Country Store", product: "Dyed", volume: 600, driverName: "Kyle Reese" },
-      { id: "co-5", customer: "Barton Creek Fuel Stop", product: "Clear", volume: 900, driverName: "Kyle Reese" },
+      { id: "co-4", customer: "Lost Creek Country Store", products: 1, volume: 600 },
+      { id: "co-5", customer: "Barton Creek Fuel Stop", products: 1, volume: 900 },
     ],
     routes: [
-      { id: "route-3", name: "Route 3", truck: "H-206 · 2021 Peterbilt Tanker", color: "#6B9DCF", existingOrders: 4, driverName: "Kyle Reese" },
-      { id: "route-4", name: "Route 4", truck: "H-305 · 2019 Mack Pinnacle", color: "#B87DA3", existingOrders: 5, driverName: "Kyle Reese" },
+      { id: "route-3", truck: "H-206 2021 Peterbilt Tanker", color: ROUTE_PURPLE, existingOrders: 6 },
+      { id: "route-4", truck: "H-305 2019 Mack Pinnacle", color: ROUTE_BLUE, existingOrders: 7 },
     ],
   },
 ]
 
 const ALL_ORDERS: ConflictOrder[] = CONFLICT_GROUPS.flatMap(g => g.orders)
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Order Card ───────────────────────────────────────────────────────────────
 
 function OrderCard({
   order,
   isDragging,
   onDragStart,
   onDragEnd,
-  compact = false,
 }: {
   order: ConflictOrder
   isDragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
-  compact?: boolean
 }) {
   return (
     <div
@@ -80,46 +78,57 @@ function OrderCard({
       onDragEnd={onDragEnd}
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: compact ? "8px 10px" : "10px 12px",
-        backgroundColor: "#1F1F1F",
-        border: "1px solid #282828",
-        borderRadius: 6,
+        alignItems: "flex-start",
+        gap: 12,
+        padding: "16px 16px 12px",
+        backgroundColor: "#282828",
+        borderRadius: 4,
+        overflow: "hidden",
         cursor: "grab",
         opacity: isDragging ? 0.35 : 1,
         transition: "opacity 150ms ease",
         userSelect: "none",
       }}
     >
-      <GripVertical size={14} color="#525252" style={{ flexShrink: 0 }} />
-      {/* Type badge */}
-      <div style={{
-        width: 20, height: 20, borderRadius: 4,
-        backgroundColor: "rgba(37,184,167,0.15)",
-        border: "1px solid rgba(37,184,167,0.3)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 10, fontWeight: 600, color: "#25B8A7", lineHeight: 1 }}>D</span>
+      <GripVertical size={20} color="#737373" style={{ flexShrink: 0 }} />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0 }}>
+        {/* Row 1: badge + customer */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+          <div style={{
+            width: 20, height: 20, borderRadius: 4,
+            backgroundColor: "#25b8a7",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#171717", lineHeight: "20px" }}>D</span>
+          </div>
+          <span style={{
+            fontSize: 16, fontWeight: 500, color: "#fff", flex: 1, minWidth: 0,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {order.customer}
+          </span>
+        </div>
+
+        {/* Row 2: product count + volume */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.6 }}>
+            <Droplet size={16} color="#fafafa" />
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#fafafa", lineHeight: "20px" }}>
+              {order.products} {order.products === 1 ? "Product" : "Products"}
+            </span>
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 400, color: "#e5e5e5", lineHeight: "20px" }}>
+            {order.volume.toLocaleString()} gal
+          </span>
+        </div>
       </div>
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: compact ? 12 : 13, fontWeight: 500, color: "#E5E5E5", lineHeight: "18px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {order.customer}
-        </p>
-        {!compact && (
-          <p style={{ margin: 0, fontSize: 12, color: "#737373", lineHeight: "16px", marginTop: 2 }}>
-            {order.product} · {order.volume.toLocaleString()} gal
-          </p>
-        )}
-      </div>
-      {compact && (
-        <span style={{ fontSize: 11, color: "#737373", flexShrink: 0 }}>{order.volume.toLocaleString()} gal</span>
-      )}
     </div>
   )
 }
+
+// ─── Route Drop Zone ──────────────────────────────────────────────────────────
 
 function RouteDropZone({
   route,
@@ -150,64 +159,72 @@ function RouteDropZone({
       onDrop={onDrop}
       onDragLeave={onDragLeave}
       style={{
-        borderRadius: 6,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        padding: 8,
+        backgroundColor: "#111",
         border: `1px solid ${isOver ? "#404040" : "#282828"}`,
-        backgroundColor: isOver ? "rgba(255,255,255,0.04)" : "#171717",
-        overflow: "hidden",
-        transition: "border-color 120ms ease, background-color 120ms ease",
+        borderRadius: 4,
+        minHeight: isEmpty ? 112 : undefined,
+        width: "100%",
+        transition: "border-color 120ms ease",
       }}
     >
-      {/* Route header */}
+      {/* Route header bar */}
       <div style={{
+        position: "relative",
         display: "flex",
         alignItems: "center",
-        gap: 10,
-        padding: "10px 12px",
-        borderLeft: `3px solid ${route.color}`,
-        borderBottom: assignedOrders.length > 0 || isOver ? "1px solid #282828" : "none",
+        gap: 16,
+        padding: "8px 8px 8px 16px",
+        backgroundColor: "#1f1f1f",
+        borderRadius: 4,
+        overflow: "hidden",
+        width: "100%",
+        boxSizing: "border-box",
       }}>
-        <Truck size={14} color="#737373" style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 500, color: "#E5E5E5", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {route.truck}
-        </span>
-        <div style={{
-          padding: "2px 8px",
-          backgroundColor: "#262626",
-          borderRadius: 4,
-          fontSize: 11,
-          color: "#A3A3A3",
-          fontWeight: 500,
-          flexShrink: 0,
-        }}>
-          {route.existingOrders} Orders
+        {/* Accent bar */}
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 6, backgroundColor: route.color }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+            <Truck size={16} color="#fafafa" style={{ flexShrink: 0 }} />
+            <span style={{
+              fontSize: 16, fontWeight: 500, color: "#fff",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {route.truck}
+            </span>
+          </div>
+          <div style={{
+            padding: "2px 8px",
+            backgroundColor: "#111",
+            border: "1px solid transparent",
+            borderRadius: 4,
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#fafafa", lineHeight: "20px", whiteSpace: "nowrap" }}>
+              {route.existingOrders} Orders
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Drop area */}
-      <div style={{ padding: isEmpty ? 0 : "8px", display: "flex", flexDirection: "column", gap: 6 }}>
-        {assignedOrders.map(order => (
-          <OrderCard
-            key={order.id}
-            order={order}
-            isDragging={draggingId === order.id}
-            onDragStart={() => onOrderDragStart(order.id)}
-            onDragEnd={onDragEnd}
-            compact
-          />
-        ))}
-        {/* Empty state drop hint */}
-        {isEmpty && (
-          <div style={{
-            padding: "14px 12px",
-            textAlign: "center",
-            fontSize: 12,
-            color: isOver ? "#737373" : "#404040",
-            transition: "color 120ms ease",
-          }}>
-            Drop orders here
-          </div>
-        )}
-      </div>
+      {/* Assigned cards OR drop hint */}
+      {assignedOrders.map(order => (
+        <OrderCard
+          key={order.id}
+          order={order}
+          isDragging={draggingId === order.id}
+          onDragStart={() => onOrderDragStart(order.id)}
+          onDragEnd={onDragEnd}
+        />
+      ))}
+      {isEmpty && (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 400, color: "#737373" }}>Drop orders here</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -217,7 +234,7 @@ function RouteDropZone({
 interface ConflictResolutionModalProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: (unassignedCount: number) => void
 }
 
 export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: ConflictResolutionModalProps) {
@@ -228,7 +245,6 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const draggingIdRef = useRef<string | null>(null)
 
-  // Reset state on open
   useEffect(() => {
     if (isOpen) {
       setAssignments(Object.fromEntries(ALL_ORDERS.map(o => [o.id, null])))
@@ -247,18 +263,15 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
     draggingIdRef.current = orderId
     setDraggingId(orderId)
   }
-
   const handleDragEnd = () => {
     draggingIdRef.current = null
     setDraggingId(null)
     setDropTarget(null)
   }
-
   const handleDragOver = (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
     setDropTarget(targetId)
   }
-
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
     const id = draggingIdRef.current
@@ -268,9 +281,7 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
     draggingIdRef.current = null
     setDropTarget(null)
   }
-
   const handleDragLeave = (e: React.DragEvent) => {
-    // Only clear if leaving to outside the drop zone (not into a child)
     if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as HTMLElement)) {
       setDropTarget(null)
     }
@@ -281,11 +292,7 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
       {/* Overlay */}
       <div
         onClick={onClose}
-        style={{
-          position: "fixed", inset: 0,
-          backgroundColor: "rgba(0,0,0,0.6)",
-          zIndex: 2000,
-        }}
+        style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 2000 }}
       />
 
       {/* Modal */}
@@ -295,158 +302,118 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
           top: "50%", left: "50%",
           transform: "translate(-50%, -50%)",
           width: 960, maxWidth: "calc(100vw - 48px)",
-          maxHeight: "calc(100vh - 80px)",
-          backgroundColor: "#1B1B1B",
-          border: "1px solid #282828",
+          maxHeight: "min(720px, calc(100vh - 80px))",
+          backgroundColor: "#1b1b1b",
           borderRadius: 8,
           zIndex: 2001,
           display: "flex",
           flexDirection: "column",
+          padding: 24,
+          gap: 20,
           overflow: "hidden",
+          boxSizing: "border-box",
         }}
       >
         {/* Header */}
-        <div style={{
-          padding: "20px 24px 16px",
-          borderBottom: "1px solid #282828",
-          flexShrink: 0,
-        }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#FAFAFA", lineHeight: "24px" }}>
-                Review &amp; Assign Orders
-              </h2>
-              <p style={{ margin: "4px 0 0", fontSize: 13, color: "#A3A3A3", lineHeight: "18px" }}>
-                {assignedCount} of {totalOrders} orders assigned — drag each order into a route.
-              </p>
-            </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 500, color: "#e5e5e5", lineHeight: "28px" }}>
+              Review &amp; Assign Orders
+            </p>
             <button
               onClick={onClose}
-              style={{
-                background: "none", border: "none",
-                color: "#737373", cursor: "pointer",
-                padding: 4, display: "flex", alignItems: "center", justifyContent: "center",
-                borderRadius: 4, flexShrink: 0,
-              }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexShrink: 0 }}
             >
-              <X size={18} />
+              <X size={24} color="#e5e5e5" />
             </button>
           </div>
-
-          {/* Progress bar */}
-          <div style={{ marginTop: 14, height: 2, backgroundColor: "#282828", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{
-              height: "100%",
-              width: `${(assignedCount / totalOrders) * 100}%`,
-              backgroundColor: allAssigned ? "#22c55e" : "#4D55F8",
-              borderRadius: 2,
-              transition: "width 300ms ease, background-color 300ms ease",
-            }} />
-          </div>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: "#a3a3a3", lineHeight: "20px" }}>
+            {assignedCount} of {totalOrders} orders assigned — drag orders into a route to assign them.
+          </p>
         </div>
 
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 24px" }}>
-          {CONFLICT_GROUPS.map((group, groupIdx) => {
+        {/* Body — driver groups */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, overflowY: "auto", minHeight: 0 }}>
+          {CONFLICT_GROUPS.map(group => {
             const limboOrders = group.orders.filter(o => assignments[o.id] === null)
             const limboTargetId = `limbo-${group.driverName}`
+            const groupAssigned = group.orders.filter(o => assignments[o.id] !== null).length
 
             return (
-              <div key={group.driverName}>
-                {/* Driver section divider */}
-                {groupIdx > 0 && (
-                  <div style={{ borderTop: "1px solid #282828", marginBottom: 0 }} />
-                )}
+              <div key={group.driverName} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {/* Driver label */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 500, color: "#fff", lineHeight: "24px", whiteSpace: "nowrap" }}>
+                    {group.driverName}
+                  </span>
+                  <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#737373", flexShrink: 0 }} />
+                  <span style={{ fontSize: 14, fontWeight: 400, color: "#a3a3a3", lineHeight: "20px", whiteSpace: "nowrap" }}>
+                    {groupAssigned}/{group.orders.length} Assigned
+                  </span>
+                </div>
 
-                <div style={{ paddingTop: 20, paddingBottom: 24 }}>
-                  {/* Driver label */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                    <div style={{
-                      width: 24, height: 24, borderRadius: "50%",
-                      backgroundColor: "#262626", border: "1px solid #333",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 10, fontWeight: 600, color: "#A3A3A3",
-                      flexShrink: 0,
-                    }}>
-                      {group.driverName.split(" ").map(n => n[0]).join("")}
+                {/* Two columns */}
+                <div style={{ display: "flex", gap: 24, alignItems: "flex-start", width: "100%" }}>
+                  {/* Left: orders to be assigned */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 300, color: "#a3a3a3", lineHeight: "24px" }}>
+                      Orders to be Assigned
+                    </p>
+                    <div
+                      onDragOver={e => handleDragOver(e, limboTargetId)}
+                      onDrop={e => handleDrop(e, "limbo")}
+                      onDragLeave={handleDragLeave}
+                      style={{
+                        display: "flex", flexDirection: "column", gap: 8,
+                        padding: 8,
+                        border: `1px dashed ${dropTarget === limboTargetId ? "#404040" : "#282828"}`,
+                        borderRadius: 4,
+                        width: "100%",
+                        minHeight: limboOrders.length === 0 ? 80 : undefined,
+                        transition: "border-color 120ms ease",
+                      }}
+                    >
+                      {limboOrders.length > 0 ? (
+                        limboOrders.map(order => (
+                          <OrderCard
+                            key={order.id}
+                            order={order}
+                            isDragging={draggingId === order.id}
+                            onDragStart={() => handleDragStart(order.id)}
+                            onDragEnd={handleDragEnd}
+                          />
+                        ))
+                      ) : (
+                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 80 }}>
+                          <span style={{ fontSize: 14, color: "#525252" }}>All orders assigned</span>
+                        </div>
+                      )}
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: "#FAFAFA" }}>
-                      {group.driverName}
-                    </span>
-                    <span style={{ fontSize: 12, color: "#525252" }}>
-                      · {group.orders.filter(o => assignments[o.id] !== null).length} of {group.orders.length} assigned
-                    </span>
                   </div>
 
-                  {/* Two-column layout */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    {/* Left: limbo bucket */}
-                    <div>
-                      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 500, color: "#525252", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Unassigned
-                      </p>
-                      <div
-                        onDragOver={e => handleDragOver(e, limboTargetId)}
-                        onDrop={e => handleDrop(e, "limbo")}
-                        onDragLeave={handleDragLeave}
-                        style={{
-                          minHeight: 120,
-                          borderRadius: 6,
-                          border: `1px dashed ${dropTarget === limboTargetId ? "#404040" : "#282828"}`,
-                          backgroundColor: dropTarget === limboTargetId ? "rgba(255,255,255,0.03)" : "transparent",
-                          padding: limboOrders.length > 0 ? 8 : 0,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
-                          transition: "border-color 120ms ease, background-color 120ms ease",
-                        }}
-                      >
-                        {limboOrders.length > 0 ? (
-                          limboOrders.map(order => (
-                            <OrderCard
-                              key={order.id}
-                              order={order}
-                              isDragging={draggingId === order.id}
-                              onDragStart={() => handleDragStart(order.id)}
-                              onDragEnd={handleDragEnd}
-                            />
-                          ))
-                        ) : (
-                          <div style={{
-                            flex: 1, minHeight: 120,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 12, color: "#404040",
-                          }}>
-                            All orders assigned
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right: routes */}
-                    <div>
-                      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 500, color: "#525252", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Routes
-                      </p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {group.routes.map(route => {
-                          const assignedToRoute = group.orders.filter(o => assignments[o.id] === route.id)
-                          return (
-                            <RouteDropZone
-                              key={route.id}
-                              route={route}
-                              assignedOrders={assignedToRoute}
-                              isOver={dropTarget === route.id}
-                              draggingId={draggingId}
-                              onDragOver={e => handleDragOver(e, route.id)}
-                              onDrop={e => handleDrop(e, route.id)}
-                              onDragLeave={handleDragLeave}
-                              onOrderDragStart={handleDragStart}
-                              onDragEnd={handleDragEnd}
-                            />
-                          )
-                        })}
-                      </div>
+                  {/* Right: routes */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 16, fontWeight: 300, color: "#a3a3a3", lineHeight: "24px" }}>
+                      Routes
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+                      {group.routes.map(route => {
+                        const assignedToRoute = group.orders.filter(o => assignments[o.id] === route.id)
+                        return (
+                          <RouteDropZone
+                            key={route.id}
+                            route={route}
+                            assignedOrders={assignedToRoute}
+                            isOver={dropTarget === route.id}
+                            draggingId={draggingId}
+                            onDragOver={e => handleDragOver(e, route.id)}
+                            onDrop={e => handleDrop(e, route.id)}
+                            onDragLeave={handleDragLeave}
+                            onOrderDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                          />
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
@@ -456,51 +423,47 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: "14px 24px",
-          borderTop: "1px solid #282828",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexShrink: 0,
-          backgroundColor: "#1B1B1B",
-        }}>
-          <p style={{ margin: 0, fontSize: 12, color: "#525252" }}>
-            {allAssigned ? "All orders assigned — ready to confirm." : `${totalOrders - assignedCount} order${totalOrders - assignedCount !== 1 ? "s" : ""} still unassigned.`}
-          </p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={onClose}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "transparent",
-                border: "1px solid #333",
-                borderRadius: 6,
-                color: "#A3A3A3",
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={allAssigned ? onConfirm : undefined}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: allAssigned ? "#4D55F8" : "#1F1F1F",
-                border: `1px solid ${allAssigned ? "#4D55F8" : "#282828"}`,
-                borderRadius: 6,
-                color: allAssigned ? "#fff" : "#525252",
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: allAssigned ? "pointer" : "not-allowed",
-                transition: "all 200ms ease",
-              }}
-            >
-              Confirm &amp; Assign
-            </button>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <button
+            onClick={onClose}
+            style={{
+              height: 36,
+              padding: "8px 16px",
+              backgroundColor: "transparent",
+              border: "1px solid #333",
+              borderRadius: 4,
+              boxShadow: "0px 1px 1px rgba(0,0,0,0.05)",
+              color: "#fafafa",
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={assignedCount > 0 ? () => onConfirm(totalOrders - assignedCount) : undefined}
+            disabled={assignedCount === 0}
+            style={{
+              height: 36,
+              padding: "8px 16px",
+              backgroundColor: "#e5e5e5",
+              border: "none",
+              borderRadius: 4,
+              color: "#171717",
+              fontSize: 14,
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              opacity: assignedCount > 0 ? 1 : 0.4,
+              cursor: assignedCount > 0 ? "pointer" : "not-allowed",
+              transition: "opacity 200ms ease",
+            }}
+          >
+            Confirm &amp; Assign{assignedCount > 0 ? ` ${assignedCount} Order${assignedCount !== 1 ? "s" : ""}` : ""}
+            <ArrowRight size={16} />
+          </button>
         </div>
       </div>
     </>
