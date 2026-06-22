@@ -15,10 +15,12 @@ import { FilterSheetCollapsed } from "@/components/filter-sheet-collapsed"
 import { LassoWorkspaceSheet } from "@/components/lasso-workspace-sheet"
 import { LassoCanvas } from "@/components/lasso-canvas"
 import { SettingsModal } from "@/components/settings-modal"
-import { SettingsProvider } from "@/contexts/settings-context"
+import { useSettings } from "@/contexts/settings-context"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockExtractionOrders, mockRoutes, shipTosWithoutOrders, buildShipToCoordLookup, buildCustomerCoordLookup } from "@/lib/mock-data"
 import { CheckCircle2 } from "lucide-react"
+import { ConflictAssignmentBanner } from "@/components/conflict-assignment-banner"
+import { ConflictResolutionModal } from "@/components/conflict-resolution-modal"
 
 export default function Home() {
 const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
@@ -45,6 +47,19 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // Modal 3 (side sheet) state — workspace is collapsed, Create Order floats to the right.
   const [isCreateOrderSideSheetOpen, setIsCreateOrderSideSheetOpen] = useState(false)
   const [modal3UnassignedOrders, setModal3UnassignedOrders] = useState<ExtractionOrder[]>([])
+
+  // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes.
+  // Gated behind the `showDriverConflict` prototype flag (Settings → Driver Multi-Route Conflict).
+  const { showDriverConflict } = useSettings()
+  const [conflictOrdersRemaining, setConflictOrdersRemaining] = useState(5)
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
+  // Flipping the flag on re-arms the full scenario so it can be re-demoed.
+  useEffect(() => {
+    if (showDriverConflict) setConflictOrdersRemaining(5)
+  }, [showDriverConflict])
+  const isConflictBannerVisible = showDriverConflict && conflictOrdersRemaining > 0
+  const BANNER_HEIGHT = 95
+  const topOffset = isConflictBannerVisible ? BANNER_HEIGHT : 0
 
   // Top-nav Create Order trigger — incrementing this counter opens the Create Order modal.
   const [openCreateOrderTrigger, setOpenCreateOrderTrigger] = useState(0)
@@ -355,7 +370,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   }
 
   return (
-    <SettingsProvider>
     <main className="relative w-full h-screen overflow-hidden">
       <MapHeader
         onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -366,6 +380,13 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         }}
         isCreateOrderOpen={isCreateOrderModalOpen}
       />
+
+      {isConflictBannerVisible && (
+        <ConflictAssignmentBanner
+          orderCount={conflictOrdersRemaining}
+          onReviewAndAssign={() => setIsConflictModalOpen(true)}
+        />
+      )}
 
 <RouteMap
   orders={filteredOrders}
@@ -407,6 +428,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
           entityVisibility={entityVisibility}
           onEntityVisibilityChange={setEntityVisibility}
+          topOffset={topOffset}
         />
 
       <LassoCanvas
@@ -438,6 +460,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         externalUnassignedOrders={modal3UnassignedOrders}
         openCreateOrderTrigger={openCreateOrderTrigger}
         onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}
+        topOffset={topOffset}
         onShowToast={(driverName) => {
           setToastMessage(`Load Order added to ${driverName}'s Route successfully`)
           setTimeout(() => setToastMessage(null), 5000)
@@ -476,9 +499,10 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         </div>
       )}
 
-      {!isFilterOpen && <FilterSheetCollapsed onExpand={() => setIsFilterOpen(true)} appliedFiltersCount={2} />}
+      {!isFilterOpen && <FilterSheetCollapsed onExpand={() => setIsFilterOpen(true)} appliedFiltersCount={2} topOffset={topOffset} />}
       <FilterSideSheet
         isOpen={isFilterOpen}
+        topOffset={topOffset}
         onClose={() => setIsFilterOpen(false)}
         totalRoutes={mockRoutes.length}
         totalOrders={filteredOrders.length}
@@ -504,13 +528,21 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
       {/* Collapsed tab — clicking opens workspace with empty state */}
       {!isWorkspaceOpen && (
-        <RouteSheetCollapsed onExpand={() => setIsWorkspaceOpen(true)} hideExpandButton={isCreateOrderSideSheetOpen} />
+        <RouteSheetCollapsed onExpand={() => setIsWorkspaceOpen(true)} hideExpandButton={isCreateOrderSideSheetOpen} topOffset={topOffset} />
       )}
 
       <CreateRoutePanel isOpen={isCreatePanelOpen} onClose={() => setIsCreatePanelOpen(false)} />
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      <ConflictResolutionModal
+        isOpen={isConflictModalOpen && showDriverConflict}
+        onClose={() => setIsConflictModalOpen(false)}
+        onConfirm={(unassignedCount) => {
+          setIsConflictModalOpen(false)
+          setConflictOrdersRemaining(unassignedCount)
+        }}
+      />
     </main>
-    </SettingsProvider>
   )
 }

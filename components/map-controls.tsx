@@ -29,6 +29,7 @@ interface MapControlsProps {
   isCreateOrderSideSheetOpen?: boolean
   entityVisibility?: MapEntityVisibility
   onEntityVisibilityChange?: (visibility: MapEntityVisibility) => void
+  topOffset?: number
 }
 
 // ShipTo pin — exact Figma SVG, viewBox cropped to pin content (24×24 display)
@@ -140,6 +141,7 @@ export function MapControls({
     terminals: true,
   },
   onEntityVisibilityChange,
+  topOffset = 0,
 }: MapControlsProps) {
   const [isLayersOpen, setIsLayersOpen] = useState(false)
   const layersRef = useRef<HTMLDivElement>(null)
@@ -184,7 +186,7 @@ export function MapControls({
     <div
       className="absolute z-[1000] flex flex-col gap-2 rb-map-controls-shift"
       style={{
-        top: "78px",
+        top: 78 + topOffset,
         right: getRightPosition(),
       }}
     >

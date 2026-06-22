@@ -1,5 +1,7 @@
 # Route Builder — Validation Framework
 
+> **Status: FINAL — 2026-06-15.** Implementation complete. Do not edit — share as-is with dev.
+
 The validation system evaluates route health across 4 severity levels and surfaces messages at 4 distinct locations in the UI. The logic engine lives in `lib/capacity-validation.ts`. This document is the complete reference — copy strings, colors, decision rules, and co-occurrence behavior.
 
 ---
@@ -123,6 +125,16 @@ Break ⊗ icon color:  matches connector color
 | 3+ products | "Clear and Gas 87 + N more will run out before this stop" |
 
 **Max 2 lines total in the warning area.** If both L0 and L3 fire at the same stop, each gets its own strip — but total product names across both strips is capped using the "+ N more" truncation when the combined text would exceed 2 lines.
+
+### "+ N more" — dotted underline + hover tooltip
+
+When truncation fires (3+ products), the `+ N more` text gets a dotted amber underline and shows a tooltip on hover listing the hidden products one per line.
+
+- **Trigger:** `warningOverflow.length > 0` (set only when 3+ products fail)
+- **Underline style:** `textDecoration: underline dotted`, color `#eab308`, `textUnderlinePosition: from-font`
+- **Tooltip:** `position: fixed`, bg `#E5E5E5`, text `#111`, 12px, lists each overflow product name on its own line, no pointer events
+- **Triangle pointer:** 6px CSS border triangle in `#E5E5E5`, pointing up, centered above tooltip card
+- **Position:** centered above the hovered span (`getBoundingClientRect()` → `x = left + width/2`, `y = bottom + 8px`)
 
 ### L0 + L3 co-occurring at the SAME stop
 

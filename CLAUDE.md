@@ -416,6 +416,7 @@ contexts/
 - **Terminal tooltip:** Detached DOM element appended to mapContainer (not inside marker)
 - **Infrastructure markers:** No `position: relative` or `zIndex` on outer element
 - **Hot reload cache bug:** Browser sometimes caches stale webpack modules → `__webpack_modules__[moduleId] is not a function`. Fix: clear `.next` + restart dev server + hard refresh (`Cmd+Shift+R`). Prevention: enable "Disable cache" in Chrome DevTools → Network tab.
+- **Modal max-height rule (enforced on ALL modals):** Every centered overlay modal must use `maxHeight: "min(720px, calc(100vh - 80px))"` on the outer container + `overflow: "hidden"`. The scrollable body must use `flex: 1, minHeight: 0, overflowY: "auto"`. Header and footer use `flexShrink: 0`. Never set `maxHeight` on the modal without `minHeight: 0` on the scroll child — this is the #1 cause of invisible overflow. Reference implementations: `initial-inventory-modal.tsx`, `merge-modal.tsx`, `conflict-resolution-modal.tsx`.
 
 ---
 
