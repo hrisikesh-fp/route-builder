@@ -9,7 +9,7 @@ const DEFAULT_REDUCED_OPACITY = true
 const DEFAULT_ORDER_CARD_VIEW = "condensed" as const
 const DEFAULT_CREATE_ORDER_MODAL_VIEW = "modal1" as const
 const DEFAULT_SHOW_EDIT_IN_FAB = true
-const DEFAULT_SHOW_DRIVER_CONFLICT = true
+const DEFAULT_SHOW_DRIVER_CONFLICT = false
 
 type RouteLineDisplayType = "grayscale" | "colored"
 type OrderCardViewType = "condensed" | "detailed"
