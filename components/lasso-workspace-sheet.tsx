@@ -5740,7 +5740,7 @@ export function LassoWorkspaceSheet({
             },
             stops,
           }
-        })
+        }).filter(r => r.orderCount > 0)
         const now = new Date()
         const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"]
         const dateLabel = `${monthNames[now.getMonth()]} ${String(now.getDate()).padStart(2, "0")}`
