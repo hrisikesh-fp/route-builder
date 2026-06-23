@@ -1,14 +1,31 @@
 "use client"
 
-import { useRef, useLayoutEffect } from "react"
-import { X, Truck } from "lucide-react"
+import { useState } from "react"
+import { X, Truck, ChevronDown } from "lucide-react"
 import { TimePicker } from "@/components/time-picker"
+
+type StopType = "L" | "D" | "T"
+
+const BADGE_COLOR: Record<StopType, string> = {
+  L: "#189FFC",
+  D: "#25B8A7",
+  T: "#737373",
+}
+
+interface SequenceStop {
+  seq: number | string
+  type: StopType
+  name: string
+  qty: number
+}
 
 interface SequenceRoute {
   id: string
   truckName: string
   orderCount: number
   color: string
+  specs?: { gal?: string; compartments?: string; products?: number }
+  stops?: SequenceStop[]
 }
 
 interface RouteSequenceModalProps {
@@ -22,14 +39,187 @@ interface RouteSequenceModalProps {
   onCancel: () => void
 }
 
-function deriveOrder(routes: SequenceRoute[], startTimes: Record<string, string>): string[] {
-  const withTime = routes.filter((r) => startTimes[r.id]).sort((a, b) =>
-    startTimes[a.id] < startTimes[b.id] ? -1 : 1
-  )
-  const withoutTime = routes.filter((r) => !startTimes[r.id])
-  return [...withTime, ...withoutTime].map((r) => r.id)
+// ─── 4px dot separator ───────────────────────────────────────────────────────
+function Dot() {
+  return <span style={{ width: 4, height: 4, borderRadius: 999, backgroundColor: "#737373", flexShrink: 0 }} />
 }
 
+// ─── Stop type badge (L / D / T) ─────────────────────────────────────────────
+function TypeBadge({ type }: { type: StopType }) {
+  return (
+    <div style={{
+      width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+      backgroundColor: BADGE_COLOR[type],
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      <span style={{ fontSize: 14, fontWeight: 500, color: "#171717", lineHeight: "20px" }}>{type}</span>
+    </div>
+  )
+}
+
+// ─── Orders table (Stops | Planned Qty) ──────────────────────────────────────
+function OrdersTable({ stops }: { stops: SequenceStop[] }) {
+  const headStyle: React.CSSProperties = {
+    height: 40, display: "flex", alignItems: "center", padding: "0 12px",
+    backgroundColor: "#282828", borderBottom: "1px solid #282828",
+    fontSize: 14, fontWeight: 500, color: "#a3a3a3", lineHeight: "20px",
+  }
+  const cellBase: React.CSSProperties = {
+    display: "flex", alignItems: "center", borderBottom: "1px solid #282828", boxSizing: "border-box",
+  }
+  return (
+    <div style={{ border: "1px solid #282828", borderRadius: 4, overflow: "hidden", display: "flex", width: "100%" }}>
+      {/* Stops column */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <div style={headStyle}>Stops</div>
+        {stops.map((s, i) => (
+          <div key={i} style={{ ...cellBase, gap: 8, padding: "12px 12px 12px 8px", ...(i === stops.length - 1 ? { borderBottom: "none" } : {}) }}>
+            <span style={{ width: 12, textAlign: "center", fontSize: 14, color: "#a3a3a3", lineHeight: "20px", flexShrink: 0 }}>{s.seq}</span>
+            <TypeBadge type={s.type} />
+            <span style={{
+              flex: 1, minWidth: 0, fontSize: 16, color: "#e5e5e5", lineHeight: "24px",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>{s.name}</span>
+          </div>
+        ))}
+      </div>
+      {/* Planned Qty column */}
+      <div style={{ width: 120, flexShrink: 0, display: "flex", flexDirection: "column" }}>
+        <div style={headStyle}>Planned Qty</div>
+        {stops.map((s, i) => (
+          <div key={i} style={{ ...cellBase, padding: 12, fontSize: 16, color: "#e5e5e5", lineHeight: "24px", ...(i === stops.length - 1 ? { borderBottom: "none" } : {}) }}>
+            {s.qty.toLocaleString()} gal
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── One route card ──────────────────────────────────────────────────────────
+function RouteCard({
+  route,
+  time,
+  onTimeChange,
+  disabledTimes,
+}: {
+  route: SequenceRoute
+  time: string
+  onTimeChange: (t: string) => void
+  disabledTimes: string[]
+}) {
+  const [expanded, setExpanded] = useState(true)
+  const [showTable, setShowTable] = useState(false)
+  const [headerHovered, setHeaderHovered] = useState(false)
+  const hasStops = !!route.stops && route.stops.length > 0
+  const hasTruck = !!route.truckName
+
+  return (
+    <div style={{ position: "relative", width: "100%", borderRadius: 4 }}>
+      {/* Accent rail */}
+      <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 6, backgroundColor: route.color, zIndex: 3, borderTopLeftRadius: 4, borderBottomLeftRadius: 4 }} />
+
+      {/* Header row — entire row is the click target */}
+      <div
+        onClick={() => setExpanded((v) => !v)}
+        onMouseEnter={() => setHeaderHovered(true)}
+        onMouseLeave={() => setHeaderHovered(false)}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "12px 12px 12px 20px", position: "relative", zIndex: 2,
+          cursor: "pointer",
+          backgroundColor: headerHovered ? "#333" : "#282828",
+          borderRadius: expanded ? "4px 4px 0 0" : 4,
+          transition: "background-color 150ms",
+        }}
+      >
+        {hasTruck ? (
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Truck size={16} color="#FFFFFF" style={{ flexShrink: 0 }} />
+              <span style={{
+                fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>{route.truckName}</span>
+            </div>
+            {route.specs && (route.specs.gal || route.specs.compartments || route.specs.products != null) && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#a3a3a3", lineHeight: "20px" }}>
+                {route.specs.gal && <span>{route.specs.gal}</span>}
+                {route.specs.gal && route.specs.compartments && <Dot />}
+                {route.specs.compartments && <span>{route.specs.compartments}</span>}
+                {route.specs.products != null && (route.specs.gal || route.specs.compartments) && <Dot />}
+                {route.specs.products != null && <span>{route.specs.products} Products</span>}
+              </div>
+            )}
+          </div>
+        ) : (
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: "#737373", lineHeight: "20px" }}>No Truck Selected</span>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div style={{
+            backgroundColor: "#111", borderRadius: 4, padding: "2px 8px",
+            fontSize: 14, fontWeight: 500, color: "#fafafa", lineHeight: "20px", whiteSpace: "nowrap",
+          }}>
+            {route.orderCount} Orders
+          </div>
+          <ChevronDown
+            size={20}
+            color="#a3a3a3"
+            style={{ transition: "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}
+          />
+        </div>
+      </div>
+
+      {/* Body — animated card collapse */}
+      <div style={{
+        overflow: "hidden",
+        maxHeight: expanded ? 600 : 0,
+        transition: "max-height 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+        borderRadius: "0 0 4px 4px",
+      }}>
+        <div style={{
+          backgroundColor: "#1f1f1f", padding: "16px 16px 16px 20px",
+          display: "flex", flexDirection: "column",
+          borderRadius: "0 0 4px 4px",
+        }}>
+            <div style={{ marginBottom: hasStops ? 12 : 0 }}>
+              <TimePicker value={time} onChange={onTimeChange} disabledTimes={disabledTimes} />
+            </div>
+
+            {hasStops && (
+              <>
+                {/* Orders table — animated reveal */}
+                <div style={{
+                  overflow: "hidden",
+                  maxHeight: showTable ? 400 : 0,
+                  transition: "max-height 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+                }}>
+                  <div style={{ paddingBottom: 12 }}>
+                    <OrdersTable stops={route.stops!} />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowTable((v) => !v)}
+                  style={{
+                    alignSelf: "flex-start", height: 32, padding: "0 12px", background: "none", border: "none",
+                    borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#fafafa", cursor: "pointer", fontFamily: "inherit",
+                    display: "flex", alignItems: "center",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  {showTable ? "See less" : "See All Orders"}
+                </button>
+              </>
+            )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
 export function RouteSequenceModal({
   isOpen,
   driverName,
@@ -40,39 +230,14 @@ export function RouteSequenceModal({
   onConfirm,
   onCancel,
 }: RouteSequenceModalProps) {
-  const blockRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const prevTops = useRef<Record<string, number>>({})
+  if (!isOpen) return null
 
-  const orderedIds = deriveOrder(routes, startTimes)
   const allTimesSet = routes.every((r) => !!startTimes[r.id])
 
+  // For a given route, the other routes' chosen times are disabled (can't share a start time)
   function disabledForRoute(routeId: string): string[] {
     return routes.filter((r) => r.id !== routeId && startTimes[r.id]).map((r) => startTimes[r.id])
   }
-
-  // FLIP animation: after each render, detect position changes and animate
-  useLayoutEffect(() => {
-    orderedIds.forEach((id) => {
-      const el = blockRefs.current[id]
-      if (!el) return
-      const newTop = el.getBoundingClientRect().top
-      const prevTop = prevTops.current[id]
-      if (prevTop !== undefined && Math.abs(prevTop - newTop) > 1) {
-        const delta = prevTop - newTop
-        el.style.transition = "none"
-        el.style.transform = `translateY(${delta}px)`
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            el.style.transition = "transform 300ms ease-in-out"
-            el.style.transform = "translateY(0px)"
-          })
-        })
-      }
-      prevTops.current[id] = newTop
-    })
-  })
-
-  if (!isOpen) return null
 
   return (
     <div
@@ -88,140 +253,51 @@ export function RouteSequenceModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 480,
-          backgroundColor: "#1B1B1B",
-          border: "1px solid #333",
-          borderRadius: 4,
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
+          width: 540, maxWidth: "calc(100vw - 48px)", maxHeight: "min(720px, calc(100vh - 80px))",
+          backgroundColor: "#1B1B1B", border: "1px solid #333", borderRadius: 8,
+          padding: 24, display: "flex", flexDirection: "column", gap: 20,
+          boxSizing: "border-box", overflow: "hidden",
         }}
       >
         {/* Header */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ flex: 1, fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>
-              Set Route Sequence
-            </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>Set Start Time</span>
             <button
               onClick={onCancel}
-              style={{
-                width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
-                background: "none", border: "none", cursor: "pointer", color: "#A3A3A3", borderRadius: 2,
-                flexShrink: 0,
-              }}
+              style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "#A3A3A3", flexShrink: 0 }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#E5E5E5")}
               onMouseLeave={(e) => (e.currentTarget.style.color = "#A3A3A3")}
             >
-              <X size={16} />
+              <X size={20} />
             </button>
           </div>
-          <p style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px", margin: 0 }}>
-            <span style={{ fontWeight: 500, color: "#E5E5E5" }}>{driverName}</span>
+          <p style={{ fontSize: 14, fontWeight: 400, color: "#a3a3a3", lineHeight: "20px", margin: 0 }}>
+            <span style={{ fontWeight: 500, color: "#e5e5e5" }}>{driverName}</span>
             {" is already planned on another route for "}
-            <span style={{ fontWeight: 500, color: "#E5E5E5" }}>{date}</span>
+            <span style={{ fontWeight: 500, color: "#e5e5e5" }}>{date}</span>
             {". Set start times so that the routes sequence correctly."}
           </p>
         </div>
 
-        {/* Body */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {orderedIds.map((id, idx) => {
-            const route = routes.find((r) => r.id === id)!
-            const hasTime = !!startTimes[id]
-            const isLast = idx === orderedIds.length - 1
-
-            return (
-              <div
-                key={id}
-                style={{ display: "flex", gap: 12, alignItems: "stretch" }}
-              >
-                {/* Left: badge + connector column */}
-                <div style={{
-                  width: 32, flexShrink: 0,
-                  display: "flex", flexDirection: "column", alignItems: "center",
-                }}>
-                  {/* Top stub: positions badge center at the vertical center of the route row (~20px) */}
-                  <div style={{ width: 1, height: 12, backgroundColor: "#404040", flexShrink: 0 }} />
-                  {/* Badge */}
-                  <div style={{
-                    width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
-                    backgroundColor: hasTime ? "#A3A3A3" : "#404040",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "background-color 200ms ease-in-out",
-                  }}>
-                    <span style={{ fontSize: 10, fontWeight: 500, color: "#171717", lineHeight: 1 }}>
-                      {idx + 1}
-                    </span>
-                  </div>
-                  {/* Bottom connector: continues line through time picker + block gap */}
-                  <div style={{
-                    width: 1, flex: 1,
-                    backgroundColor: isLast ? "transparent" : "#404040",
-                    minHeight: 4,
-                  }} />
-                </div>
-
-                {/* Right: route block — paddingBottom creates the inter-block gap so the connector line runs through it */}
-                <div
-                  ref={(el) => { blockRefs.current[id] = el }}
-                  style={{
-                    flex: 1, minWidth: 0,
-                    display: "flex", flexDirection: "column", gap: 8,
-                    paddingBottom: isLast ? 0 : 16,
-                  }}
-                >
-                  {/* Route row */}
-                  <div style={{
-                    position: "relative",
-                    backgroundColor: "#282828",
-                    borderRadius: 4,
-                    paddingLeft: 16, paddingRight: 8, paddingTop: 8, paddingBottom: 8,
-                    overflow: "hidden",
-                    display: "flex", alignItems: "center", gap: 4,
-                  }}>
-                    <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 6, backgroundColor: route.color }} />
-                    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                      <Truck size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                      <span style={{
-                        fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
-                        {route.truckName}
-                      </span>
-                    </div>
-                    <div style={{
-                      backgroundColor: "#111", borderRadius: 4,
-                      padding: "2px 8px", flexShrink: 0,
-                      fontSize: 14, fontWeight: 500, color: "#FAFAFA", lineHeight: "20px", whiteSpace: "nowrap",
-                    }}>
-                      {route.orderCount} Orders
-                    </div>
-                  </div>
-
-                  {/* Time picker */}
-                  <TimePicker
-                    value={startTimes[id] ?? ""}
-                    onChange={(v) => onTimeChange(id, v)}
-                    disabledTimes={disabledForRoute(id)}
-                  />
-                </div>
-              </div>
-            )
-          })}
+        {/* Body — route cards */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", minHeight: 0, flexShrink: 1 }}>
+          {routes.map((route) => (
+            <RouteCard
+              key={route.id}
+              route={route}
+              time={startTimes[route.id] ?? ""}
+              onTimeChange={(t) => onTimeChange(route.id, t)}
+              disabledTimes={disabledForRoute(route.id)}
+            />
+          ))}
         </div>
 
         {/* Footer */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <button
             onClick={onCancel}
-            style={{
-              height: 36, padding: "8px 16px",
-              backgroundColor: "transparent", border: "1px solid #333",
-              borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#FAFAFA",
-              cursor: "pointer", fontFamily: "inherit",
-            }}
+            style={{ height: 36, padding: "0 16px", backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#FAFAFA", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center" }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           >
@@ -229,17 +305,18 @@ export function RouteSequenceModal({
           </button>
           <button
             onClick={allTimesSet ? onConfirm : undefined}
+            disabled={!allTimesSet}
             style={{
-              height: 36, padding: "8px 16px",
-              backgroundColor: "#E5E5E5", border: "none",
-              borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#171717",
-              cursor: allTimesSet ? "pointer" : "default", fontFamily: "inherit",
-              opacity: allTimesSet ? 1 : 0.5,
+              height: 36, padding: "0 16px", backgroundColor: "#E5E5E5", border: "none", borderRadius: 4,
+              fontSize: 14, fontWeight: 500, color: "#171717", fontFamily: "inherit",
+              display: "flex", alignItems: "center",
+              cursor: allTimesSet ? "pointer" : "default", opacity: allTimesSet ? 1 : 0.5,
+              transition: "opacity 150ms",
             }}
             onMouseEnter={(e) => { if (allTimesSet) e.currentTarget.style.backgroundColor = "#D4D4D4" }}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#E5E5E5")}
           >
-            Confirm and Proceed
+            Confirm &amp; Proceed
           </button>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route, XCircle, Pencil } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
-import { mockRoutes, mockHubs } from "@/lib/mock-data"
+import { mockRoutes, mockHubs, mockExtractionOrders } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
 import { useSettings } from "@/contexts/settings-context"
 import { base1Infrastructure } from "@/lib/infrastructure-data"
@@ -5718,12 +5718,22 @@ export function LassoWorkspaceSheet({
         const modalRoutes = allRouteIds.map((rid) => {
           const route = mockRoutes.find((r) => r.id === rid)
           const truck = selectedTrucks[rid]
-          const orderCount = selectedOrders.filter((o) => o.routeId === rid).length
+          const routeOrders = mockExtractionOrders.filter((o) => o.routeId === rid)
+          const stops = routeOrders
+            .slice()
+            .sort((a, b) => (a.routeSequence ?? 999) - (b.routeSequence ?? 999))
+            .map((o, i) => ({
+              seq: o.routeSequence ?? (i + 1),
+              type: (o.orderType ?? "D") as "L" | "D" | "T",
+              name: o.shipToName ?? o.customerName,
+              qty: o.volume,
+            }))
           return {
             id: rid,
             truckName: truck?.name ?? route?.truckName ?? "No Truck Selected",
-            orderCount,
+            orderCount: routeOrders.length,
             color: route?.color ?? "#9A7BC7",
+            stops,
           }
         })
         const now = new Date()

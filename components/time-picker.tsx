@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { Clock, ChevronDown } from "lucide-react"
 
 const TP_ITEM_H = 32
@@ -40,7 +41,7 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
   const isDraftDisabled = disabledTimes.includes(draftStr)
 
   const displayLabel = useMemo(() => {
-    if (!value) return "Select Start Time"
+    if (!value) return "Set Start Time"
     return formatTimeLabel(value)
   }, [value])
 
@@ -122,12 +123,12 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
         <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
           style={{
             position: "fixed", ...panelStyle,
             backgroundColor: "#282828", border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 4, zIndex: 9999, width: 200, overflow: "hidden",
+            borderRadius: 4, zIndex: 10200, width: 200, overflow: "hidden",
           }}
         >
           <div style={{ display: "flex" }}>
@@ -176,7 +177,8 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
               }}
             >Apply</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
