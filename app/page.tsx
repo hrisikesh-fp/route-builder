@@ -383,6 +383,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
       {isConflictBannerVisible && (
         <ConflictAssignmentBanner
+          orderCount={conflictOrdersRemaining}
           onReviewAndAssign={() => setIsConflictModalOpen(true)}
         />
       )}
@@ -537,7 +538,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       <ConflictResolutionModal
         isOpen={isConflictModalOpen && showDriverConflict}
         onClose={() => setIsConflictModalOpen(false)}
-        onConfirm={() => {
+        onConfirm={(unassignedCount) => {
           setIsConflictModalOpen(false)
           setIsConflictBannerResolved(true)
         }}

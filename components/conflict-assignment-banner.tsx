@@ -3,10 +3,11 @@
 import { TriangleAlert, ArrowRight } from "lucide-react"
 
 interface ConflictAssignmentBannerProps {
+  orderCount: number
   onReviewAndAssign: () => void
 }
 
-export function ConflictAssignmentBanner({ onReviewAndAssign }: ConflictAssignmentBannerProps) {
+export function ConflictAssignmentBanner({ orderCount, onReviewAndAssign }: ConflictAssignmentBannerProps) {
   return (
     <div style={{
       position: "absolute",
@@ -34,7 +35,7 @@ export function ConflictAssignmentBanner({ onReviewAndAssign }: ConflictAssignme
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, color: "#eab308", minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 500, lineHeight: "20px" }}>
-              5 orders need route assignment
+              {orderCount} {orderCount === 1 ? "order" : "orders"} need route assignment
             </p>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 400, lineHeight: "20px" }}>
               2 drivers each have multiple routes, decide where each order goes.

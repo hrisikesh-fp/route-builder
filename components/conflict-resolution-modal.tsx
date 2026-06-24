@@ -234,7 +234,7 @@ function RouteDropZone({
 interface ConflictResolutionModalProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: (unassignedCount: number) => void
 }
 
 export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: ConflictResolutionModalProps) {
@@ -302,7 +302,7 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
           top: "50%", left: "50%",
           transform: "translate(-50%, -50%)",
           width: 960, maxWidth: "calc(100vw - 48px)",
-          maxHeight: "calc(100vh - 80px)",
+          maxHeight: "min(720px, calc(100vh - 80px))",
           backgroundColor: "#1b1b1b",
           borderRadius: 8,
           zIndex: 2001,
@@ -333,14 +333,14 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
         </div>
 
         {/* Body — driver groups */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, overflowY: "auto", minHeight: 0 }}>
           {CONFLICT_GROUPS.map(group => {
             const limboOrders = group.orders.filter(o => assignments[o.id] === null)
             const limboTargetId = `limbo-${group.driverName}`
             const groupAssigned = group.orders.filter(o => assignments[o.id] !== null).length
 
             return (
-              <div key={group.driverName} style={{ display: "flex", flexDirection: "column", gap: 12, overflow: "hidden" }}>
+              <div key={group.driverName} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {/* Driver label */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 16, fontWeight: 500, color: "#fff", lineHeight: "24px", whiteSpace: "nowrap" }}>
