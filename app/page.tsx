@@ -51,13 +51,13 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes.
   // Gated behind the `showDriverConflict` prototype flag (Settings → Driver Multi-Route Conflict).
   const { showDriverConflict } = useSettings()
-  const [conflictOrdersRemaining, setConflictOrdersRemaining] = useState(5)
+  const [isConflictBannerResolved, setIsConflictBannerResolved] = useState(false)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
-  // Flipping the flag on re-arms the full scenario so it can be re-demoed.
+  // Flipping the flag on always re-arms a fresh banner so the scenario can be re-demoed.
   useEffect(() => {
-    if (showDriverConflict) setConflictOrdersRemaining(5)
+    if (showDriverConflict) setIsConflictBannerResolved(false)
   }, [showDriverConflict])
-  const isConflictBannerVisible = showDriverConflict && conflictOrdersRemaining > 0
+  const isConflictBannerVisible = showDriverConflict && !isConflictBannerResolved
   const BANNER_HEIGHT = 95
   const topOffset = isConflictBannerVisible ? BANNER_HEIGHT : 0
 
@@ -540,7 +540,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onClose={() => setIsConflictModalOpen(false)}
         onConfirm={(unassignedCount) => {
           setIsConflictModalOpen(false)
-          setConflictOrdersRemaining(unassignedCount)
+          setIsConflictBannerResolved(true)
         }}
       />
     </main>

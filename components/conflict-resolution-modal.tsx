@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, GripVertical, Truck, Droplet, ArrowRight } from "lucide-react"
+import { X, GripVertical, Truck, Droplet } from "lucide-react"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -328,7 +328,7 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
             </button>
           </div>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: "#a3a3a3", lineHeight: "20px" }}>
-            {assignedCount} of {totalOrders} orders assigned — drag orders into a route to assign them.
+            {assignedCount} of {totalOrders} orders assigned, drag each order into a route.
           </p>
         </div>
 
@@ -442,8 +442,8 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
             Cancel
           </button>
           <button
-            onClick={assignedCount > 0 ? () => onConfirm(totalOrders - assignedCount) : undefined}
-            disabled={assignedCount === 0}
+            onClick={allAssigned ? onConfirm : undefined}
+            disabled={!allAssigned}
             style={{
               height: 36,
               padding: "8px 16px",
@@ -453,16 +453,12 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
               color: "#171717",
               fontSize: 14,
               fontWeight: 500,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              opacity: assignedCount > 0 ? 1 : 0.4,
-              cursor: assignedCount > 0 ? "pointer" : "not-allowed",
+              opacity: allAssigned ? 1 : 0.5,
+              cursor: allAssigned ? "pointer" : "not-allowed",
               transition: "opacity 200ms ease",
             }}
           >
-            Confirm &amp; Assign{assignedCount > 0 ? ` ${assignedCount} Order${assignedCount !== 1 ? "s" : ""}` : ""}
-            <ArrowRight size={16} />
+            Confirm &amp; Proceed
           </button>
         </div>
       </div>
