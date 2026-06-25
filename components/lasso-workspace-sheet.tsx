@@ -11,6 +11,8 @@ import { CreateOrderModal, type CreateOrderSubmit } from "@/components/create-or
 import { validateRouteCapacity, getShortProductName, type ValidationResult } from "@/lib/capacity-validation"
 import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { MergeModal } from "@/components/merge-modal"
+import { OptimizationRoutesModal } from "@/components/optimization-routes-modal"
+import type { OptimizationResult } from "@/lib/optimization-types"
 import { BreakdownSheet } from "@/components/breakdown-sheet"
 import { RouteSummarySheet } from "@/components/route-summary-sheet"
 import { TruckDetailsSheet, truckProfileToVehicleInfo, synthesizeTrailerVehicleInfo, type VehicleInfo } from "@/components/truck-details-sheet"
@@ -3127,6 +3129,8 @@ export function LassoWorkspaceSheet({
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
   const [mergeModalMode, setMergeModalMode] = useState<"create" | "optimise">("create")
   const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
+  const [optimizationResult, setOptimizationResult] = useState<OptimizationResult | null>(null)
+  const [isOptimizationRoutesModalOpen, setIsOptimizationRoutesModalOpen] = useState(false)
   // Inline optimise loading state (per route, on the card itself)
   const [optimisingInlineRouteId, setOptimisingInlineRouteId] = useState<string | null>(null)
   const [optimisingPhaseIndex, setOptimisingPhaseIndex] = useState(0)
@@ -5529,13 +5533,26 @@ export function LassoWorkspaceSheet({
         checkedUnassignedOrderIds={checkedUnassignedOrderIds}
         selectedOrders={selectedOrders}
         modalMode={mergeModalMode}
-        onComplete={(truckCount, orderCount) => {
+        onComplete={(result) => {
+          setIsMergeModalOpen(false)
+          setOptimiseRouteId(null)
+          setOptimizationResult(result)
+          setIsOptimizationRoutesModalOpen(true)
+        }}
+      />
+
+      {/* Optimized Routes — post-optimize output */}
+      <OptimizationRoutesModal
+        isOpen={isOptimizationRoutesModalOpen}
+        result={optimizationResult}
+        onClose={() => {
+          setIsOptimizationRoutesModalOpen(false)
+          setOptimizationResult(null)
+        }}
+        onProceed={() => {
           onCheckedRoutesChange([])
           setCheckedUnassignedOrderIds([])
           setOptimiseRouteId(null)
-          onShowMessage?.(mergeModalMode === "optimise"
-            ? `Route optimised with ${orderCount} orders`
-            : `${truckCount} optimised routes created with ${orderCount} orders`)
         }}
       />
 

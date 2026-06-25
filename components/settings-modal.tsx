@@ -18,6 +18,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     createOrderModalView,
     showEditInFab,
     showDriverConflict,
+    optimizationInputLayout,
     updateRouteLineDisplay,
     updateShowBadges,
     updateReducedOpacity,
@@ -25,6 +26,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     updateCreateOrderModalView,
     updateShowEditInFab,
     updateShowDriverConflict,
+    updateOptimizationInputLayout,
   } = useSettings()
 
   if (!isOpen) return null
@@ -273,6 +275,76 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
                       Floating panel pinned to the right. Map stays live behind it.
                     </span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* ── OPTIMIZATION INPUT LAYOUT ── */}
+          <div>
+            <h3
+              className="mb-4"
+              style={{ color: "#A3A3A3", fontSize: "12px", fontWeight: 500, lineHeight: "16px", textTransform: "uppercase", letterSpacing: "0.05em" }}
+            >
+              Optimization Input
+            </h3>
+            <div
+              className="rounded-lg overflow-hidden"
+              style={{ backgroundColor: "#1A1A1A", border: "1px solid #282828" }}
+            >
+              <button
+                onClick={() => updateOptimizationInputLayout("orders_only")}
+                className="w-full text-left"
+                style={{ borderBottom: "1px solid #282828" }}
+              >
+                <div className="flex items-start gap-3 p-4">
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      border: optimizationInputLayout === "orders_only" ? "6px solid #6366F1" : "2px solid #404040",
+                      backgroundColor: optimizationInputLayout === "orders_only" ? "#111" : "transparent",
+                      flexShrink: 0,
+                      marginTop: 2,
+                    }}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                      Orders only
+                    </span>
+                    <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                      Single-column modal — orders table only. Full fleet used automatically.
+                    </span>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => updateOptimizationInputLayout("fleet_info")}
+                className="w-full text-left"
+              >
+                <div className="flex items-start gap-3 p-4">
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      border: optimizationInputLayout === "fleet_info" ? "6px solid #6366F1" : "2px solid #404040",
+                      backgroundColor: optimizationInputLayout === "fleet_info" ? "#111" : "transparent",
+                      flexShrink: 0,
+                      marginTop: 2,
+                    }}
+                  />
+                  <div className="flex items-start gap-3">
+                    <div className="flex flex-col gap-1">
+                      <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                        Orders + fleet info
+                      </span>
+                      <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                        Two columns — orders table plus read-only fleet summary on the right.
+                      </span>
+                    </div>
                   </div>
                 </div>
               </button>
