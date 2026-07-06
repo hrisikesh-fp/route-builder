@@ -5840,6 +5840,7 @@ export function LassoWorkspaceSheet({
             routes={modalRoutes}
             startTimes={routeStartTimes}
             prefilledTruckName={prefilledTruckForModal2?.name}
+            prefilledTruckSiblingCount={driverConflictModal.conflictRouteIds.length}
             onTimeChange={(routeId, time) => setRouteStartTimes((prev) => ({ ...prev, [routeId]: time }))}
             onConfirm={() => {
               setSelectedDrivers((prev) => ({ ...prev, [driverConflictModal.routeId]: driverConflictModal.pendingDriver }))

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Truck, ChevronDown } from "lucide-react"
+import { X, Truck, ChevronDown, TriangleAlert } from "lucide-react"
 import { TimePicker } from "@/components/time-picker"
 
 type StopType = "L" | "D" | "T"
@@ -38,6 +38,7 @@ interface RouteSequenceModalProps {
   onConfirm: () => void
   onCancel: () => void
   prefilledTruckName?: string
+  prefilledTruckSiblingCount?: number
 }
 
 // ─── 4px dot separator ───────────────────────────────────────────────────────
@@ -231,6 +232,7 @@ export function RouteSequenceModal({
   onConfirm,
   onCancel,
   prefilledTruckName,
+  prefilledTruckSiblingCount = 1,
 }: RouteSequenceModalProps) {
   const [hintDismissed, setHintDismissed] = useState(false)
 
@@ -288,32 +290,44 @@ export function RouteSequenceModal({
           </p>
         </div>
 
-        {/* Truck pre-fill info strip (AC2) */}
+        {/* Truck pre-fill info strip — matches Figma node 4339:37558 */}
         {prefilledTruckName && !hintDismissed && (
           <div style={{
-            display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12,
-            padding: "10px 12px", borderRadius: 4, flexShrink: 0,
-            backgroundColor: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+            padding: "12px 16px", borderRadius: 4, flexShrink: 0,
+            backgroundColor: "#1f1f1f", border: "1px solid #282828",
           }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#c7d2fe", lineHeight: "18px" }}>
-                Drivers on multiple routes share the same truck
-              </span>
-              <span style={{ fontSize: 13, color: "#818cf8", lineHeight: "18px" }}>
-                <span style={{ fontWeight: 500, color: "#a5b4fc" }}>{prefilledTruckName}</span>
-                {" will be assigned to this route when you confirm. You can swap it after."}
-              </span>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1, minWidth: 0 }}>
+              <TriangleAlert size={20} color="#818cf8" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0 }}>
+                <span style={{
+                  fontSize: 14, fontWeight: 500, color: "#818cf8", lineHeight: "20px",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  Drivers on multiple routes share the same truck
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 400, color: "#818cf8", lineHeight: "20px" }}>
+                  <span style={{ fontWeight: 500 }}>{prefilledTruckName}</span>
+                  {prefilledTruckSiblingCount > 1
+                    ? ` will be assigned to this and ${prefilledTruckSiblingCount - 1} other route${prefilledTruckSiblingCount - 1 > 1 ? "s" : ""} when you confirm.`
+                    : " will be assigned to this route when you confirm."
+                  }
+                </span>
+              </div>
             </div>
             <button
               onClick={() => setHintDismissed(true)}
               style={{
-                width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center",
-                background: "none", border: "none", cursor: "pointer", color: "#818cf8", flexShrink: 0, padding: 0, marginTop: 1,
+                height: 24, padding: "4px 12px", flexShrink: 0,
+                border: "1px solid #333", borderRadius: 4,
+                background: "none", cursor: "pointer",
+                fontSize: 14, fontWeight: 500, color: "#fafafa",
+                fontFamily: "inherit", whiteSpace: "nowrap",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#a5b4fc")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#818cf8")}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             >
-              <X size={12} />
+              Dismiss
             </button>
           </div>
         )}

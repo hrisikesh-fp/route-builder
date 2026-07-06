@@ -3047,8 +3047,8 @@ export const mockRoutes: any[] = [
   {
     id: "route-2",
     name: "Route 2 - Orange",
-    driverId: "driver-1",
-    driverName: "Mark Ruffalo",
+    driverId: "driver-2",
+    driverName: "Dwayne Johnson",
     color: "#C4956A",
     orders: route2Orders.map((o) => o.id),
     status: "active",
