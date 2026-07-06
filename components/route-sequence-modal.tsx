@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, Truck, ChevronDown } from "lucide-react"
 import { TimePicker } from "@/components/time-picker"
 
@@ -37,6 +37,7 @@ interface RouteSequenceModalProps {
   onTimeChange: (routeId: string, time: string) => void
   onConfirm: () => void
   onCancel: () => void
+  prefilledTruckName?: string
 }
 
 // ─── 4px dot separator ───────────────────────────────────────────────────────
@@ -229,7 +230,14 @@ export function RouteSequenceModal({
   onTimeChange,
   onConfirm,
   onCancel,
+  prefilledTruckName,
 }: RouteSequenceModalProps) {
+  const [hintDismissed, setHintDismissed] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) setHintDismissed(false)
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const allTimesSet = routes.every((r) => !!startTimes[r.id])
@@ -279,6 +287,30 @@ export function RouteSequenceModal({
             {". Set start times so that the routes sequence correctly."}
           </p>
         </div>
+
+        {/* Truck pre-fill info strip (AC2) */}
+        {prefilledTruckName && !hintDismissed && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8,
+            padding: "8px 12px", borderRadius: 4, flexShrink: 0,
+            backgroundColor: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)",
+          }}>
+            <span style={{ fontSize: 13, color: "#a5b4fc", lineHeight: "20px" }}>
+              Same driver — truck pre-filled from sibling route ({prefilledTruckName}). You can change it after.
+            </span>
+            <button
+              onClick={() => setHintDismissed(true)}
+              style={{
+                width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center",
+                background: "none", border: "none", cursor: "pointer", color: "#818cf8", flexShrink: 0, padding: 0,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#a5b4fc")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#818cf8")}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
 
         {/* Body — route cards */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", minHeight: 0, flexShrink: 1 }}>

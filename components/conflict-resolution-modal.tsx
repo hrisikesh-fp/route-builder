@@ -132,6 +132,7 @@ function OrderCard({
 
 function RouteDropZone({
   route,
+  routeLabel,
   assignedOrders,
   isOver,
   draggingId,
@@ -142,12 +143,13 @@ function RouteDropZone({
   onDragEnd,
 }: {
   route: ConflictRoute
+  routeLabel?: string
   assignedOrders: ConflictOrder[]
   isOver: boolean
   draggingId: string | null
   onDragOver: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent) => void
-  onDragLeave: () => void
+  onDragLeave: (e: React.DragEvent) => void
   onOrderDragStart: (id: string) => void
   onDragEnd: () => void
 }) {
@@ -186,7 +188,11 @@ function RouteDropZone({
       }}>
         {/* Accent bar */}
         <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 6, backgroundColor: route.color }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+          {routeLabel && (
+            <span style={{ fontSize: 12, color: "#737373", lineHeight: "16px" }}>{routeLabel}</span>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
             <Truck size={16} color="#fafafa" style={{ flexShrink: 0 }} />
             <span style={{
@@ -206,6 +212,7 @@ function RouteDropZone({
             <span style={{ fontSize: 14, fontWeight: 500, color: "#fafafa", lineHeight: "20px", whiteSpace: "nowrap" }}>
               {route.existingOrders} Orders
             </span>
+          </div>
           </div>
         </div>
       </div>
@@ -397,12 +404,13 @@ export function ConflictResolutionModal({ isOpen, onClose, onConfirm }: Conflict
                       Routes
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                      {group.routes.map(route => {
+                      {group.routes.map((route, idx) => {
                         const assignedToRoute = group.orders.filter(o => assignments[o.id] === route.id)
                         return (
                           <RouteDropZone
                             key={route.id}
                             route={route}
+                            routeLabel={`Route ${idx + 1}`}
                             assignedOrders={assignedToRoute}
                             isOver={dropTarget === route.id}
                             draggingId={draggingId}
