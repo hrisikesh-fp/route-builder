@@ -3238,7 +3238,6 @@ export function LassoWorkspaceSheet({
   const [prefilledTruckForModal2, setPrefilledTruckForModal2] = useState<TruckItem | null>(null)
 
   // Route IDs showing amber "same driver, different trucks" nudge (R4 "this route only")
-  const [diffTruckNudgeRoutes, setDiffTruckNudgeRoutes] = useState<Set<string>>(new Set())
 
   // Conflict detection helpers
   function getTruckConflicts(trucks: Record<string, TruckItem>, routeId: string, truckId: string): string[] {
@@ -3267,13 +3266,6 @@ export function LassoWorkspaceSheet({
       // Same truck (or sibling has no truck) — silent assign, no Modal 1 (R2/AC4)
       setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))
       setSelectedTrailers((prev) => ({ ...prev, [routeId]: { t1: null, t2: null } }))
-      // Clear any lingering nudge for these routes
-      setDiffTruckNudgeRoutes((prev) => {
-        const n = new Set(prev)
-        n.delete(routeId)
-        sameDrvrSiblings.forEach((r) => n.delete(r))
-        return n
-      })
       return
     }
 
@@ -4755,16 +4747,6 @@ export function LassoWorkspaceSheet({
                               )
                             })()}
 
-                          {/* AC7 amber nudge — same driver, different trucks (R4 "this route only") */}
-                          {diffTruckNudgeRoutes.has(routeId) && (
-                            <div style={{
-                              fontSize: 12, color: "#eab308", lineHeight: "16px",
-                              padding: "4px 16px 6px",
-                            }}>
-                              Same driver, different trucks.
-                            </div>
-                          )}
-
                           {/* AC5 / R5 hint — shared driver, no truck set */}
                           {!selectedTrucks[routeId] && (() => {
                             const d = selectedDrivers[routeId]
@@ -5790,14 +5772,12 @@ export function LassoWorkspaceSheet({
         const siblingRoute = mockRoutes.find((r) => r.id === siblingRouteId)
         const siblingTruck = selectedTrucks[siblingRouteId]
         const driverName = selectedDrivers[truckSyncModal.routeId]?.name ?? ""
-        const siblingRouteName = siblingRoute?.name ?? siblingRouteId
         const siblingTruckName = siblingTruck?.name ?? siblingRoute?.truckName ?? "No Truck"
         return (
           <TruckSyncModal
             isOpen={true}
             driverName={driverName}
             pendingTruckName={truckSyncModal.pendingTruck.name}
-            siblingRouteName={siblingRouteName}
             siblingTruckName={siblingTruckName}
             onApplyBoth={() => {
               const t = truckSyncModal.pendingTruck
@@ -5810,23 +5790,6 @@ export function LassoWorkspaceSheet({
                 const next = { ...prev, [truckSyncModal.routeId]: { t1: null, t2: null } }
                 truckSyncModal.siblingRouteIds.forEach((rid) => { next[rid] = { t1: null, t2: null } })
                 return next
-              })
-              setDiffTruckNudgeRoutes((prev) => {
-                const n = new Set(prev)
-                n.delete(truckSyncModal.routeId)
-                truckSyncModal.siblingRouteIds.forEach((r) => n.delete(r))
-                return n
-              })
-              setTruckSyncModal(null)
-            }}
-            onThisRouteOnly={() => {
-              setSelectedTrucks((prev) => ({ ...prev, [truckSyncModal.routeId]: truckSyncModal.pendingTruck }))
-              setSelectedTrailers((prev) => ({ ...prev, [truckSyncModal.routeId]: { t1: null, t2: null } }))
-              setDiffTruckNudgeRoutes((prev) => {
-                const n = new Set(prev)
-                n.add(truckSyncModal.routeId)
-                truckSyncModal.siblingRouteIds.forEach((r) => n.add(r))
-                return n
               })
               setTruckSyncModal(null)
             }}

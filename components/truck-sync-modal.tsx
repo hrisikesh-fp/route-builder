@@ -6,10 +6,8 @@ interface TruckSyncModalProps {
   isOpen: boolean
   driverName: string
   pendingTruckName: string
-  siblingRouteName: string
   siblingTruckName: string
   onApplyBoth: () => void
-  onThisRouteOnly: () => void
   onCancel: () => void
 }
 
@@ -17,10 +15,8 @@ export function TruckSyncModal({
   isOpen,
   driverName,
   pendingTruckName,
-  siblingRouteName,
   siblingTruckName,
   onApplyBoth,
-  onThisRouteOnly,
   onCancel,
 }: TruckSyncModalProps) {
   if (!isOpen) return null
@@ -70,11 +66,9 @@ export function TruckSyncModal({
           </div>
           <p style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px", margin: 0 }}>
             <span style={{ fontWeight: 500, color: "#E5E5E5" }}>{driverName}</span>
-            {" also has "}
-            <span style={{ fontWeight: 500, color: "#E5E5E5" }}>{siblingRouteName}</span>
-            {" assigned to "}
+            {"'s other route is assigned to "}
             <span style={{ fontWeight: 500, color: "#E5E5E5" }}>{siblingTruckName}</span>
-            {"."}
+            {". Drivers on multiple routes share the same truck."}
           </p>
         </div>
 
@@ -92,19 +86,6 @@ export function TruckSyncModal({
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           >
             Cancel
-          </button>
-          <button
-            onClick={onThisRouteOnly}
-            style={{
-              height: 36, padding: "8px 16px",
-              backgroundColor: "transparent", border: "1px solid #333",
-              borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#FAFAFA",
-              cursor: "pointer", fontFamily: "inherit",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-          >
-            This route only
           </button>
           <button
             onClick={onApplyBoth}
