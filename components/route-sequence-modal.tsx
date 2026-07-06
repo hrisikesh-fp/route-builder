@@ -291,18 +291,24 @@ export function RouteSequenceModal({
         {/* Truck pre-fill info strip (AC2) */}
         {prefilledTruckName && !hintDismissed && (
           <div style={{
-            display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8,
-            padding: "8px 12px", borderRadius: 4, flexShrink: 0,
+            display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12,
+            padding: "10px 12px", borderRadius: 4, flexShrink: 0,
             backgroundColor: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)",
           }}>
-            <span style={{ fontSize: 13, color: "#a5b4fc", lineHeight: "20px" }}>
-              Same driver — truck pre-filled from sibling route ({prefilledTruckName}). You can change it after.
-            </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#c7d2fe", lineHeight: "18px" }}>
+                Drivers on multiple routes share the same truck
+              </span>
+              <span style={{ fontSize: 13, color: "#818cf8", lineHeight: "18px" }}>
+                <span style={{ fontWeight: 500, color: "#a5b4fc" }}>{prefilledTruckName}</span>
+                {" will be assigned to this route when you confirm. You can swap it after."}
+              </span>
+            </div>
             <button
               onClick={() => setHintDismissed(true)}
               style={{
                 width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center",
-                background: "none", border: "none", cursor: "pointer", color: "#818cf8", flexShrink: 0, padding: 0,
+                background: "none", border: "none", cursor: "pointer", color: "#818cf8", flexShrink: 0, padding: 0, marginTop: 1,
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#a5b4fc")}
               onMouseLeave={(e) => (e.currentTarget.style.color = "#818cf8")}

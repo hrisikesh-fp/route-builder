@@ -420,10 +420,25 @@ contexts/
 
 ---
 
+## Routing (auto-optimize) — separate product layer
+
+Routing shares this repo but is a **feature-flagged product** (Fleet Fuels first). RB-only customers (Tristar, Gaines, Eli) use manual route building only.
+
+**Before any routing work, read:** `docs/routing/routing-full-context.md`
+
+| Branch | Purpose |
+|---|---|
+| `main` | RB core — merge modal has Auto/Manual toggle (`mode` state) |
+| `iter/optimization-flow` | Stage 3 prototype — `OptimizationRoutesModal`, mock engine result |
+| `snapshot/optimization-flow-v1` | Frozen first-pass iteration |
+
+Dev preview (optimization branch): `/dev/optimized-routes`
+
+---
+
 ## Current branch / active work
 
-- **Branch:** `iter/workspace-updates`
-- **Active work:** L0 product incompatibility shipped. Remaining: multi-product truncation (3+ → "+ N more"), any L0 edge cases
-- **Next (planned):** Modal 3 — Side Sheet variant of the Create Order modal (not started)
-- `CreateOrderModalViewType` is already typed as `"modal1" | "modal2"` — add `"modal3"` when ready
+- **Branch:** `main` (RB); routing iteration on `iter/optimization-flow`
+- **RB active work:** driver conflict banner, validation framework, workspace polish
+- **Routing active work:** Stage 3 container decision (modal vs workspace), existing-routes explainer wireframes
 - Daily updates log: `UPDATES.md` (root) + `updates/YYYY-MM-DD.md` per day
