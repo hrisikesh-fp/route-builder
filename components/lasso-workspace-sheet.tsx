@@ -5848,7 +5848,8 @@ export function LassoWorkspaceSheet({
               if (prefilledTruckForModal2) {
                 setSelectedTrucks((prev) => ({ ...prev, [driverConflictModal.routeId]: prefilledTruckForModal2 }))
                 setSelectedTrailers((prev) => ({ ...prev, [driverConflictModal.routeId]: { t1: null, t2: null } }))
-                onShowMessage?.(`Truck set to ${prefilledTruckForModal2.name} for both routes`)
+                const totalRoutes = 1 + driverConflictModal.conflictRouteIds.length
+                onShowMessage?.(`Truck set to ${prefilledTruckForModal2.name} for ${totalRoutes} routes`)
               } else {
                 const firstName = driverConflictModal.pendingDriver.name.split(" ")[0]
                 onShowMessage?.(`${firstName} assigned — set truck when ready`)
