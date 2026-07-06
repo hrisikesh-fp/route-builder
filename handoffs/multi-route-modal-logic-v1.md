@@ -7,22 +7,22 @@
 **ClickUp:** `86exxr570` · `86ey47h16`  
 **Status:** Ready for eng — **prototype + this doc** (no Figma)
 
+**This doc:** https://github.com/hrisikesh-fp/route-builder/blob/feat/multi-route-modal-logic-v1/handoffs/multi-route-modal-logic-v1.md
+
 ---
 
 ## Where this comes from
 
 | Layer | Doc |
 |---|---|
-| Why (Eli / RB ⇄ Shift Planner) | [`problem-brief.md`](../../2-areas/product-discovery/syntheses/2026-07-01_shift-planner-x-route-builder_problem-brief.md) |
+| Why (Eli / RB ⇄ Shift Planner) | [problem-brief](https://github.com/hrisikesh-fp/fleetpanda-workspace/blob/docs/shift-planner-handoff-jul6/2-areas/product-discovery/syntheses/2026-07-01_shift-planner-x-route-builder_problem-brief.md) |
 | Multi-route product direction | Jul 2 standup — Option A: multiple routes per shift; same driver ⇒ same truck |
-| Plan (decisions) | [`plans/multi-route-modal-logic-v1.md`](../plans/multi-route-modal-logic-v1.md) |
-| Existing prototype docs | `HANDOFF-driver-conflict-banner.md`, `updates/2026-06-04.md` |
+| Plan (decisions) | [multi-route-modal-logic-v1 plan](https://github.com/hrisikesh-fp/route-builder/blob/feat/multi-route-modal-logic-v1/plans/multi-route-modal-logic-v1.md) |
+| Existing prototype docs | `HANDOFF-driver-conflict-banner.md`, `updates/2026-06-04.md` (in route-builder repo) |
 
-**This handoff ships:** Modal 1/2/3 trigger rules, truck pre-fill, truck sync prompt (R4), Modal 3 labels, **driver dropdown exclusion when multi-route FF off**.
+**This handoff ships:** Modal 1/2/3, R0 driver exclusion, truck pre-fill/sync. **Source:** prototype branch `feat/multi-route-modal-logic-v1`. No Figma.
 
-**Source of truth:** prototype in `1-projects/route-builder` on branch `feat/multi-route-modal-logic-v1`. **No Figma** — match existing inline-style components.
-
-**Parked:** active shift read-only route in RB → [`plans/multi-route-active-route-phase2.md`](../plans/multi-route-active-route-phase2.md)
+**Parked:** active shift read-only route in RB → [phase2 plan](https://github.com/hrisikesh-fp/route-builder/blob/feat/multi-route-modal-logic-v1/plans/multi-route-active-route-phase2.md)
 
 ---
 
@@ -189,7 +189,7 @@ Route 1: Mark assigned. Route 2 driver dropdown → **Mark not listed**. Greg li
 
 ## Related (separate PR)
 
-**Shift Planner:** [`shift-planner-active-shift-override-modal-v1.md`](../../2-areas/product-discovery/handoffs/shift-planner-active-shift-override-modal-v1.md) + Figma. Handles live timeline edits after publish. Link when both ship.
+**Shift Planner:** [shift-planner handoff](https://github.com/hrisikesh-fp/fleetpanda-workspace/blob/docs/shift-planner-handoff-jul6/2-areas/product-discovery/handoffs/shift-planner-active-shift-override-modal-v1.md) + Figma. Separate PR.
 
 ---
 
