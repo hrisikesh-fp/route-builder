@@ -318,7 +318,8 @@ export function RouteSequenceModal({
             <button
               onClick={() => setHintDismissed(true)}
               style={{
-                height: 24, padding: "4px 12px", flexShrink: 0,
+                display: "flex", alignItems: "center",
+                height: 24, padding: "0 12px", flexShrink: 0,
                 border: "1px solid #333", borderRadius: 4,
                 background: "none", cursor: "pointer",
                 fontSize: 14, fontWeight: 500, color: "#fafafa",
