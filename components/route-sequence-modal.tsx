@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { X, Truck, ChevronDown } from "lucide-react"
+import { useState, useEffect } from "react"
+import { X, Truck, ChevronDown, TriangleAlert } from "lucide-react"
 import { TimePicker } from "@/components/time-picker"
 
 type StopType = "L" | "D" | "T"
@@ -37,6 +37,8 @@ interface RouteSequenceModalProps {
   onTimeChange: (routeId: string, time: string) => void
   onConfirm: () => void
   onCancel: () => void
+  prefilledTruckName?: string
+  prefilledTruckSiblingCount?: number
 }
 
 // ─── 4px dot separator ───────────────────────────────────────────────────────
@@ -229,7 +231,15 @@ export function RouteSequenceModal({
   onTimeChange,
   onConfirm,
   onCancel,
+  prefilledTruckName,
+  prefilledTruckSiblingCount = 1,
 }: RouteSequenceModalProps) {
+  const [hintDismissed, setHintDismissed] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) setHintDismissed(false)
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const allTimesSet = routes.every((r) => !!startTimes[r.id])
@@ -279,6 +289,49 @@ export function RouteSequenceModal({
             {". Set start times so that the routes sequence correctly."}
           </p>
         </div>
+
+        {/* Truck pre-fill info strip — matches Figma node 4339:37558 */}
+        {prefilledTruckName && !hintDismissed && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+            padding: "12px 16px", borderRadius: 4, flexShrink: 0,
+            backgroundColor: "#1f1f1f", border: "1px solid #282828",
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1, minWidth: 0 }}>
+              <TriangleAlert size={20} color="#818cf8" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0 }}>
+                <span style={{
+                  fontSize: 14, fontWeight: 500, color: "#818cf8", lineHeight: "20px",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  Drivers on multiple routes share the same truck
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 400, color: "#818cf8", lineHeight: "20px" }}>
+                  <span style={{ fontWeight: 500 }}>{prefilledTruckName}</span>
+                  {prefilledTruckSiblingCount > 1
+                    ? ` will be assigned to this and ${prefilledTruckSiblingCount - 1} other route${prefilledTruckSiblingCount - 1 > 1 ? "s" : ""} when you confirm.`
+                    : " will be assigned to this route when you confirm."
+                  }
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setHintDismissed(true)}
+              style={{
+                display: "flex", alignItems: "center",
+                height: 24, padding: "0 12px", flexShrink: 0,
+                border: "1px solid #333", borderRadius: 4,
+                background: "none", cursor: "pointer",
+                fontSize: 14, fontWeight: 500, color: "#fafafa",
+                fontFamily: "inherit", whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.04)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Body — route cards */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", minHeight: 0, flexShrink: 1 }}>

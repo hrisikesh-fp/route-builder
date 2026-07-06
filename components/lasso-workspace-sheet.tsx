@@ -18,6 +18,7 @@ import { BalanceTableModal } from "@/components/balance-table-modal"
 import { InitialInventoryModal, aggregateCompartmentValues } from "@/components/initial-inventory-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { TruckConflictModal } from "@/components/truck-conflict-modal"
+import { TruckSyncModal } from "@/components/truck-sync-modal"
 import { RouteSequenceModal } from "@/components/route-sequence-modal"
 import { RouteStartTimeModal } from "@/components/route-start-time-modal"
 
@@ -3226,6 +3227,18 @@ export function LassoWorkspaceSheet({
   // Route start time modal — opened from ⋮ menu "Route Start Time" item
   const [routeStartTimeModal, setRouteStartTimeModal] = useState<string | null>(null)
 
+  // R4 truck sync prompt — fires when same-driver routes would get different trucks
+  const [truckSyncModal, setTruckSyncModal] = useState<{
+    routeId: string
+    pendingTruck: TruckItem
+    siblingRouteIds: string[]
+  } | null>(null)
+
+  // Which route had its truck pre-filled when Modal 2 opened (for info strip + toast)
+  const [prefilledTruckForModal2, setPrefilledTruckForModal2] = useState<TruckItem | null>(null)
+
+  // Route IDs showing amber "same driver, different trucks" nudge (R4 "this route only")
+
   // Conflict detection helpers
   function getTruckConflicts(trucks: Record<string, TruckItem>, routeId: string, truckId: string): string[] {
     return Object.entries(trucks).filter(([rid, t]) => rid !== routeId && t.id === truckId).map(([rid]) => rid)
@@ -3234,9 +3247,29 @@ export function LassoWorkspaceSheet({
     return Object.entries(drivers).filter(([rid, d]) => rid !== routeId && d.id === driverId).map(([rid]) => rid)
   }
 
-  // Surface driver-conflict summary to page.tsx for the global banner
-  // Wrapped truck selection — checks for conflict before assigning
+  // Wrapped truck selection — R2: skip Modal 1 when same driver; R4: sync prompt when same driver + different truck
   function handleTruckSelect(routeId: string, truck: TruckItem) {
+    const currentDriver = selectedDrivers[routeId]
+    const sameDrvrSiblings = currentDriver
+      ? getDriverConflicts(selectedDrivers, routeId, currentDriver.id)
+      : []
+
+    if (sameDrvrSiblings.length > 0) {
+      // Same driver on another route — check R4
+      const siblingTruck = selectedTrucks[sameDrvrSiblings[0]]
+      if (siblingTruck && siblingTruck.id !== truck.id) {
+        // R4: user is changing to a different truck from sibling — show sync prompt
+        setTruckSyncModal({ routeId, pendingTruck: truck, siblingRouteIds: sameDrvrSiblings })
+        setTruckDropdownRouteId(null)
+        return
+      }
+      // Same truck (or sibling has no truck) — silent assign, no Modal 1 (R2/AC4)
+      setSelectedTrucks((prev) => ({ ...prev, [routeId]: truck }))
+      setSelectedTrailers((prev) => ({ ...prev, [routeId]: { t1: null, t2: null } }))
+      return
+    }
+
+    // No same-driver sibling — standard truck conflict check (AC3: different drivers → Modal 1)
     const conflicts = getTruckConflicts(selectedTrucks, routeId, truck.id)
     if (conflicts.length > 0) {
       setTruckConflictModal({ routeId, pendingTruck: truck, conflictRouteIds: conflicts })
@@ -3246,10 +3279,17 @@ export function LassoWorkspaceSheet({
     }
   }
 
-  // Wrapped driver selection — checks for conflict before assigning
+  // Wrapped driver selection — pre-fills truck from sibling before opening Modal 2 (AC1, AC2)
   function handleDriverSelect(routeId: string, driver: DriverItem) {
     const conflicts = getDriverConflicts(selectedDrivers, routeId, driver.id)
     if (conflicts.length > 0) {
+      // Find first sibling that has a truck assigned
+      const siblingWithTruck = conflicts.find((rid) => selectedTrucks[rid])
+      const siblingTruck = siblingWithTruck ? selectedTrucks[siblingWithTruck] : null
+
+      // Store prefill for after confirm — do NOT apply to selectedTrucks yet (would show on card immediately)
+      setPrefilledTruckForModal2(siblingTruck ?? null)
+
       setDriverConflictModal({ routeId, pendingDriver: driver, conflictRouteIds: conflicts })
     } else {
       setSelectedDrivers((prev) => ({ ...prev, [routeId]: driver }))
@@ -4707,6 +4747,20 @@ export function LassoWorkspaceSheet({
                               )
                             })()}
 
+                          {/* AC5 / R5 hint — shared driver, no truck set */}
+                          {!selectedTrucks[routeId] && (() => {
+                            const d = selectedDrivers[routeId]
+                            const hasSharedDriver = d ? getDriverConflicts(selectedDrivers, routeId, d.id).length > 0 : false
+                            return hasSharedDriver ? (
+                              <div style={{
+                                fontSize: 12, color: "#737373", lineHeight: "16px",
+                                padding: "4px 16px 6px",
+                              }}>
+                                Truck required before publish.
+                              </div>
+                            ) : null
+                          })()}
+
                           </div>{/* end card wrapper */}
                         </div>{/* end flex-row: checkbox + card */}
                         </div>{/* end sticky wrapper */}
@@ -5712,6 +5766,38 @@ export function LassoWorkspaceSheet({
         )
       })()}
 
+      {/* ── Truck Sync Modal (R4) ─────────────────────────────────────────── */}
+      {truckSyncModal && (() => {
+        const siblingRouteId = truckSyncModal.siblingRouteIds[0]
+        const siblingRoute = mockRoutes.find((r) => r.id === siblingRouteId)
+        const siblingTruck = selectedTrucks[siblingRouteId]
+        const driverName = selectedDrivers[truckSyncModal.routeId]?.name ?? ""
+        const siblingTruckName = siblingTruck?.name ?? siblingRoute?.truckName ?? "No Truck"
+        return (
+          <TruckSyncModal
+            isOpen={true}
+            driverName={driverName}
+            pendingTruckName={truckSyncModal.pendingTruck.name}
+            siblingTruckName={siblingTruckName}
+            onApplyBoth={() => {
+              const t = truckSyncModal.pendingTruck
+              setSelectedTrucks((prev) => {
+                const next = { ...prev, [truckSyncModal.routeId]: t }
+                truckSyncModal.siblingRouteIds.forEach((rid) => { next[rid] = t })
+                return next
+              })
+              setSelectedTrailers((prev) => {
+                const next = { ...prev, [truckSyncModal.routeId]: { t1: null, t2: null } }
+                truckSyncModal.siblingRouteIds.forEach((rid) => { next[rid] = { t1: null, t2: null } })
+                return next
+              })
+              setTruckSyncModal(null)
+            }}
+            onCancel={() => setTruckSyncModal(null)}
+          />
+        )
+      })()}
+
       {/* ── Driver Sequence Modal (Modal 2) ────────────────────────────────── */}
       {driverConflictModal && (() => {
         const allRouteIds = [driverConflictModal.routeId, ...driverConflictModal.conflictRouteIds]
@@ -5728,10 +5814,12 @@ export function LassoWorkspaceSheet({
             name: o.shipToName ?? o.customerName,
             qty: o.volume,
           }))
+          // Fall back to mockRoute order count so routes always appear when selectedOrders is empty
+          const orderCount = routeOrders.length > 0 ? routeOrders.length : (route?.orders?.length ?? 0)
           return {
             id: rid,
             truckName: truck?.name ?? route?.truckName ?? "",
-            orderCount: routeOrders.length,
+            orderCount,
             color: route?.color ?? "#9A7BC7",
             specs: {
               gal: truck?.capacity,
@@ -5751,12 +5839,28 @@ export function LassoWorkspaceSheet({
             date={dateLabel}
             routes={modalRoutes}
             startTimes={routeStartTimes}
+            prefilledTruckName={prefilledTruckForModal2?.name}
+            prefilledTruckSiblingCount={driverConflictModal.conflictRouteIds.length}
             onTimeChange={(routeId, time) => setRouteStartTimes((prev) => ({ ...prev, [routeId]: time }))}
             onConfirm={() => {
               setSelectedDrivers((prev) => ({ ...prev, [driverConflictModal.routeId]: driverConflictModal.pendingDriver }))
+              // Apply pre-filled truck NOW (on confirm, not when driver was picked)
+              if (prefilledTruckForModal2) {
+                setSelectedTrucks((prev) => ({ ...prev, [driverConflictModal.routeId]: prefilledTruckForModal2 }))
+                setSelectedTrailers((prev) => ({ ...prev, [driverConflictModal.routeId]: { t1: null, t2: null } }))
+                const totalRoutes = 1 + driverConflictModal.conflictRouteIds.length
+                onShowMessage?.(`Truck set to ${prefilledTruckForModal2.name} for ${totalRoutes} routes`)
+              } else {
+                const firstName = driverConflictModal.pendingDriver.name.split(" ")[0]
+                onShowMessage?.(`${firstName} assigned — set truck when ready`)
+              }
+              setPrefilledTruckForModal2(null)
               setDriverConflictModal(null)
             }}
-            onCancel={() => setDriverConflictModal(null)}
+            onCancel={() => {
+              setPrefilledTruckForModal2(null)
+              setDriverConflictModal(null)
+            }}
           />
         )
       })()}
