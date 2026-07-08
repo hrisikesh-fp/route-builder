@@ -457,6 +457,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onExpandedRouteIdsChange={setExpandedRouteIds}
         onCreateOrderSideSheetOpen={() => { setIsWorkspaceOpen(false); setIsCreateOrderSideSheetOpen(true) }}
         onCreateOrderSideSheetClose={() => { setIsCreateOrderSideSheetOpen(false); setIsWorkspaceOpen(true) }}
+        onOptimizationDrawerOpen={() => setIsWorkspaceOpen(false)}
+        onOptimizationDrawerClose={() => setIsWorkspaceOpen(true)}
         externalUnassignedOrders={modal3UnassignedOrders}
         openCreateOrderTrigger={openCreateOrderTrigger}
         onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}

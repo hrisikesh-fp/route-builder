@@ -57,6 +57,10 @@ interface LassoWorkspaceSheetProps {
   onCreateOrderSideSheetOpen?: () => void
   /** Modal 3 (side sheet): called when Create Order closes so page.tsx can revert map controls. */
   onCreateOrderSideSheetClose?: () => void
+  /** Called when optimization drawer opens so page.tsx can collapse the workspace. */
+  onOptimizationDrawerOpen?: () => void
+  /** Called when optimization drawer closes so page.tsx can reopen the workspace. */
+  onOptimizationDrawerClose?: () => void
   /** Modal 3: orders created via the side sheet flow (owned by page.tsx, merged into unassigned list). */
   externalUnassignedOrders?: ExtractionOrder[]
   topOffset?: number
@@ -2949,6 +2953,8 @@ export function LassoWorkspaceSheet({
   onReorderedRoutesChange,
   onCreateOrderSideSheetOpen,
   onCreateOrderSideSheetClose,
+  onOptimizationDrawerOpen,
+  onOptimizationDrawerClose,
   externalUnassignedOrders = [],
   openCreateOrderTrigger,
   onCreateOrderModalOpenChange,
@@ -3472,6 +3478,26 @@ export function LassoWorkspaceSheet({
   }
 
   if (!isOpen) {
+    // Optimization drawer must stay rendered even when workspace collapses.
+    if (isOptimizationDrawerOpen && optimizationResult) {
+      return (
+        <OptimizationRoutesDrawer
+          isOpen={true}
+          result={optimizationResult}
+          onClose={() => {
+            setIsOptimizationDrawerOpen(false)
+            setOptimizationResult(null)
+            onOptimizationDrawerClose?.()
+          }}
+          onProceed={() => {
+            onCheckedRoutesChange([])
+            setCheckedUnassignedOrderIds([])
+            setOptimiseRouteId(null)
+            onOptimizationDrawerClose?.()
+          }}
+        />
+      )
+    }
     // Modal 3 side sheet: workspace is collapsed but the Create Order modal must stay rendered.
     // Component stays mounted (never conditionally removed from page.tsx), so state is preserved.
     if (createOrderModalView === "modal3" && isCreateOrderModalOpen) {
@@ -5538,6 +5564,7 @@ export function LassoWorkspaceSheet({
           setOptimiseRouteId(null)
           setOptimizationResult(result)
           setIsOptimizationDrawerOpen(true)
+          onOptimizationDrawerOpen?.()
         }}
       />
 
@@ -5548,11 +5575,13 @@ export function LassoWorkspaceSheet({
         onClose={() => {
           setIsOptimizationDrawerOpen(false)
           setOptimizationResult(null)
+          onOptimizationDrawerClose?.()
         }}
         onProceed={() => {
           onCheckedRoutesChange([])
           setCheckedUnassignedOrderIds([])
           setOptimiseRouteId(null)
+          onOptimizationDrawerClose?.()
         }}
       />
 
