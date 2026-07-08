@@ -1132,7 +1132,7 @@ export function RouteMap({
 
             // Hover arrows
             const hoverArrows = createArrowMarkers(mbRef.current, coords, hoverColor, map)
-            hoverArrows.forEach((m: any) => m.addTo(map))
+            if (map) hoverArrows.forEach((m: any) => m.addTo(map))
             ;(map as any).__hoverArrows = hoverArrows
           })
 
@@ -1226,7 +1226,7 @@ export function RouteMap({
               const old = arrowMarkersRef.current.get(routeId)
               if (old) old.forEach((m: any) => m.remove())
               const arrows = createArrowMarkers(mbRef.current, coords, originalColor, map)
-              arrows.forEach((m: any) => m.addTo(map))
+              if (map) arrows.forEach((m: any) => m.addTo(map))
               arrowMarkersRef.current.set(routeId, arrows)
             }
           }
