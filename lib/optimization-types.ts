@@ -1,10 +1,12 @@
 export type UnassignedReason =
+  | "missing_product_qty"
   | "missing_data"
   | "time_window"
   | "no_terminal_product"
   | "no_capacity"
   | "retain"
   | "compartment_not_empty"
+  | "product_truck_fit"
 
 export type Stop = {
   seq: number | "load"

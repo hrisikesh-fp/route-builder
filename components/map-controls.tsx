@@ -175,8 +175,11 @@ export function MapControls({
     if (isWorkspaceOpen) {
       return "572px" // 560px workspace width + 12px gap
     }
-    if (isCreateOrderSideSheetOpen || isOptimizationDrawerOpen) {
+    if (isCreateOrderSideSheetOpen) {
       return "624px" // 560px side sheet + 52px right offset + 12px gap
+    }
+    if (isOptimizationDrawerOpen) {
+      return "784px" // 720px drawer + 52px right offset + 12px gap
     }
     if (isCreatePanelOpen || isRouteListOpen) {
       return "462px" // 450px sheet width + 12px gap
