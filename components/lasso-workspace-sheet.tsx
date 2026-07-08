@@ -11,7 +11,7 @@ import { CreateOrderModal, type CreateOrderSubmit } from "@/components/create-or
 import { validateRouteCapacity, getShortProductName, type ValidationResult } from "@/lib/capacity-validation"
 import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { MergeModal } from "@/components/merge-modal"
-import { OptimizationRoutesModal } from "@/components/optimization-routes-modal"
+import { OptimizationRoutesDrawer } from "@/components/optimization-routes-drawer"
 import type { OptimizationResult } from "@/lib/optimization-types"
 import { BreakdownSheet } from "@/components/breakdown-sheet"
 import { RouteSummarySheet } from "@/components/route-summary-sheet"
@@ -3130,7 +3130,7 @@ export function LassoWorkspaceSheet({
   const [mergeModalMode, setMergeModalMode] = useState<"create" | "optimise">("create")
   const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
   const [optimizationResult, setOptimizationResult] = useState<OptimizationResult | null>(null)
-  const [isOptimizationRoutesModalOpen, setIsOptimizationRoutesModalOpen] = useState(false)
+  const [isOptimizationDrawerOpen, setIsOptimizationDrawerOpen] = useState(false)
   // Inline optimise loading state (per route, on the card itself)
   const [optimisingInlineRouteId, setOptimisingInlineRouteId] = useState<string | null>(null)
   const [optimisingPhaseIndex, setOptimisingPhaseIndex] = useState(0)
@@ -5537,16 +5537,16 @@ export function LassoWorkspaceSheet({
           setIsMergeModalOpen(false)
           setOptimiseRouteId(null)
           setOptimizationResult(result)
-          setIsOptimizationRoutesModalOpen(true)
+          setIsOptimizationDrawerOpen(true)
         }}
       />
 
-      {/* Optimized Routes — post-optimize output */}
-      <OptimizationRoutesModal
-        isOpen={isOptimizationRoutesModalOpen}
+      {/* Optimized Routes — post-optimize output (Option 2 drawer) */}
+      <OptimizationRoutesDrawer
+        isOpen={isOptimizationDrawerOpen}
         result={optimizationResult}
         onClose={() => {
-          setIsOptimizationRoutesModalOpen(false)
+          setIsOptimizationDrawerOpen(false)
           setOptimizationResult(null)
         }}
         onProceed={() => {

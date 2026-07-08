@@ -24,10 +24,12 @@ export type OptimizedRoute = {
   specs: { capacityGal: string; compartments: string; productCount: number }
   metrics: { gpm: number; estTimeMins: number; estDistanceMi: number }
   orderCount: number
+  stopCount?: number
+  efficiencyPct?: number
   loadCount?: number
   capacityDeltaGal?: number
   color: string
-  flags: { mustGoCount?: number; hasManualLoad?: boolean; overShift?: boolean }
+  flags: { mustGoCount?: number; hasManualLoad?: boolean; overShift?: boolean; hosConflict?: boolean }
   why?: string[]
   sequence?: Stop[]
 }

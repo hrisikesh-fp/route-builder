@@ -1,15 +1,35 @@
 "use client"
 
-import { ArrowDown, TriangleAlert, Truck } from "lucide-react"
+import { TriangleAlert, Truck } from "lucide-react"
 import type { OptimizedRoute } from "@/lib/optimization-types"
 import { formatEstTime } from "@/lib/mock-optimization-result"
 
-/** Figma: text/highlight/warning-2 — capacity delta */
-const WARNING_ORANGE = "#fb923c"
-/** Figma: text/highlight/warning-1 — over-shift estimated time */
 const WARNING_AMBER = "#eab308"
 
-/** Figma node 6052:8198 — exact tokens from get_design_context */
+/** Pill badge for the right side of the route card */
+function Pill({ label, bg, color }: { label: string; bg: string; color: string }) {
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 500,
+        color,
+        backgroundColor: bg,
+        borderRadius: 4,
+        padding: "2px 6px",
+        lineHeight: "16px",
+        display: "inline-flex",
+        alignItems: "center",
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+/** Figma: route card with 6px color rail, truck row, 4-col metrics, badge row */
 export function OptimizationRouteCard({ route, onClick }: { route: OptimizedRoute; onClick: () => void }) {
   const overShift = route.flags.overShift
 
@@ -32,7 +52,7 @@ export function OptimizationRouteCard({ route, onClick }: { route: OptimizedRout
         boxSizing: "border-box",
       }}
     >
-      {/* Rectangle 8 — absolute 6px rail */}
+      {/* 6px color rail — absolute left */}
       <div
         style={{
           position: "absolute",
@@ -45,77 +65,37 @@ export function OptimizationRouteCard({ route, onClick }: { route: OptimizedRout
         }}
       />
 
-      {/* Content_upper — bg background-3 #1F1F1F + shadow/md */}
+      {/* Upper — bg #1F1F1F, truck name row */}
       <div
         style={{
           backgroundColor: "#1F1F1F",
-          padding: "16px 16px 12px 20px",
-          boxShadow:
-            "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",
+          padding: "14px 16px 12px 20px",
           boxSizing: "border-box",
           width: "100%",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {/* Row 1 — truck icon + name, gap 8, items-center */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Truck size={16} color="#E5E5E5" strokeWidth={1.75} style={{ flexShrink: 0 }} />
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#E5E5E5",
-                lineHeight: "20px",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {route.truckName}
-            </span>
-          </div>
-
-          {/* Row 2 — specs left · 300 gal right */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px", flexShrink: 0 }}>
-                {route.specs.capacityGal}
-              </span>
-              <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#737373", flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px", flexShrink: 0 }}>
-                {route.specs.compartments}
-              </span>
-              <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#737373", flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px", flexShrink: 0 }}>
-                {route.specs.productCount} Products
-              </span>
-            </div>
-
-            {route.capacityDeltaGal != null && (
-              <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 12 }}>
-                <ArrowDown size={16} color={WARNING_ORANGE} strokeWidth={2} style={{ flexShrink: 0 }} />
-                <span
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 400,
-                    color: WARNING_ORANGE,
-                    lineHeight: "20px",
-                    whiteSpace: "nowrap",
-                    textDecoration: "underline dotted",
-                    textDecorationColor: WARNING_ORANGE,
-                    textUnderlinePosition: "from-font",
-                    textDecorationSkipInk: "none",
-                  }}
-                >
-                  {route.capacityDeltaGal.toLocaleString()} gal
-                </span>
-              </div>
-            )}
-          </div>
+        {/* Row 1: truck icon + name */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Truck size={15} color="#E5E5E5" strokeWidth={1.75} style={{ flexShrink: 0 }} />
+          <span
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#E5E5E5",
+              lineHeight: "20px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {route.truckName}
+          </span>
         </div>
       </div>
 
-      {/* Route Summary — bg background-4 #282828 (NOT border-top) */}
+      {/* Lower — bg #282828, metrics + badges */}
       <div
         style={{
           backgroundColor: "#282828",
@@ -124,48 +104,41 @@ export function OptimizationRouteCard({ route, onClick }: { route: OptimizedRout
           width: "100%",
           display: "flex",
           alignItems: "center",
+          gap: 8,
         }}
       >
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            minWidth: 0,
-          }}
-        >
-          {/* Metrics — gap 32 */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 32 }}>
-            <MetricCol value={String(route.metrics.gpm)} label="GPM" />
-            <MetricCol
-              value={formatEstTime(route.metrics.estTimeMins)}
-              label="Estimated Time"
-              valueColor={overShift ? WARNING_AMBER : "#FFFFFF"}
-              suffix={overShift ? <TriangleAlert size={12} color={WARNING_AMBER} strokeWidth={2} /> : undefined}
-            />
-            <MetricCol value={`${route.metrics.estDistanceMi} mi`} label="Estimated Distance" />
-          </div>
+        {/* 4-column metrics */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flex: 1, minWidth: 0 }}>
+          {route.stopCount != null && (
+            <MetricCol value={String(route.stopCount)} label="Stops" />
+          )}
+          <MetricCol value={String(route.metrics.gpm)} label="GPM" />
+          <MetricCol
+            value={formatEstTime(route.metrics.estTimeMins)}
+            label="Estimated Time"
+            valueColor={overShift ? WARNING_AMBER : "#FFFFFF"}
+            suffix={overShift ? <TriangleAlert size={11} color={WARNING_AMBER} strokeWidth={2} /> : undefined}
+          />
+          <MetricCol value={`${route.metrics.estDistanceMi} mi`} label="Distance" />
+        </div>
 
-          {/* Badge — bg #111, 14px medium */}
-          <span
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: "#FAFAFA",
-              backgroundColor: "#111111",
-              borderRadius: 4,
-              padding: "2px 8px",
-              lineHeight: "20px",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {route.orderCount} Orders
-          </span>
+        {/* Right-side badges */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {route.efficiencyPct != null && (
+            <Pill label={`${route.efficiencyPct}%`} bg="rgba(34,197,94,0.15)" color="#22c55e" />
+          )}
+          {route.flags.hasManualLoad && (
+            <Pill label="Manual Load" bg="rgba(234,179,8,0.15)" color="#eab308" />
+          )}
+          {!!route.flags.mustGoCount && (
+            <Pill label={`${route.flags.mustGoCount} Must-go`} bg="rgba(239,68,68,0.15)" color="#f87171" />
+          )}
+          {(route.flags.overShift || route.flags.hosConflict) && (
+            <Pill label="HOS conflict" bg="rgba(234,179,8,0.12)" color="#eab308" />
+          )}
+          {(route.loadCount ?? 0) > 1 && (
+            <Pill label={`${route.loadCount} Loads`} bg="#1a1a1a" color="#A3A3A3" />
+          )}
         </div>
       </div>
     </div>
@@ -184,14 +157,14 @@ function MetricCol({
   suffix?: React.ReactNode
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 4, height: 24 }}>
-        <span style={{ fontSize: 16, fontWeight: 500, color: valueColor, lineHeight: "24px", whiteSpace: "nowrap" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+        <span style={{ fontSize: 14, fontWeight: 500, color: valueColor, lineHeight: "20px", whiteSpace: "nowrap" }}>
           {value}
         </span>
         {suffix}
       </div>
-      <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3", lineHeight: "16px", whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: 11, fontWeight: 400, color: "#737373", lineHeight: "14px", whiteSpace: "nowrap" }}>
         {label}
       </span>
     </div>
