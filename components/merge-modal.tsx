@@ -179,11 +179,11 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassigned
     setCanCancel(true)
 
     const phases = [
-      { delay: 2500, text: "Evaluating orders across fleet...", canCancel: true },
-      { delay: 2200, text: "Applying compartment constraints...", canCancel: true },
-      { delay: 2000, text: "Checking product compatibility...", canCancel: true },
-      { delay: 2500, text: "Optimising stop sequences...", canCancel: false },
-      { delay: 2000, text: "Finalising routes...", canCancel: false },
+      { delay: 1800, text: "Evaluating orders across fleet...", canCancel: true },
+      { delay: 1500, text: "Applying compartment constraints...", canCancel: true },
+      { delay: 1400, text: "Checking product compatibility...", canCancel: true },
+      { delay: 1800, text: "Optimising stop sequences...", canCancel: false },
+      { delay: 1500, text: "Finalising routes...", canCancel: false },
     ]
 
     let i = 0
