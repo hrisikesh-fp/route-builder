@@ -46,6 +46,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
   // Modal 3 (side sheet) state — workspace is collapsed, Create Order floats to the right.
   const [isCreateOrderSideSheetOpen, setIsCreateOrderSideSheetOpen] = useState(false)
+  // Optimization drawer open state — surfaced so map controls can shift left.
+  const [isOptimizationDrawerOpen, setIsOptimizationDrawerOpen] = useState(false)
   const [modal3UnassignedOrders, setModal3UnassignedOrders] = useState<ExtractionOrder[]>([])
 
   // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes.
@@ -426,6 +428,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           onLassoToggle={handleLassoToggle}
           isWorkspaceOpen={isWorkspaceOpen}
           isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
+          isOptimizationDrawerOpen={isOptimizationDrawerOpen}
           entityVisibility={entityVisibility}
           onEntityVisibilityChange={setEntityVisibility}
           topOffset={topOffset}
@@ -457,8 +460,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onExpandedRouteIdsChange={setExpandedRouteIds}
         onCreateOrderSideSheetOpen={() => { setIsWorkspaceOpen(false); setIsCreateOrderSideSheetOpen(true) }}
         onCreateOrderSideSheetClose={() => { setIsCreateOrderSideSheetOpen(false); setIsWorkspaceOpen(true) }}
-        onOptimizationDrawerOpen={() => setIsWorkspaceOpen(false)}
-        onOptimizationDrawerClose={() => setIsWorkspaceOpen(true)}
+        onOptimizationDrawerOpen={() => { setIsWorkspaceOpen(false); setIsOptimizationDrawerOpen(true) }}
+        onOptimizationDrawerClose={() => { setIsWorkspaceOpen(true); setIsOptimizationDrawerOpen(false) }}
         externalUnassignedOrders={modal3UnassignedOrders}
         openCreateOrderTrigger={openCreateOrderTrigger}
         onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}
