@@ -409,6 +409,46 @@ contexts/
 
 ---
 
+## Figma build workflow (strict)
+
+Figma is the build spec, not inspiration. Violating this caused repeated UI drift on the Optimized Routes modal (June 2026).
+
+### Before writing UI code
+
+1. Parse all Figma URLs the user provides — parent frame **and** every child component node.
+2. Call Figma MCP `get_design_context` on **each** node ID before coding.
+3. Map one Figma component node → one code file (e.g. modal frame → `*-modal.tsx`, card node → `*-card.tsx`).
+4. Do **not** reuse existing workspace components unless the Figma node is the same component. Similar product UI ≠ same Figma spec.
+
+### While building
+
+- Translate `get_design_context` tokens literally: backgrounds, padding, font weight, shadows, colors.
+- Do not substitute "close enough" project tokens (`#262626` badge, `#EAB308` everywhere, flat `#1F1F1F` cards).
+- Inline styles only — match existing component patterns in this repo.
+- Add or use a dev preview page (`app/dev/...`) so the UI opens in isolation with mock data.
+
+### Before saying done
+
+- [ ] MCP pulled for every node in scope
+- [ ] Built UI screenshot taken (browser or Figma `get_screenshot`)
+- [ ] Compared to Figma — list any remaining diffs explicitly
+- [ ] Do **not** mark figma/design tasks complete without screenshot proof
+
+### Never
+
+- Plan from Figma, then build from memory or a lossy plan summary
+- Delegate pixel-matching UI to background subagents
+- Mark "figma pass" complete without visual verification
+
+### User kickoff (recommended)
+
+When requesting Figma UI, user should paste parent + child node URLs and say:
+*"Pull Figma MCP for every node before coding. Screenshot diff before saying done."*
+
+Reference: `docs/figma-build-postmortem-2026-06-25.md`
+
+---
+
 ## Important implementation notes
 
 - **Mapbox markers:** Outer element must have NO `position: relative` or inline `zIndex` — breaks geo-anchoring

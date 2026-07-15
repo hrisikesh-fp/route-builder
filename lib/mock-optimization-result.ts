@@ -69,9 +69,9 @@ const MOCK_UNASSIGNED: UnassignedOrder[] = [
   { id: "u2", name: "Cedar Park Fleet", reason: "missing_data", reasonDetail: "Missing delivery window — cannot schedule.", suggestedFix: "Add a delivery time window" },
   { id: "u3", name: "Pflugerville Tank Co.", reason: "missing_data", reasonDetail: "No delivery location set.", suggestedFix: "Add ShipTo location" },
   // no_capacity (4)
-  { id: "u4", name: "Capitol Fuel Stop", reason: "no_capacity", reasonDetail: "All routes are full — no room left for this volume.", suggestedFix: "Add a truck or re-optimize" },
+  { id: "u4", name: "Capitol Fuel Stop", reason: "no_capacity", reasonDetail: "No available truck had enough capacity for its planned quantity.", suggestedFix: "Add a truck or re-optimize" },
   { id: "u5", name: "Lakeline Industrial", reason: "no_capacity", reasonDetail: "No truck has remaining compartment space for Diesel.", suggestedFix: "Add a truck or re-optimize" },
-  { id: "u6", name: "North Loop Depot", reason: "no_capacity", reasonDetail: "All routes are full — no room left for this volume.", suggestedFix: "Add a truck or re-optimize" },
+  { id: "u6", name: "North Loop Depot", reason: "no_capacity", reasonDetail: "No available truck had enough capacity for its planned quantity.", suggestedFix: "Add a truck or re-optimize" },
   { id: "u7", name: "Domain Distribution", reason: "no_capacity", reasonDetail: "No truck has remaining compartment space for Premium.", suggestedFix: "Add a truck or re-optimize" },
   // time_window (2)
   { id: "u8", name: "Oak Hill Storage", reason: "time_window", reasonDetail: "Delivery window cannot be met by any route from this run.", suggestedFix: "Adjust window or assign manually" },
