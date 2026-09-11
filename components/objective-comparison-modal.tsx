@@ -24,8 +24,13 @@ import {
  * Objectives run left → right as columns; KPIs run down the left as header rows.
  */
 
-const ACCENT = "#FA6400"
-const WIN = "#10B981"
+// Repo tokens, not the concept mock's orange. #FA6400 is the lasso tool colour
+// here and appears nowhere in modal chrome.
+const PRIMARY_BG = "#E5E5E5"   // primary CTA fill — matches merge-modal
+const PRIMARY_FG = "#171717"
+const RAIL = "#D4D4D8"         // active rail — matches the drawer's tab underline
+const SELECT_TINT = "rgba(255,255,255,0.05)"
+const WIN = "#10b981"          // matches the route card's efficiency pill
 const WARN = "#eab308"
 
 const LABEL_COL = 236
@@ -56,8 +61,8 @@ function RankChip({ rank, tied, emphasis }: { rank: number; tied: boolean; empha
         lineHeight: "20px",
         fontVariantNumeric: "tabular-nums",
         color: isBest ? WIN : emphasis ? "#E5E5E5" : "#A3A3A3",
-        backgroundColor: isBest ? "rgba(16,185,129,0.12)" : "transparent",
-        border: isBest ? "1px solid rgba(16,185,129,0.28)" : "1px solid transparent",
+        backgroundColor: isBest ? "rgba(16,185,129,0.1)" : "transparent",
+        border: isBest ? "1px solid rgba(16,185,129,0.24)" : "1px solid transparent",
         boxSizing: "border-box",
       }}
     >
@@ -203,7 +208,7 @@ function ObjectiveHeader({
         boxSizing: "border-box",
         borderRadius: "4px 4px 0 0",
         border: "none",
-        borderTop: `2px solid ${isSelected ? ACCENT : "transparent"}`,
+        borderTop: `2px solid ${isSelected ? RAIL : "transparent"}`,
         backgroundColor: disabled ? "#151515" : isSelected ? "#282828" : isHovered ? "#232323" : "#1F1F1F",
         cursor: disabled ? "default" : "pointer",
         fontFamily: "Geist, sans-serif",
@@ -219,15 +224,15 @@ function ObjectiveHeader({
             marginTop: 3,
             borderRadius: "50%",
             flexShrink: 0,
-            border: `1px solid ${disabled ? "#333" : isSelected ? ACCENT : "#525252"}`,
-            backgroundColor: isSelected ? ACCENT : "transparent",
+            border: `1px solid ${disabled ? "#333" : isSelected ? PRIMARY_BG : "#525252"}`,
+            backgroundColor: isSelected ? PRIMARY_BG : "transparent",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             boxSizing: "border-box",
           }}
         >
-          {isSelected && <span style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: "#171717" }} />}
+          {isSelected && <span style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: PRIMARY_FG }} />}
         </span>
         <span
           style={{
@@ -314,7 +319,7 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
 
   const columnBg = (run: ObjectiveRun) => {
     if (run.unavailable) return "#151515"
-    if (run.id === selected) return "rgba(250,100,0,0.05)"
+    if (run.id === selected) return SELECT_TINT
     if (run.id === hovered) return "rgba(255,255,255,0.02)"
     return "transparent"
   }
@@ -355,7 +360,7 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
         {/* ── Header ─────────────────────────────────────────────── */}
         <div style={{ padding: "20px 24px 16px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Sparkles size={18} color={ACCENT} strokeWidth={2} style={{ flexShrink: 0 }} />
+            <Sparkles size={18} color="#E5E5E5" strokeWidth={2} style={{ flexShrink: 0 }} />
             <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>
               Your day, solved {OBJECTIVE_RUNS.filter((r) => !r.unavailable).length} ways
             </span>
@@ -417,7 +422,7 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                   width: 26,
                   height: 14,
                   borderRadius: 999,
-                  backgroundColor: showRaw ? ACCENT : "#333",
+                  backgroundColor: showRaw ? PRIMARY_BG : "#333",
                   position: "relative",
                   flexShrink: 0,
                   transition: "background-color 150ms ease",
@@ -431,8 +436,8 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                     width: 10,
                     height: 10,
                     borderRadius: "50%",
-                    backgroundColor: "#FFF",
-                    transition: "left 150ms ease",
+                    backgroundColor: showRaw ? PRIMARY_FG : "#FFF",
+                    transition: "left 150ms ease, background-color 150ms ease",
                   }}
                 />
               </span>
@@ -610,7 +615,7 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
               padding: "14px 16px",
               backgroundColor: "#1F1F1F",
               border: "1px solid #282828",
-              borderLeft: `2px solid ${ACCENT}`,
+              borderLeft: `2px solid ${RAIL}`,
               borderRadius: "0 4px 4px 0",
               display: "flex",
               flexDirection: "column",
@@ -666,8 +671,8 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                 padding: "0 16px",
                 borderRadius: 4,
                 border: "none",
-                backgroundColor: ACCENT,
-                color: "#171717",
+                backgroundColor: PRIMARY_BG,
+                color: PRIMARY_FG,
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: "pointer",

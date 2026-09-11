@@ -28,7 +28,7 @@ export default function OptimizeFlowDevPage() {
           onClick={() => setIsMergeOpen(true)}
           style={{
             height: 36, padding: "0 16px", borderRadius: 4, border: "none",
-            backgroundColor: "#FA6400", color: "#171717", fontSize: 14, fontWeight: 500,
+            backgroundColor: "#E5E5E5", color: "#171717", fontSize: 14, fontWeight: 500,
             cursor: "pointer", fontFamily: "Geist, sans-serif",
           }}
         >
