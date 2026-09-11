@@ -6,6 +6,8 @@ import type { ExtractionOrder } from "@/lib/mock-data"
 import type { OptimizationResult } from "@/lib/optimization-types"
 import { FLEET_TRUCK_GROUPS, getFleetHubCount, getFleetTruckCount } from "@/lib/optimization-fleet-data"
 import { buildMockOptimizationResult } from "@/lib/mock-optimization-result"
+import { ObjectiveComparisonModal } from "@/components/objective-comparison-modal"
+import type { ObjectiveId } from "@/lib/objective-comparison-data"
 import { useSettings } from "@/contexts/settings-context"
 
 const MOCK_TIMES = [
@@ -148,7 +150,7 @@ function FleetInfoPanel() {
 
 export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassignedOrderIds = [], selectedOrders, modalMode = "create", onComplete }: MergeModalProps) {
   const { optimizationInputLayout } = useSettings()
-  const [screen, setScreen] = useState<"main" | "loading">("main")
+  const [screen, setScreen] = useState<"main" | "loading" | "objectives">("main")
   const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [loadingPhase, setLoadingPhase] = useState("")
   const [canCancel, setCanCancel] = useState(true)
@@ -183,19 +185,20 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassigned
       { delay: 1500, text: "Applying compartment constraints...", canCancel: true },
       { delay: 1400, text: "Checking product compatibility...", canCancel: true },
       { delay: 1800, text: "Optimising stop sequences...", canCancel: false },
-      { delay: 1500, text: "Finalising routes...", canCancel: false },
+      // The run now fans out across every available objective, so the last
+      // phase names that rather than pretending it's one solve.
+      { delay: 1800, text: "Solving for each objective...", canCancel: false },
+      { delay: 1300, text: "Scoring the results...", canCancel: false },
     ]
 
     let i = 0
     const runPhase = () => {
       if (i >= phases.length) {
+        // Every objective has finished solving. Hand off to the scorecard so the
+        // dispatcher picks the goal before seeing any routes.
         setTimeout(() => {
-          const result = buildMockOptimizationResult(orderRows, orderRows.length)
-          onComplete?.(result)
-          setScreen("main")
-          setMode("auto")
+          setScreen("objectives")
           setCanCancel(true)
-          onClose()
         }, 800)
         return
       }
@@ -206,6 +209,25 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassigned
       setTimeout(runPhase, phase.delay)
     }
     runPhase()
+  }
+
+  // Objective comparison scorecard — its own full-bleed overlay, so it isn't
+  // constrained by the merge modal's chrome.
+  if (screen === "objectives") {
+    return (
+      <ObjectiveComparisonModal
+        isOpen
+        onClose={handleClose}
+        onContinue={(_objectiveId: ObjectiveId) => {
+          const result = buildMockOptimizationResult(orderRows, orderRows.length)
+          onComplete?.(result)
+          setScreen("main")
+          setMode("auto")
+          setCanCancel(true)
+          onClose()
+        }}
+      />
+    )
   }
 
   return (
