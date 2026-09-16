@@ -1,142 +1,257 @@
-# Routing Configuration v1 — design spec for FE
-
-**Locked 16 Sept** after a 1:1 with Marcos. Build this. Do not re-open the sheet or the 11 Sept Figma for extra rows.
+# Dev Handoff — Routing Configuration (v1)
 
 **Repo:** `hrisikesh-fp/route-builder`  
-**Play:** `/dev/routing-config` locally, or https://route-builder-routing-proto-v1.vercel.app → HM → **Routing Configuration** (same Settings gear as today)  
-**ClickUp:** [86eytv5hn](https://app.clickup.com/t/8447923/86eytv5hn) · design D1 [86eyrwxc2](https://app.clickup.com/t/8447923/86eyrwxc2)  
-**Living spec:** `1-projects/route-builder/docs/routing/constraints-v1.md`
+**Branch:** `main`  
+**Locked:** 16 Sept 2026 (1:1 with Marcos). Build this. Do not add rows from the 11 Sept sheet or older Figma.
 
-**Entry in product.** This replaces **Tenant Settings** (`/admin/settings`). Same profile-menu icon. Opens as a **full page** over Route Builder — header is only “Routing Configuration” + close. Do **not** keep the Route Builder Admin chrome (no extra top nav, no “Tenant Settings” pill).
+**Play (Figma + GitHub, same as prior handoffs):**
 
-Portal the screen to `document.body` at `zIndex: 2000`. Shell: `#0A0A0A`, header + sticky footer, measure `800px`, Geist. Primary `#E5E5E5`. Do not use lasso orange.
+- This doc: https://github.com/hrisikesh-fp/route-builder/blob/main/HANDOFF-routing-config.md
+- Proto: https://route-builder-routing-proto-v1.vercel.app → HM → **Routing Configuration**
+- Isolated screen: https://route-builder-routing-proto-v1.vercel.app/dev/routing-config
+- Local: `http://localhost:3005/dev/routing-config`
+- Figma: https://www.figma.com/design/3zQcvo51p6v57bYKCOdIee/RB---Routing-v1?node-id=6960-244164
+- ClickUp: [86eytv5hn](https://app.clickup.com/t/86eytv5hn) · design D1 [86eyrwxc2](https://app.clickup.com/t/86eyrwxc2)
 
-Facts live in dispatch. This screen is which of those facts routing respects. Tenant-level only. Hard only.
+Figma is the visual. This page + the proto are what to **plug in**. If Figma still shows downgradable copy, drag handles, or extra rows, ignore those — they were cut.
 
 ---
 
-## What changed on 16 Sept (Marcos)
+## What this is
 
-| Change | Do this |
+Tenant-level screen: which dispatch facts routing respects. Hard only. No per-run overrides.
+
+**Replaces Tenant Settings** (`/admin/settings`). Same profile-menu **Settings** gear. Label becomes **Routing Configuration**. Opens as a **full page** over Route Builder (title + close). Do **not** keep the Route Builder Admin chrome — no extra top nav, no “Tenant Settings” pill.
+
+```
+HM / profile
+  → Routing Configuration   ← same gear icon as today’s Admin/Settings
+  → full-page overlay       ← this screen
+```
+
+Portal to `document.body` at `zIndex: 2000` (nav is `z-[1200]`).
+
+---
+
+## Files in this proto (port these)
+
+| File | What |
 |---|---|
-| Product compatibility copy | Comparable **product-category** groups only. Drop “downgradable” — flag exists, not deployed, v2 |
-| Product qualifications | **Delete** the row. Engine has no support |
-| Product continuity / flush | **Delete** the row. Level 2 |
-| All four Truck switches | **On and disabled.** Visible so the dispatcher can see the rules; not flippable. Turning any off would fail optimize. Soft / case-by-case off is later |
-| Terminal authorization | Always on for the same reason. Off would test every terminal × every truck and times out |
-| Delivery windows | Keep the toggle. **Default off.** Dylan turning it on in UAT broke optimize |
-| Extra objectives | No Add. No type dropdown. Two read-only `min` rows |
-| Loading / delivery numbers | Keep 15 min / 50 gal/min / 5 min floor. Pump rate is not inside the engine yet; do not invent preparation-time fields this pass |
-| Hazmat picker | Keep all four. Changing the picker **does** change the route. Balanced / Fastest / Shortest exist on the map server; they just do not apply hazmat |
+| `components/routing-config-panel.tsx` | The screen. Overlay + all seven sections |
+| `lib/routing-config-data.ts` | Defaults, panel ids, road profiles, locked objectives |
+| `components/map-header.tsx` | Profile row: **Routing Configuration**, Settings icon |
+| `app/page.tsx` | Wires the overlay open from that row |
+
+Wire into the real product’s admin/settings entry. Do not nest this inside `/admin`.
 
 ---
 
-## In v1
+## Shell
 
-### Truck
-All four are **constraints**, on, **toggle disabled**. Labels stay full contrast; only the switch is dimmed.
+Reuse existing admin form pieces: switch, input + addon, select, alert. Geist. Do **not** use lasso orange.
 
-| Control | Type | Kind | Default | Engine / source |
+| Token | Value |
+|---|---|
+| Page | `#0A0A0A` |
+| Measure | `800px` centered |
+| Card / grid | `#1B1B1B`, `1px #282828`, radius `4` |
+| Value well (under a switch) | `#111`, padding `16` |
+| Title | `18/28/500` white |
+| Section title | `16/24/500` `#E5E5E5` |
+| Section desc | `14/20/400` `#A3A3A3` |
+| Row label | `16/24/300` `#E5E5E5` |
+| Row subtext | `14/20` `#737373` |
+| Switch on | track `#E5E5E5`, knob `#0A0A0A` |
+| Switch off | track `#333`, knob `#737373` |
+| Switch **disabled** | `opacity: 0.4` on the track only — **not** the labels |
+| Always-on banner | TriangleAlert `20`, text `#818cf8`, bg `#1F1F1F`, border `#282828`, `items-center` (one line) |
+| Info alert | Info `20` `#A3A3A3`. One line: `items-center`. Wrap / title: `items-start` + icon `marginTop: 2` |
+| Alert links | `/self_customer/assets`, `/self_customer/drivers` — inherit color, `font-weight: 600`, underline |
+| Primary | Confirm and Save — `#E5E5E5` on `#171717` |
+| Secondary | Discard — `#262626` / `#FAFAFA` |
+| Sticky footer | same `#0A0A0A`, top border `#282828` |
+
+```
+┌ Routing Configuration                                          × ┐
+│ Truck                    │ Truck                                 │
+│ Driver                   │ The engine only assigns a truck if…   │
+│ Order and Customer       │ ⚠ These are foundational rules…       │
+│ Terminal and Supply      │ ┌ Compartment capacity          [on] ┐│
+│ Route                    │ │ Product compatibility         [on] ││
+│ Loading and Delivery     │ │ … toggles disabled                 ││
+│ Optimization Goal        │ └────────────────────────────────────┘│
+│                          │ ℹ … set on the Assets page            │
+│ Unsaved changes          Discard              Confirm and Save   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Left nav `200px`. Active item: bg `#282828`, weight `500`, color `#E5E5E5`. Inactive: `#A3A3A3`.
+
+---
+
+## How to read a row
+
+- **Constraint** — engine rule, on/off. Four Truck rows are on and **disabled**.
+- **User param** — number or picker the tenant sets.
+- **Feature** — not a taxonomy constraint. In v1: the road-network picker.
+
+---
+
+## 1. Truck — all four on, disabled
+
+Section desc: *The engine only assigns a truck if the load fits, the products are allowed, and it can load at that terminal.*
+
+Always-on banner: *These are foundational rules that stay on for creating optimized routes.*
+
+| Label | Subtext | Type | Default | Engine |
 |---|---|---|---|---|
-| Compartment capacity | Constraint | on, disabled | on | order volume must fit compartment |
-| Product compatibility | Constraint | on, disabled | on | comparable **product-category** groups (not SKU-level; not downgradable) |
-| Compartment product approvals | Constraint | on, disabled | on | skip unapproved compartments (categories on the asset) |
-| Terminal authorization | Constraint | on, disabled | on | `routing.restrictToAuthorizedTerminals` |
+| Compartment capacity | Orders are only assigned to a truck if they fit its compartments. | Constraint | on, disabled | compartment fit |
+| Product compatibility | Only load products that can share a compartment, using comparable product categories. | Constraint | on, disabled | comparable **categories** only — not SKU, not downgradable |
+| Compartment product approvals | Skip compartments that are not approved for the product category being loaded. | Constraint | on, disabled | skip unapproved compartments |
+| Terminal authorization | Trucks only load at terminals they are approved for. | Constraint | on, disabled | `routing.restrictToAuthorizedTerminals` |
 
-Alert: *Compartments, approved products and authorized terminals are set on the Asset page.*
+Footer alert: *Compartments, approved products, and authorized terminals are set on the truck or trailer in the **Assets** page.* Link → `/self_customer/assets`.
 
-Bulk-plant authorization is the same list once a plant exists as a warehouse. Do not add a second toggle.
+**Why disabled:** turning any of these off fails optimize. Terminal auth off times out on a large terminal list (every truck × every terminal). Soft / case-by-case off is later. Labels stay full contrast; only the switch is dimmed.
 
-### Driver
-| Control | Type | Kind | Default |
+---
+
+## 2. Driver
+
+Section desc: *Who can run a route, and what they are allowed to carry.*
+
+| Label | Subtext | Type | Default |
 |---|---|---|---|
-| Terminal carding | Constraint | on/off | **off** |
-| Driver hours | Constraint | on/off | on |
+| Terminal carding | Drivers are only sent to terminals they are currently carded for. | Constraint | **off** |
+| Driver hours | Routes are planned to finish inside the hours a driver has available. | Constraint | on |
+
+Footer alert: *Cards and working hours are set on the **Driver** page. Expired cards are skipped for the date being planned.* Link → `/self_customer/drivers`.
 
 **Out:** Product qualifications.
 
-Alert: *Cards and working hours are set on the Driver page. Expired cards are skipped for the date being planned.*
+---
 
-### Order and Customer
-| Control | Kind | Default | Engine |
-|---|---|---|---|
-| Delivery windows | on/off | **off** | order time window. Test on product demo before flipping on |
-| Run-out protection | on/off | on | tanks at risk first (soft later; still a toggle) |
-| Urgent orders | on/off | on | urgent first |
-| Linked deliveries | on/off | on | `routing.bindLinkedDeliveriesSameRoute` |
+## 3. Order and Customer
 
-Alert: *Planning an order first does not guarantee it gets on a route.*
+Section desc: *When deliveries happen, and which orders come first.*
 
-### Terminal and Supply
-| Control | Kind | Default | Engine |
-|---|---|---|---|
-| Terminal product availability | on/off | on | `routing.filterTerminalsByProduct` |
+| Label | Subtext | Type | Default | Engine |
+|---|---|---|---|---|
+| Delivery windows | Deliveries are planned to arrive inside the window set on the order, ship-to, or customer. | Constraint | **off** | order / ship-to / customer window |
+| Run-out protection | Tanks at risk of running dry are planned first. | Constraint | on | priority, not a promise |
+| Urgent orders | Orders marked urgent are planned first. | Constraint | on | same |
+| Linked deliveries | Deliveries that share a loading order stay on the same route. | Constraint | on | `routing.bindLinkedDeliveriesSameRoute` |
 
-Alert: *Terminals are commercial entities and hence treated as having unlimited supply.*
+Footer alert: *Planning an order first does not guarantee it gets on a route. It can still be left out if no truck can carry it.*
+
+Delivery windows stay in the UI. Default off — turning them on broke optimize.
+
+---
+
+## 4. Terminal and Supply
+
+Section desc: *Where trucks can load, and how much product is available there.*
+
+| Label | Subtext | Type | Default | Engine |
+|---|---|---|---|---|
+| Terminal product availability | Trucks are only sent to terminals that carry the product. | Constraint | on | `routing.filterTerminalsByProduct` |
+
+Copy is **terminals only** this pass. Bulk plants use the same product-availability idea later — do not add a second toggle now.
 
 **Out:** Bulk plant inventory.
 
-### Route
-| Control | Kind | Default | Engine |
-|---|---|---|---|
-| Shift length | on/off + hours | on, 10 hours | `optimization.maxRouteDurationSeconds` (convert at the boundary) |
-| Minimum deliveries per route | on/off + stops | on, 5 stops | `optimization.minJobsPerRoute` |
-| Hazmat roads | picker, **not** a toggle | Hazmat approved roads | `routing.profilePreference` |
+---
 
-**Out:** Product continuity / keep compartment same between loads / flush time.
+## 5. Route
 
-Picker values: Hazmat approved roads / Balanced / Fastest / Shortest. Picking anything other than Hazmat drops hazmat road restrictions. Vehicle type (truck vs small truck) is an **asset** field, not a row here. Unset vehicle type falls back to small-truck hazmat.
+Section desc: *How a route is built, and which roads it can use.*
 
-### Loading and Delivery
-Always on. No switches. Same numbers Dylan documented.
+| Label | Subtext | Type | Default | Engine |
+|---|---|---|---|---|
+| Shift length | Routes are planned to finish within the shift. | Constraint + user param | on, **10** hours | `optimization.maxRouteDurationSeconds` (convert hours → seconds at the boundary) |
+| Minimum deliveries per route | Avoid running a truck out for only a couple of drops. | Constraint + user param | on, **5** stops | `optimization.minJobsPerRoute` |
+| Hazmat roads | Which road network routes are planned on | Feature (picker, not a toggle) | Hazmat approved roads | `routing.profilePreference` |
 
-| Control | Kind | Default | Engine |
-|---|---|---|---|
-| Time per load | minutes | 15 | duration sent on the load stop today |
-| Pump rate | gal/min | 50 | intended: delivery duration = volume ÷ rate. **Not yet inside the engine** — keep the control; do not promise it changes the run until Marcos/Dylan wire it |
-| Shortest delivery | minutes | 5 | floor |
+Min-deliveries help under the field: *A route can still go below this if it is the only way to serve an order.*
 
-Do **not** add preparation time vs duration this pass. That is a v2 / backend fix (Marcos: terminals currently send duration, should send preparation time once).
+Hazmat field label: **Plan routes by**. Options: Hazmat approved roads / Balanced / Fastest / Shortest. Changing the picker **does** change the route. Anything other than Hazmat drops hazmat road rules. Help when Hazmat: *Roads that ban hazardous loads are avoided, along with restricted tunnels.* Help otherwise: *Hazmat restrictions do not apply on this network. Routes may use roads that ban hazardous loads.*
 
-### Optimization Goal
-Read-only. Matches live UAT / production. **Do not add, remove, reorder, or change type.**
+Vehicle type (truck vs small truck) is an **asset** field, not a row here.
+
+**Out:** Product continuity / flush.
+
+---
+
+## 6. Loading and Delivery
+
+Section desc: *How long the routing engine expects each stop to take.* No switches.
+
+| Label | Help | Type | Default | Engine |
+|---|---|---|---|---|
+| Time per load | (under Loading) | User param | **15** min | duration on the load stop today |
+| Pump rate | How fast product pumps off the truck at a stop. | User param | **50** gal/min | intended: volume ÷ rate. **Not inside the engine yet** — keep the field |
+| Shortest delivery | No delivery is given less time than this, however small the drop. | User param | **5** min | floor |
+
+Loading header: *Time spent picking up product at a terminal or bulk plant.*  
+Delivery header: *Time spent at a customer stop dropping product off.*
+
+Flush alert inside Delivery: *A 1,000 gal drop at 50 gal/min is planned as 20 minutes. Anything that works out shorter than 5 min is given 5 min.*
+
+Do **not** add a preparation-time field this pass.
+
+---
+
+## 7. Optimization Goal
+
+Section desc: *What the routing engine aims for when it has a choice between two workable plans.*
+
+Card: **Optimize for** — *These two run together on every plan.*
+
+Two **locked** rows. Numbered pills `1` / `2`. Two dropdowns each. No Add. No drag. No trash. No `min-max`.
 
 | # | Type | Value | Engine |
 |---|---|---|---|
 | 1 | Minimize | Trucks used | `min vehicles` |
 | 2 | Minimize | Finish time (last stop) | `min completion_time_last_stop` |
 
-No **Add objective**. No type dropdown. No drag handle. No `min-max`.
+Alert title: **How do goals work?**  
+Body: *Goals are applied together and weighed equally. Currently the above two goals pull against each other: fewer trucks means each one runs longer, and finishing earlier usually takes more trucks.*
 
-Both run on every plan. The engine weighs them equally. Fewer trucks usually means a later finish.
+The engine also tries to deliver all selected orders. That is not a row. There is no max-gallons row.
 
 ---
 
-## Out of v1 (do not build)
+## Do not build
+
+These were in the 11 Sept design and are **removed** so v1 matches the engine.
 
 - Product qualifications
 - Product continuity / flush
-- Downgradable groups (copy and control)
-- Initial-inventory flag / import-from-truck / pre-optimize retain
-- Search / filter polish
-- Soft vs hard dropdown (v2 framing — NoCo as reference)
-- Per-run overrides
-- Per-entity (ship-to) overrides — exist in NoCo routing plans, not this screen
+- Downgradable (copy and control)
 - Bulk plant inventory
-- Preparation time as a separate field
-- Pump rate actually driving duration (control stays; engine work is v2)
-- Add / remove / reorder objectives
-- Type `min-max`
-- Extra objective values (`completion_time`, `route_duration`, `transport_time`) as picker options
+- Driver product / category field
+- Add / remove / reorder objectives, drag handle, extra objective values
+- Initial-inventory flag / import-from-truck
+- Search / filter polish
+- Soft vs hard dropdown
+- Per-run or per-entity overrides
 - Max gallons per shift
-- Vehicle-type picker (truck / small truck) — lives on the asset
+- Preparation time as a separate field
+- Vehicle-type picker (lives on the asset)
 
 ---
 
-## Files in this proto
+## Test
 
-- `components/routing-config-panel.tsx`
-- `lib/routing-config-data.ts`
-- `components/map-header.tsx` — **Routing Configuration** replaces Settings (same gear icon)
-- `app/page.tsx` — overlay wiring
-- `app/dev/routing-config/page.tsx` — isolated preview
+- [ ] Profile gear opens **Routing Configuration**, not Tenant Settings / Admin chrome
+- [ ] Full page, title + close only, sits above the map nav
+- [ ] Seven nav items, one section at a time
+- [ ] Truck: four switches on and disabled; labels not dimmed; always-on banner is one line, icon centered with text
+- [ ] Compatibility copy says comparable **categories**, no downgradable
+- [ ] Assets / Driver links go to `/self_customer/assets` and `/self_customer/drivers`, semibold underline
+- [ ] Terminal carding default off; delivery windows default off
+- [ ] No product qualifications, no flush, no bulk-plant inventory
+- [ ] Shift 10 hours, min deliveries 5 stops, hazmat picker has four values
+- [ ] Loading 15 / 50 / 5; example alert under Delivery
+- [ ] Goals: two locked Minimize rows, no Add / drag / trash
+- [ ] Discard / Confirm disabled until a change; unsaved row in the footer
