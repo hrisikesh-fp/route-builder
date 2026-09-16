@@ -1,11 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createPortal } from "react-dom"
-import { ArrowDown, ArrowLeft, ArrowUp, Info, Maximize2, Minimize2, Sparkles, TriangleAlert, X } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowUp, Maximize2, Minimize2, Sparkles, TriangleAlert, X } from "lucide-react"
 import type { OptimizationResult, OptimizedRoute, Stop, UnassignedOrder, UnassignedReason } from "@/lib/optimization-types"
 import { formatEstTime } from "@/lib/mock-optimization-result"
-import { MetricCol, OptimizationRouteCard } from "@/components/optimization-route-card"
+import { OptimizationRouteCard } from "@/components/optimization-route-card"
 
 type TabId = "routes" | "unassigned"
 type ViewId = "list" | "detail"
@@ -29,107 +28,38 @@ const REASON_GROUPS: { reason: UnassignedReason; label: string }[] = [
   { reason: "compartment_not_empty", label: "Compartment not empty" },
 ]
 
-/**
- * shadcn Alert, Default — Figma `7048:65870` in RB Routing v1.
- * bg #1F1F1F, stroke #282828, radius 4, 12×16 padding, Info 20, copy 14/400 #A3A3A3.
- */
-function ResultsAlert({
-  children,
-  onClick,
-}: {
-  children: React.ReactNode
-  onClick?: () => void
-}) {
-  const shared: React.CSSProperties = {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 12,
-    width: "100%",
-    padding: "12px 16px",
-    backgroundColor: "#1F1F1F",
-    border: "1px solid #282828",
-    borderRadius: 4,
-    boxSizing: "border-box",
-    textAlign: "left",
-    fontFamily: "Geist, sans-serif",
-  }
-  const inner = (
-    <>
-      <Info size={20} color="#A3A3A3" strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />
-      <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 400, color: "#A3A3A3", lineHeight: "20px" }}>
-        {children}
-      </span>
-    </>
-  )
-  if (onClick) {
-    return (
-      <button type="button" onClick={onClick} role="alert" style={{ ...shared, cursor: "pointer" }}>
-        {inner}
-      </button>
-    )
-  }
+function Dot() {
   return (
-    <div role="alert" style={shared}>
-      {inner}
-    </div>
+    <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#a3a3a3", flexShrink: 0, display: "inline-block" }} />
   )
 }
 
-/** Same control as Create Routes Auto / Manual — `create-routes-modal-v2.tsx`. */
-function SegmentedToggle({
-  options,
-  value,
-  onChange,
+function SummaryTabCard({
+  label, count, subtext, countColor = "#FFFFFF", isActive, onClick,
 }: {
-  options: { id: TabId; label: string; tone?: "warn" }[]
-  value: TabId
-  onChange: (id: TabId) => void
+  label: string; count: number; subtext: React.ReactNode; countColor?: string; isActive: boolean; onClick: () => void
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        height: 28,
-        padding: 2,
-        borderRadius: 4,
-        backgroundColor: "#1B1B1B",
-        border: "1px solid #282828",
-        boxSizing: "border-box",
-        flexShrink: 0,
+        flex: 1, padding: "12px",
+        backgroundColor: isActive ? "#282828" : "#1F1F1F",
+        borderRadius: 4, border: "none",
+        borderBottom: isActive ? "2px solid #D4D4D8" : "2px solid transparent",
+        cursor: "pointer", textAlign: "left", fontFamily: "Geist, sans-serif",
+        boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 8,
       }}
     >
-      {options.map((opt) => {
-        const isActive = value === opt.id
-        const idleColor = opt.tone === "warn" ? "#eab308" : "#A3A3A3"
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => onChange(opt.id)}
-            style={{
-              padding: "0 12px",
-              fontSize: 14,
-              lineHeight: "20px",
-              height: "100%",
-              fontWeight: isActive ? 500 : 400,
-              color: isActive ? (opt.tone === "warn" ? "#eab308" : "#E5E5E5") : idleColor,
-              backgroundColor: isActive ? "#282828" : "transparent",
-              border: isActive ? "1px solid #333" : "1px solid transparent",
-              borderRadius: 2,
-              cursor: "pointer",
-              fontFamily: "Geist, sans-serif",
-              boxShadow: isActive
-                ? "0px 1px 3px 0px rgba(0,0,0,0.1), 0px 1px 2px 0px rgba(0,0,0,0.1)"
-                : "none",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
+      <span style={{ fontSize: 14, fontWeight: 500, color: "#A3A3A3", lineHeight: "20px", display: "block" }}>{label}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ fontSize: 20, fontWeight: 500, color: countColor, lineHeight: "28px", display: "block" }}>{count}</span>
+        <div style={{ fontSize: 12, fontWeight: 400, color: "#a3a3a3", lineHeight: "16px", display: "flex", alignItems: "center", gap: 8 }}>
+          {subtext}
+        </div>
+      </div>
+    </button>
   )
 }
 
@@ -411,9 +341,20 @@ function UnassignedTab({ result, onCta }: {
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 24px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
-      <ResultsAlert>
-        {summary.unassignedCount} of {summary.ordersTotal} orders weren’t placed in this run. Review each reason below before adding to the workspace.
-      </ResultsAlert>
+      {/* Banner */}
+      <div style={{ backgroundColor: "#1F1F1F", border: "1px solid #333", borderRadius: 4, padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ paddingTop: 2, flexShrink: 0 }}>
+          <TriangleAlert size={20} color="#eab308" />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "#eab308", lineHeight: "20px" }}>
+            {summary.unassignedCount} of {summary.ordersTotal} orders couldn't be placed in this run.
+          </p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: "#eab308", lineHeight: "20px" }}>
+            Review each reason below and take action before proceeding.
+          </p>
+        </div>
+      </div>
 
       {/* Reason groups — all expanded */}
       {groups.map((g) => (
@@ -435,40 +376,23 @@ function DrawerBody({
 }) {
   const { summary } = result
   const selectedRoute = result.routes.find((r) => r.id === selectedRouteId) ?? null
-  const totalMins = result.routes.reduce((sum, r) => sum + r.metrics.estTimeMins, 0)
-  const totalMi = result.routes.reduce((sum, r) => sum + r.metrics.estDistanceMi, 0)
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {view === "list" && (
         <>
-          {activeTab === "routes" && (
-            <div style={{ flexShrink: 0, padding: "16px 24px 0 24px", display: "flex", flexDirection: "column", gap: 12 }}>
-              {/* Same metric strip as OptimizationRouteCard lower row */}
-              <div
-                style={{
-                  backgroundColor: "#282828",
-                  borderRadius: 4,
-                  padding: "8px 12px 8px 20px",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
-                  <MetricCol value={`${summary.ordersPlaced}/${summary.ordersTotal}`} label="Orders" />
-                  <MetricCol value={String(summary.routeCount)} label="Trucks" />
-                  <MetricCol value={formatEstTime(totalMins)} label="Estimated Time" />
-                  <MetricCol value={`${totalMi} mi`} label="Estimated Distance" />
-                </div>
-              </div>
-              {summary.unassignedCount > 0 && (
-                <ResultsAlert onClick={() => setActiveTab("unassigned")}>
-                  {summary.unassignedCount} of {summary.ordersTotal} orders weren’t placed
-                  {summary.conflictCount > 0 ? ` · ${summary.conflictCount} conflicts` : ""}. Open Unassigned to review before adding to the workspace.
-                </ResultsAlert>
-              )}
-            </div>
-          )}
+          <div style={{ flexShrink: 0, display: "flex", gap: 12, padding: "20px 24px 0 24px" }}>
+            <SummaryTabCard
+              label="Routes" count={summary.routeCount} isActive={activeTab === "routes"}
+              onClick={() => setActiveTab("routes")}
+              subtext={<><span>{summary.routeCount} Trucks</span><Dot /><span>{summary.ordersPlaced}/{summary.ordersTotal} Orders</span></>}
+            />
+            <SummaryTabCard
+              label="Unassigned orders" count={summary.unassignedCount} countColor="#eab308"
+              isActive={activeTab === "unassigned"} onClick={() => setActiveTab("unassigned")}
+              subtext={<span>{summary.conflictCount} conflicts</span>}
+            />
+          </div>
           {activeTab === "routes" ? (
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 24px 24px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
               {result.routes.map((route) => (
@@ -539,30 +463,12 @@ export function OptimizationRoutesDrawer({ isOpen, result, onClose, onProceed, o
   }
 
   const header = (
-    <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 4, padding: "24px 24px 0 24px" }}>
-      {/* Same header rhythm as Create Routes: title · divider · segmented toggle · actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px", whiteSpace: "nowrap" }}>
+    <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 2, padding: "24px 24px 0 24px" }}>
+      {/* Row 1: title + expand + close */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>
           Optimized Routes
         </span>
-        {view === "list" && (
-          <>
-            <div style={{ width: 1, height: 20, backgroundColor: "#333", flexShrink: 0 }} />
-            <SegmentedToggle
-              value={activeTab}
-              onChange={setActiveTab}
-              options={[
-                { id: "routes", label: `Routes (${summary.routeCount})` },
-                {
-                  id: "unassigned",
-                  label: `Unassigned (${summary.unassignedCount})`,
-                  tone: summary.unassignedCount > 0 ? "warn" : undefined,
-                },
-              ]}
-            />
-          </>
-        )}
-        <div style={{ flex: 1, minWidth: 8 }} />
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -594,67 +500,54 @@ export function OptimizationRoutesDrawer({ isOpen, result, onClose, onProceed, o
     <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 24px 24px", gap: 12 }}>
       <button
         type="button" onClick={handleClose}
-        style={{ height: 36, padding: "0 16px", borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#FAFAFA", backgroundColor: "transparent", border: "1px solid #333", cursor: "pointer", fontFamily: "Geist, sans-serif", boxShadow: "0px 1px 2px 0px rgba(0,0,0,0.05)" }}
+        style={{ height: 36, padding: "0 16px", borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#fafafa", backgroundColor: "transparent", border: "1px solid #333", cursor: "pointer", fontFamily: "Geist, sans-serif", boxShadow: "0px 1px 2px rgba(0,0,0,0.05)" }}
       >
         Cancel
       </button>
       <button
         type="button" onClick={handleProceed}
-        style={{ height: 36, padding: "8px 16px", borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#171717", backgroundColor: "#E5E5E5", border: "none", cursor: "pointer", fontFamily: "Geist, sans-serif", whiteSpace: "nowrap" }}
+        style={{ height: 36, padding: "0 16px", borderRadius: 4, fontSize: 14, fontWeight: 500, color: "#171717", backgroundColor: "#e5e5e5", border: "none", cursor: "pointer", fontFamily: "Geist, sans-serif", whiteSpace: "nowrap", overflow: "hidden" }}
       >
         Proceed &amp; Add to Workspace
       </button>
     </div>
   )
 
-  const body = (
-    <DrawerBody
-      result={result} activeTab={activeTab} setActiveTab={setActiveTab}
-      view={view} setView={setView}
-      selectedRouteId={selectedRouteId} setSelectedRouteId={setSelectedRouteId}
-      onUnassignedCta={handleUnassignedCta}
-    />
-  )
-
-  // ── Expanded: same overlay shell as Create Routes (720px, portaled above nav)
+  // ── Expanded: centered modal over backdrop (same z-level as other modals)
   if (expanded) {
-    return createPortal(
+    return (
       <div
         style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 2000,
+          position: "fixed", top: 68, left: 0, right: 0, bottom: 0,
+          zIndex: 1250,
           backgroundColor: "rgba(0,0,0,0.6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "24px",
           fontFamily: "Geist, sans-serif",
-          boxSizing: "border-box",
         }}
         onClick={(e) => { if (e.target === e.currentTarget) setExpanded(false) }}
       >
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            width: 1040,
-            maxWidth: "100%",
-            height: "min(720px, calc(100vh - 80px))",
-            maxHeight: "min(720px, calc(100vh - 80px))",
+            display: "flex", flexDirection: "column",
+            width: 1000, maxWidth: "100%",
+            maxHeight: "calc(100vh - 68px - 48px)",
             backgroundColor: "#1B1B1B",
             borderRadius: 8,
             overflow: "hidden",
-            boxShadow: "0px 4px 6px -4px rgba(0,0,0,0.1), 0px 10px 15px -3px rgba(0,0,0,0.1)",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)",
           }}
-          onClick={(e) => e.stopPropagation()}
         >
           {header}
-          {body}
+          <DrawerBody
+            result={result} activeTab={activeTab} setActiveTab={setActiveTab}
+            view={view} setView={setView}
+            selectedRouteId={selectedRouteId} setSelectedRouteId={setSelectedRouteId}
+            onUnassignedCta={handleUnassignedCta}
+          />
           {footer}
         </div>
-      </div>,
-      document.body,
+      </div>
     )
   }
 
@@ -687,7 +580,12 @@ export function OptimizationRoutesDrawer({ isOpen, result, onClose, onProceed, o
         }}
       >
         {header}
-        {body}
+        <DrawerBody
+          result={result} activeTab={activeTab} setActiveTab={setActiveTab}
+          view={view} setView={setView}
+          selectedRouteId={selectedRouteId} setSelectedRouteId={setSelectedRouteId}
+          onUnassignedCta={handleUnassignedCta}
+        />
         {footer}
       </div>
     </div>
