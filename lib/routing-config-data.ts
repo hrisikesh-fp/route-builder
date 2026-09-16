@@ -47,7 +47,6 @@ export interface RoutingConfig {
   urgentOrders: boolean
   linkedDeliveries: boolean
   terminalProductAvailability: boolean
-  bulkPlantInventory: boolean
   shiftLength: boolean
   maxRouteDurationHours: number
   productContinuity: boolean
@@ -73,7 +72,6 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   urgentOrders: true,
   linkedDeliveries: true,
   terminalProductAvailability: true,
-  bulkPlantInventory: true,
   shiftLength: true,
   maxRouteDurationHours: 10,
   productContinuity: true,

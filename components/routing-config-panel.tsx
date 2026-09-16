@@ -601,7 +601,7 @@ export function RoutingConfigPanel({
             )}
 
             {panel === "terminal" && (
-              <PanelChrome title="Terminal and Supply" desc="Where trucks can load, and how much product is available there.">
+              <PanelChrome title="Terminal and Supply" desc="Where trucks can load.">
                 <Grid>
                   <SwitchRow
                     label="Terminal product availability"
@@ -610,18 +610,9 @@ export function RoutingConfigPanel({
                     onToggle={() => patch("terminalProductAvailability", !config.terminalProductAvailability)}
                     dim={!config.terminalProductAvailability}
                   />
-                  <Divider />
-                  <SwitchRow
-                    label="Bulk plant inventory"
-                    desc="Bulk plants are only used while they have enough product on hand."
-                    on={config.bulkPlantInventory}
-                    onToggle={() => patch("bulkPlantInventory", !config.bulkPlantInventory)}
-                    dim={!config.bulkPlantInventory}
-                  />
                 </Grid>
                 <AlertNote>
-                  Terminals are treated as having unlimited supply. Bulk plants are checked against the quantity in their
-                  tanks.
+                  Terminals are commercial entities and hence treated as having unlimited supply.
                 </AlertNote>
               </PanelChrome>
             )}
