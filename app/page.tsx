@@ -14,7 +14,7 @@ import { FilterSideSheet } from "@/components/filter-side-sheet"
 import { FilterSheetCollapsed } from "@/components/filter-sheet-collapsed"
 import { LassoWorkspaceSheet } from "@/components/lasso-workspace-sheet"
 import { LassoCanvas } from "@/components/lasso-canvas"
-import { SettingsModal } from "@/components/settings-modal"
+import { RoutingConfigOverlay } from "@/components/routing-config-panel"
 import { useSettings } from "@/contexts/settings-context"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockExtractionOrders, mockRoutes, shipTosWithoutOrders, buildShipToCoordLookup, buildCustomerCoordLookup } from "@/lib/mock-data"
@@ -26,7 +26,7 @@ export default function Home() {
 const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isFilterOpen, setIsFilterOpen] = useState(true)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isRoutingConfigOpen, setIsRoutingConfigOpen] = useState(false)
   const [showAllRoutes, setShowAllRoutes] = useState(true)
   const [isLassoDrawing, setIsLassoDrawing] = useState(false)
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false)
@@ -46,6 +46,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
   // Modal 3 (side sheet) state — workspace is collapsed, Create Order floats to the right.
   const [isCreateOrderSideSheetOpen, setIsCreateOrderSideSheetOpen] = useState(false)
+  // Optimization drawer open state — surfaced so map controls can shift left.
+  const [isOptimizationDrawerOpen, setIsOptimizationDrawerOpen] = useState(false)
   const [modal3UnassignedOrders, setModal3UnassignedOrders] = useState<ExtractionOrder[]>([])
 
   // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes.
@@ -373,7 +375,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     <main className="relative w-full h-screen overflow-hidden">
       <MapHeader
         onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
-        onSettingsClick={() => setIsSettingsOpen(true)}
+        onSettingsClick={() => setIsRoutingConfigOpen(true)}
         onCreateOrderClick={() => {
           setIsWorkspaceOpen(true)
           setOpenCreateOrderTrigger((n) => n + 1)
@@ -426,6 +428,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           onLassoToggle={handleLassoToggle}
           isWorkspaceOpen={isWorkspaceOpen}
           isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
+          isOptimizationDrawerOpen={isOptimizationDrawerOpen}
           entityVisibility={entityVisibility}
           onEntityVisibilityChange={setEntityVisibility}
           topOffset={topOffset}
@@ -457,6 +460,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onExpandedRouteIdsChange={setExpandedRouteIds}
         onCreateOrderSideSheetOpen={() => { setIsWorkspaceOpen(false); setIsCreateOrderSideSheetOpen(true) }}
         onCreateOrderSideSheetClose={() => { setIsCreateOrderSideSheetOpen(false); setIsWorkspaceOpen(true) }}
+        onOptimizationDrawerOpen={() => { setIsWorkspaceOpen(false); setIsOptimizationDrawerOpen(true) }}
+        onOptimizationDrawerClose={() => { setIsWorkspaceOpen(true); setIsOptimizationDrawerOpen(false) }}
         externalUnassignedOrders={modal3UnassignedOrders}
         openCreateOrderTrigger={openCreateOrderTrigger}
         onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}
@@ -533,7 +538,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
       <CreateRoutePanel isOpen={isCreatePanelOpen} onClose={() => setIsCreatePanelOpen(false)} />
 
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <RoutingConfigOverlay isOpen={isRoutingConfigOpen} onClose={() => setIsRoutingConfigOpen(false)} />
 
       <ConflictResolutionModal
         isOpen={isConflictModalOpen && showDriverConflict}

@@ -27,6 +27,7 @@ interface MapControlsProps {
   onLassoToggle?: () => void
   isWorkspaceOpen?: boolean
   isCreateOrderSideSheetOpen?: boolean
+  isOptimizationDrawerOpen?: boolean
   entityVisibility?: MapEntityVisibility
   onEntityVisibilityChange?: (visibility: MapEntityVisibility) => void
   topOffset?: number
@@ -131,6 +132,7 @@ export function MapControls({
   onLassoToggle,
   isWorkspaceOpen = false,
   isCreateOrderSideSheetOpen = false,
+  isOptimizationDrawerOpen = false,
   entityVisibility = {
     shipTosWithOrders: true,
     routeSequence: true,
@@ -175,6 +177,9 @@ export function MapControls({
     }
     if (isCreateOrderSideSheetOpen) {
       return "624px" // 560px side sheet + 52px right offset + 12px gap
+    }
+    if (isOptimizationDrawerOpen) {
+      return "784px" // 720px drawer + 52px right offset + 12px gap
     }
     if (isCreatePanelOpen || isRouteListOpen) {
       return "462px" // 450px sheet width + 12px gap

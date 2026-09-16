@@ -11,6 +11,10 @@ import { CreateOrderModal, type CreateOrderSubmit } from "@/components/create-or
 import { validateRouteCapacity, getShortProductName, type ValidationResult } from "@/lib/capacity-validation"
 import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { MergeModal } from "@/components/merge-modal"
+import { CreateRoutesModalV2 } from "@/components/create-routes-modal-v2"
+import { OptimizationRoutesDrawer } from "@/components/optimization-routes-drawer"
+import type { OptimizationResult } from "@/lib/optimization-types"
+import { buildMockOptimizationResult } from "@/lib/mock-optimization-result"
 import { BreakdownSheet } from "@/components/breakdown-sheet"
 import { RouteSummarySheet } from "@/components/route-summary-sheet"
 import { TruckDetailsSheet, truckProfileToVehicleInfo, synthesizeTrailerVehicleInfo, type VehicleInfo } from "@/components/truck-details-sheet"
@@ -56,6 +60,10 @@ interface LassoWorkspaceSheetProps {
   onCreateOrderSideSheetOpen?: () => void
   /** Modal 3 (side sheet): called when Create Order closes so page.tsx can revert map controls. */
   onCreateOrderSideSheetClose?: () => void
+  /** Called when optimization drawer opens so page.tsx can collapse the workspace. */
+  onOptimizationDrawerOpen?: () => void
+  /** Called when optimization drawer closes so page.tsx can reopen the workspace. */
+  onOptimizationDrawerClose?: () => void
   /** Modal 3: orders created via the side sheet flow (owned by page.tsx, merged into unassigned list). */
   externalUnassignedOrders?: ExtractionOrder[]
   topOffset?: number
@@ -2948,6 +2956,8 @@ export function LassoWorkspaceSheet({
   onReorderedRoutesChange,
   onCreateOrderSideSheetOpen,
   onCreateOrderSideSheetClose,
+  onOptimizationDrawerOpen,
+  onOptimizationDrawerClose,
   externalUnassignedOrders = [],
   openCreateOrderTrigger,
   onCreateOrderModalOpenChange,
@@ -3128,6 +3138,8 @@ export function LassoWorkspaceSheet({
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
   const [mergeModalMode, setMergeModalMode] = useState<"create" | "optimise">("create")
   const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
+  const [optimizationResult, setOptimizationResult] = useState<OptimizationResult | null>(null)
+  const [isOptimizationDrawerOpen, setIsOptimizationDrawerOpen] = useState(false)
   // Inline optimise loading state (per route, on the card itself)
   const [optimisingInlineRouteId, setOptimisingInlineRouteId] = useState<string | null>(null)
   const [optimisingPhaseIndex, setOptimisingPhaseIndex] = useState(0)
@@ -3508,6 +3520,26 @@ export function LassoWorkspaceSheet({
   }
 
   if (!isOpen) {
+    // Optimization drawer must stay rendered even when workspace collapses.
+    if (isOptimizationDrawerOpen && optimizationResult) {
+      return (
+        <OptimizationRoutesDrawer
+          isOpen={true}
+          result={optimizationResult}
+          onClose={() => {
+            setIsOptimizationDrawerOpen(false)
+            setOptimizationResult(null)
+            onOptimizationDrawerClose?.()
+          }}
+          onProceed={() => {
+            onCheckedRoutesChange([])
+            setCheckedUnassignedOrderIds([])
+            setOptimiseRouteId(null)
+            onOptimizationDrawerClose?.()
+          }}
+        />
+      )
+    }
     // Modal 3 side sheet: workspace is collapsed but the Create Order modal must stay rendered.
     // Component stays mounted (never conditionally removed from page.tsx), so state is preserved.
     if (createOrderModalView === "modal3" && isCreateOrderModalOpen) {
@@ -5575,7 +5607,29 @@ export function LassoWorkspaceSheet({
         />
       )}
 
-      {/* Merge / Optimise Modal */}
+      {/* Create uses the combined truck+trailer+driver modal; optimise still uses merge-modal. */}
+      {mergeModalMode === "create" ? (
+        <CreateRoutesModalV2
+          key={isMergeModalOpen ? "create-routes-open" : "create-routes-closed"}
+          isOpen={isMergeModalOpen}
+          onClose={() => { setIsMergeModalOpen(false); setOptimiseRouteId(null) }}
+          checkedRouteIds={checkedRouteIds}
+          checkedUnassignedOrderIds={checkedUnassignedOrderIds}
+          selectedOrders={selectedOrders}
+          onComplete={() => {
+            const orderRows = selectedOrders.filter((o) =>
+              checkedRouteIds.includes(o.routeId ?? "") ||
+              (!o.routeId && checkedUnassignedOrderIds.includes(o.id))
+            )
+            const result = buildMockOptimizationResult(orderRows, orderRows.length)
+            setIsMergeModalOpen(false)
+            setOptimiseRouteId(null)
+            setOptimizationResult(result)
+            setIsOptimizationDrawerOpen(true)
+            onOptimizationDrawerOpen?.()
+          }}
+        />
+      ) : (
       <MergeModal
         isOpen={isMergeModalOpen}
         onClose={() => { setIsMergeModalOpen(false); setOptimiseRouteId(null) }}
@@ -5583,13 +5637,30 @@ export function LassoWorkspaceSheet({
         checkedUnassignedOrderIds={checkedUnassignedOrderIds}
         selectedOrders={selectedOrders}
         modalMode={mergeModalMode}
-        onComplete={(truckCount, orderCount) => {
+        onComplete={(result) => {
+          setIsMergeModalOpen(false)
+          setOptimiseRouteId(null)
+          setOptimizationResult(result)
+          setIsOptimizationDrawerOpen(true)
+          onOptimizationDrawerOpen?.()
+        }}
+      />
+      )}
+
+      {/* Optimized Routes — post-optimize output (Option 2 drawer) */}
+      <OptimizationRoutesDrawer
+        isOpen={isOptimizationDrawerOpen}
+        result={optimizationResult}
+        onClose={() => {
+          setIsOptimizationDrawerOpen(false)
+          setOptimizationResult(null)
+          onOptimizationDrawerClose?.()
+        }}
+        onProceed={() => {
           onCheckedRoutesChange([])
           setCheckedUnassignedOrderIds([])
           setOptimiseRouteId(null)
-          onShowMessage?.(mergeModalMode === "optimise"
-            ? `Route optimised with ${orderCount} orders`
-            : `${truckCount} optimised routes created with ${orderCount} orders`)
+          onOptimizationDrawerClose?.()
         }}
       />
 

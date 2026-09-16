@@ -126,7 +126,7 @@ export function MapHeader({ onFilterClick, onSettingsClick, onCreateOrderClick, 
           {/* Dropdown Menu */}
           {isProfileOpen && (
             <div
-              className="absolute right-0 mt-2 w-64 rounded-lg overflow-hidden z-[1100]"
+              className="absolute right-0 mt-2 w-64 rounded-lg overflow-hidden z-[1300]"
               style={{
                 backgroundColor: "#1A1A1A",
                 border: "1px solid #282828",
@@ -165,7 +165,7 @@ export function MapHeader({ onFilterClick, onSettingsClick, onCreateOrderClick, 
                   className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 transition-colors"
                 >
                   <Settings className="w-5 h-5" />
-                  <span>Settings</span>
+                  <span>Routing Configuration</span>
                 </button>
                 <button className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 transition-colors">
                   <Shield className="w-5 h-5" />
