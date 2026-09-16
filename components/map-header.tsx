@@ -1,18 +1,19 @@
 "use client"
 
-import { Calendar, ChevronDown, SquarePen, Key, Shield, LogOut, Settings, Plus } from "lucide-react"
+import { Calendar, ChevronDown, SquarePen, Key, Shield, LogOut, Settings, Plus, SlidersHorizontal } from "lucide-react"
 import Image from "next/image"
 import { useMemo, useState, useRef, useEffect } from "react"
 
 interface MapHeaderProps {
   onFilterClick: () => void
   onSettingsClick: () => void
+  onRoutingConfigClick?: () => void
   onCreateOrderClick?: () => void
   /** True while a Create Order modal/drawer is open — button goes disabled to prevent double-open. */
   isCreateOrderOpen?: boolean
 }
 
-export function MapHeader({ onFilterClick, onSettingsClick, onCreateOrderClick, isCreateOrderOpen = false }: MapHeaderProps) {
+export function MapHeader({ onFilterClick, onSettingsClick, onRoutingConfigClick, onCreateOrderClick, isCreateOrderOpen = false }: MapHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
@@ -126,7 +127,7 @@ export function MapHeader({ onFilterClick, onSettingsClick, onCreateOrderClick, 
           {/* Dropdown Menu */}
           {isProfileOpen && (
             <div
-              className="absolute right-0 mt-2 w-64 rounded-lg overflow-hidden z-[1100]"
+              className="absolute right-0 mt-2 w-64 rounded-lg overflow-hidden z-[1300]"
               style={{
                 backgroundColor: "#1A1A1A",
                 border: "1px solid #282828",
@@ -149,6 +150,19 @@ export function MapHeader({ onFilterClick, onSettingsClick, onCreateOrderClick, 
 
               {/* Menu Items */}
               <div className="py-2">
+                {onRoutingConfigClick && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileOpen(false)
+                      onRoutingConfigClick()
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 transition-colors"
+                  >
+                    <SlidersHorizontal className="w-5 h-5" />
+                    <span>Routing Config</span>
+                  </button>
+                )}
                 <button className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 transition-colors">
                   <SquarePen className="w-5 h-5" />
                   <span>Edit Profile</span>
