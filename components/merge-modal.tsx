@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { createPortal } from "react-dom"
 import { X, Truck } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import type { OptimizationResult } from "@/lib/optimization-types"
@@ -230,10 +231,12 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassigned
     )
   }
 
-  return (
+  if (typeof document === "undefined") return null
+
+  return createPortal(
     <div
       style={{
-        position: "fixed", inset: 0, zIndex: 9999,
+        position: "fixed", inset: 0, zIndex: 2000,
         display: "flex", alignItems: "center", justifyContent: "center",
         backgroundColor: "rgba(0,0,0,0.6)",
         backdropFilter: "blur(4px)",
@@ -408,6 +411,7 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassigned
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

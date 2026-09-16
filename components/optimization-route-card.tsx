@@ -171,7 +171,8 @@ export function OptimizationRouteCard({ route, onClick }: { route: OptimizedRout
   )
 }
 
-function MetricCol({
+/** Shared with Optimized Routes plan summary — same type, size, and labels as each route card. */
+export function MetricCol({
   value,
   label,
   valueColor = "#FFFFFF",

@@ -1,14 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { MergeModal } from "@/components/merge-modal"
+import { CreateRoutesModalV2 } from "@/components/create-routes-modal-v2"
 import { OptimizationRoutesDrawer } from "@/components/optimization-routes-drawer"
 import { syracuseCustomers } from "@/lib/mock-data"
 import type { OptimizationResult } from "@/lib/optimization-types"
+import { buildMockOptimizationResult } from "@/lib/mock-optimization-result"
 
 /**
  * Dev harness for the full post-optimise flow:
- * Create Routes → loading → objective scorecard → Optimized Routes drawer.
+ * Create Routes (truck+driver units) → loading → objective scorecard → Optimized Routes drawer.
  */
 export default function OptimizeFlowDevPage() {
   const [isMergeOpen, setIsMergeOpen] = useState(false)
@@ -22,7 +23,7 @@ export default function OptimizeFlowDevPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
         <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5" }}>Optimise flow — end to end</span>
         <span style={{ fontSize: 14, color: "#A3A3A3" }}>
-          Create Routes → loading → objective scorecard → routes drawer.
+          Create Routes (truck + mapped driver) → loading → objective scorecard → routes drawer.
         </span>
         <button
           onClick={() => setIsMergeOpen(true)}
@@ -36,14 +37,16 @@ export default function OptimizeFlowDevPage() {
         </button>
       </div>
 
-      <MergeModal
+      <CreateRoutesModalV2
         isOpen={isMergeOpen}
         onClose={() => setIsMergeOpen(false)}
         checkedRouteIds={[]}
         checkedUnassignedOrderIds={unassignedIds}
         selectedOrders={orders as any}
-        modalMode="create"
-        onComplete={(r) => setResult(r)}
+        onComplete={() => {
+          setResult(buildMockOptimizationResult(orders as any, orders.length))
+          setIsMergeOpen(false)
+        }}
       />
 
       <OptimizationRoutesDrawer

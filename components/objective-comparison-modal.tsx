@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight, Check, Info, Sparkles, TriangleAlert, X } from "lucide-react"
+import { createPortal } from "react-dom"
+import { ArrowRight, Check, TriangleAlert, X } from "lucide-react"
 import {
   KPIS,
   OBJECTIVE_RUNS,
@@ -13,6 +14,7 @@ import {
   type ObjectiveId,
   type ObjectiveRun,
 } from "@/lib/objective-comparison-data"
+import { MetricCol } from "@/components/optimization-route-card"
 
 /**
  * Objective Comparison Scorecard.
@@ -89,24 +91,39 @@ function RawValue({ text, isBest, emphasis }: { text: string; isBest: boolean; e
   )
 }
 
-function BlockedChip() {
+/** Shared input for every column — same MetricCol row as Optimized Routes / route cards. */
+function InputsCard() {
   return (
-    <span
+    <div
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        height: 24,
-        padding: "0 8px",
+        backgroundColor: "#282828",
         borderRadius: 4,
-        border: "1px dashed #333",
-        fontSize: 12,
-        lineHeight: "16px",
-        color: "#737373",
-        whiteSpace: "nowrap",
+        padding: "8px 12px 8px 20px",
+        display: "flex",
+        alignItems: "center",
+        gap: 24,
+        boxSizing: "border-box",
       }}
     >
-      n/a
-    </span>
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 500,
+          color: "#A3A3A3",
+          lineHeight: "16px",
+          flexShrink: 0,
+        }}
+      >
+        Inputs
+      </span>
+      <div style={{ width: 1, height: 28, backgroundColor: "#333", flexShrink: 0 }} />
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 24, minWidth: 0 }}>
+        <MetricCol value={String(SCENARIO.ordersTotal)} label="Orders" />
+        <MetricCol value={`${SCENARIO.gallons.toLocaleString()} gal`} label="Gallons" />
+        <MetricCol value={String(SCENARIO.trucksAvailable)} label="Trucks" />
+        <MetricCol value={SCENARIO.date.replace(/^[A-Za-z]{3} /, "").replace(/, \d{4}$/, "")} label="Date" />
+      </div>
+    </div>
   )
 }
 
@@ -134,43 +151,6 @@ function FeasibilityCell({ run, emphasis }: { run: ObjectiveRun; emphasis: boole
       <TriangleAlert size={14} strokeWidth={2} />
       {run.feasibility.warnings} warning
     </span>
-  )
-}
-
-function ScenarioStrip() {
-  const items = [
-    `${SCENARIO.ordersTotal} orders`,
-    `${SCENARIO.gallons.toLocaleString()} gal committed`,
-    `${SCENARIO.trucksAvailable} trucks available`,
-    SCENARIO.date,
-  ]
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: "6px 12px",
-        padding: "10px 12px",
-        backgroundColor: "#171717",
-        border: "1px solid #282828",
-        borderRadius: 4,
-        boxSizing: "border-box",
-      }}
-    >
-      <span style={{ fontSize: 12, fontWeight: 500, color: "#E5E5E5", lineHeight: "16px" }}>Same input, every column</span>
-      <span style={{ width: 1, height: 12, backgroundColor: "#333" }} />
-      {items.map((t, i) => (
-        <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 12, color: "#A3A3A3", lineHeight: "16px" }}>{t}</span>
-          {i < items.length - 1 && <span style={{ width: 3, height: 3, borderRadius: "50%", backgroundColor: "#404040" }} />}
-        </span>
-      ))}
-      <div style={{ flex: 1, minWidth: 12 }} />
-      <span style={{ fontSize: 12, color: "#737373", lineHeight: "16px" }}>
-        {SCENARIO.constraints.length} constraints in force · identical across runs
-      </span>
-    </div>
   )
 }
 
@@ -313,30 +293,31 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
   const [showRaw, setShowRaw] = useState(false)
 
   if (!isOpen) return null
+  if (typeof document === "undefined") return null
 
-  const selectedRun = OBJECTIVE_RUNS.find((r) => r.id === selected)!
-  const gridTemplate = `${LABEL_COL}px repeat(${OBJECTIVE_RUNS.length}, minmax(166px, 1fr))`
+  const visibleRuns = OBJECTIVE_RUNS.filter((r) => !r.unavailable)
+  const visibleKpis = KPIS.filter((k) => !k.blocked)
+  const selectedRun = visibleRuns.find((r) => r.id === selected) ?? visibleRuns[0]
+  const gridTemplate = `${LABEL_COL}px repeat(${visibleRuns.length}, minmax(166px, 1fr))`
 
   const columnBg = (run: ObjectiveRun) => {
-    if (run.unavailable) return "#151515"
     if (run.id === selected) return SELECT_TINT
     if (run.id === hovered) return "rgba(255,255,255,0.02)"
     return "transparent"
   }
 
-  return (
+  return createPortal(
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9999,
+        zIndex: 2000,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
         fontFamily: "Geist, sans-serif",
-        padding: 24,
+        padding: 16,
         boxSizing: "border-box",
       }}
       onClick={onClose}
@@ -344,25 +325,24 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 1320,
+          width: 1240,
           maxWidth: "100%",
-          maxHeight: "92vh",
+          height: "min(720px, calc(100vh - 80px))",
+          maxHeight: "min(720px, calc(100vh - 80px))",
           backgroundColor: "#1B1B1B",
           borderRadius: 8,
-          border: "1px solid #282828",
-          boxShadow: "0px 10px 15px -3px rgba(0,0,0,0.4), 0px 4px 6px -4px rgba(0,0,0,0.4)",
+          boxShadow: "0px 4px 6px -4px rgba(0,0,0,0.1), 0px 10px 15px -3px rgba(0,0,0,0.1)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
           boxSizing: "border-box",
         }}
       >
-        {/* ── Header ─────────────────────────────────────────────── */}
-        <div style={{ padding: "20px 24px 16px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Sparkles size={18} color="#E5E5E5" strokeWidth={2} style={{ flexShrink: 0 }} />
+        {/* ── Header — same as Create Routes: 18/500 title, 14 subtitle, 24 X */}
+        <div style={{ padding: "24px 24px 0", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 18, fontWeight: 500, color: "#E5E5E5", lineHeight: "28px" }}>
-              Your day, solved {OBJECTIVE_RUNS.filter((r) => !r.unavailable).length} ways
+              Compare objectives
             </span>
             <div style={{ flex: 1 }} />
             <button
@@ -381,17 +361,16 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                 padding: 0,
               }}
             >
-              <X size={20} strokeWidth={2} />
+              <X size={24} strokeWidth={2} />
             </button>
           </div>
           <span style={{ fontSize: 14, color: "#A3A3A3", lineHeight: "20px" }}>
-            Same orders, same trucks, same constraints — only the goal changed. Pick the goal, then review the routes.
+            Pick a goal, then review the routes.
           </span>
         </div>
 
-        {/* ── Scenario strip + toolbar ───────────────────────────── */}
-        <div style={{ padding: "0 24px 12px", display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>
-          <ScenarioStrip />
+        <div style={{ padding: "16px 24px 12px", display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>
+          <InputsCard />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 12, color: "#737373", lineHeight: "16px" }}>
               Cells show rank across the row — 1 is best. "=" means the gap is inside the 1% tie threshold.
@@ -465,7 +444,7 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                   Measured on
                 </span>
               </div>
-              {OBJECTIVE_RUNS.map((run) => (
+              {visibleRuns.map((run) => (
                 <ObjectiveHeader
                   key={run.id}
                   run={run}
@@ -478,7 +457,7 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
             </div>
 
             {/* KPI rows */}
-            {KPIS.map((kpi: Kpi, rowIndex) => {
+            {visibleKpis.map((kpi: Kpi, rowIndex) => {
               const ranks = RANKS[kpi.id] ?? {}
               return (
                 <div
@@ -490,7 +469,6 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                     borderTop: rowIndex === 0 ? "1px solid #282828" : "1px solid #222",
                   }}
                 >
-                  {/* Left header cell — the KPI */}
                   <div
                     style={{
                       height: ROW_H,
@@ -502,31 +480,20 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                       boxSizing: "border-box",
                     }}
                   >
-                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: kpi.blocked ? "#737373" : "#E5E5E5", lineHeight: "20px" }}>
-                        {kpi.label}
-                      </span>
-                      {kpi.blocked && <Info size={12} color="#525252" strokeWidth={2} />}
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5", lineHeight: "20px" }}>
+                      {kpi.label}
                     </span>
-                    <span
-                      title={kpi.blocked ? kpi.blocked.why : undefined}
-                      style={{ fontSize: 12, color: "#737373", lineHeight: "16px", cursor: kpi.blocked ? "help" : "default" }}
-                    >
-                      {kpi.blocked ? kpi.blocked.short : kpi.definition}
+                    <span style={{ fontSize: 12, color: "#737373", lineHeight: "16px" }}>
+                      {kpi.definition}
                     </span>
                   </div>
 
-                  {/* One cell per objective */}
-                  {OBJECTIVE_RUNS.map((run) => {
+                  {visibleRuns.map((run) => {
                     const emphasis = run.id === selected
                     const cell = ranks[run.id]
 
                     let content: React.ReactNode
-                    if (run.unavailable) {
-                      content = <span style={{ fontSize: 14, color: "#404040", lineHeight: "20px" }}>—</span>
-                    } else if (kpi.blocked) {
-                      content = <BlockedChip />
-                    } else if (kpi.id === "feasibility") {
+                    if (kpi.id === "feasibility") {
                       content = <FeasibilityCell run={run} emphasis={emphasis} />
                     } else if (showRaw) {
                       content = <RawValue text={formatKpiValue(kpi, run)} isBest={cell?.rank === 1} emphasis={emphasis} />
@@ -539,9 +506,9 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                     return (
                       <div
                         key={run.id}
-                        onMouseEnter={() => !run.unavailable && setHovered(run.id)}
+                        onMouseEnter={() => setHovered(run.id)}
                         onMouseLeave={() => setHovered(null)}
-                        onClick={() => !run.unavailable && setSelected(run.id)}
+                        onClick={() => setSelected(run.id)}
                         style={{
                           height: ROW_H,
                           display: "flex",
@@ -549,7 +516,7 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                           padding: "0 12px",
                           boxSizing: "border-box",
                           backgroundColor: columnBg(run),
-                          cursor: run.unavailable ? "default" : "pointer",
+                          cursor: "pointer",
                           transition: "background-color 150ms ease",
                         }}
                       >
@@ -560,51 +527,6 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
                 </div>
               )
             })}
-
-            {/* Unavailable-column explanation, aligned under the columns */}
-            <div style={{ display: "grid", gridTemplateColumns: gridTemplate, gap: 1, borderTop: "1px solid #282828" }}>
-              <div />
-              {OBJECTIVE_RUNS.map((run) =>
-                run.unavailable ? (
-                  <div
-                    key={run.id}
-                    style={{
-                      padding: "10px 12px",
-                      backgroundColor: "#151515",
-                      borderRadius: "0 0 4px 4px",
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <span style={{ fontSize: 11, color: "#737373", lineHeight: "16px" }}>
-                      Shown as unavailable rather than ranked on a result we can't produce.
-                    </span>
-                  </div>
-                ) : (
-                  <div key={run.id} style={{ backgroundColor: columnBg(run), borderRadius: "0 0 4px 4px" }} />
-                ),
-              )}
-            </div>
-
-            {/* Gallons framing — the one thing that is NOT a column */}
-            <div
-              style={{
-                marginTop: 12,
-                marginBottom: 4,
-                padding: "10px 12px",
-                backgroundColor: "rgba(59,130,246,0.06)",
-                borderLeft: "2px solid #3B82F6",
-                borderRadius: "0 4px 4px 0",
-                boxSizing: "border-box",
-              }}
-            >
-              <span style={{ fontSize: 12, lineHeight: "18px", color: "#A3A3A3" }}>
-                <span style={{ color: "#E5E5E5", fontWeight: 500 }}>Gallons are protected in every column. </span>
-                All {OBJECTIVE_RUNS.filter((r) => !r.unavailable).length} plans deliver the same{" "}
-                {SCENARIO.ordersPlaced} orders and {SCENARIO.gallons.toLocaleString()} gal — the optimiser never trades
-                volume away to win one of these goals. What you're choosing here is the secondary goal; the gallons rows
-                measure its side effects.
-              </span>
-            </div>
           </div>
         </div>
 
@@ -688,6 +610,7 @@ export function ObjectiveComparisonModal({ isOpen, onClose, onContinue }: Object
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
