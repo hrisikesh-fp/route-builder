@@ -38,9 +38,9 @@ export interface RoutingConfig {
   compartmentCapacity: boolean
   productCompatibility: boolean
   compartmentProductApprovals: boolean
-  terminalAuthorization: boolean
+  /** Always on. Not a toggle — off times out the engine on large terminal lists. */
+  terminalAuthorization: true
   terminalCarding: boolean
-  productQualifications: boolean
   driverHours: boolean
   deliveryWindows: boolean
   runOutProtection: boolean
@@ -49,7 +49,6 @@ export interface RoutingConfig {
   terminalProductAvailability: boolean
   shiftLength: boolean
   maxRouteDurationHours: number
-  productContinuity: boolean
   minDeliveries: boolean
   minJobsPerRoute: number
   profilePreference: RoadProfile
@@ -64,17 +63,16 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   productCompatibility: true,
   compartmentProductApprovals: true,
   terminalAuthorization: true,
-  terminalCarding: true,
-  productQualifications: true,
+  terminalCarding: false,
   driverHours: true,
-  deliveryWindows: true,
+  // Off until product-demo testing. Dylan enabling this in UAT broke optimize (16 Sept).
+  deliveryWindows: false,
   runOutProtection: true,
   urgentOrders: true,
   linkedDeliveries: true,
   terminalProductAvailability: true,
   shiftLength: true,
   maxRouteDurationHours: 10,
-  productContinuity: true,
   minDeliveries: true,
   minJobsPerRoute: 5,
   profilePreference: "hazmat",
@@ -100,7 +98,7 @@ export const LIVE_OBJECTIVES = [
   {
     n: 2,
     typeLabel: "Minimize",
-    valueLabel: "Finish time at last drop",
+    valueLabel: "Finish time (last stop)",
     engine: "min completion_time_last_stop",
   },
 ] as const

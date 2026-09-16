@@ -14,7 +14,6 @@ import { FilterSideSheet } from "@/components/filter-side-sheet"
 import { FilterSheetCollapsed } from "@/components/filter-sheet-collapsed"
 import { LassoWorkspaceSheet } from "@/components/lasso-workspace-sheet"
 import { LassoCanvas } from "@/components/lasso-canvas"
-import { SettingsModal } from "@/components/settings-modal"
 import { RoutingConfigOverlay } from "@/components/routing-config-panel"
 import { useSettings } from "@/contexts/settings-context"
 import type { ExtractionOrder } from "@/lib/mock-data"
@@ -27,7 +26,6 @@ export default function Home() {
 const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isFilterOpen, setIsFilterOpen] = useState(true)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isRoutingConfigOpen, setIsRoutingConfigOpen] = useState(false)
   const [showAllRoutes, setShowAllRoutes] = useState(true)
   const [isLassoDrawing, setIsLassoDrawing] = useState(false)
@@ -377,8 +375,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     <main className="relative w-full h-screen overflow-hidden">
       <MapHeader
         onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
-        onSettingsClick={() => setIsSettingsOpen(true)}
-        onRoutingConfigClick={() => setIsRoutingConfigOpen(true)}
+        onSettingsClick={() => setIsRoutingConfigOpen(true)}
         onCreateOrderClick={() => {
           setIsWorkspaceOpen(true)
           setOpenCreateOrderTrigger((n) => n + 1)
@@ -541,7 +538,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
       <CreateRoutePanel isOpen={isCreatePanelOpen} onClose={() => setIsCreatePanelOpen(false)} />
 
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <RoutingConfigOverlay isOpen={isRoutingConfigOpen} onClose={() => setIsRoutingConfigOpen(false)} />
 
       <ConflictResolutionModal

@@ -25,7 +25,7 @@ const inputReset: CSSProperties = {
   lineHeight: "24px",
 }
 
-function Switch({ on }: { on: boolean }) {
+function Switch({ on, disabled }: { on: boolean; disabled?: boolean }) {
   return (
     <span
       aria-hidden
@@ -40,6 +40,7 @@ function Switch({ on }: { on: boolean }) {
         justifyContent: on ? "flex-end" : "flex-start",
         padding: "0 2px",
         transition: "background .15s",
+        opacity: disabled ? 0.4 : 1,
       }}
     >
       <i
@@ -48,7 +49,7 @@ function Switch({ on }: { on: boolean }) {
           width: 16,
           height: 16,
           borderRadius: 9999,
-          backgroundColor: "#0A0A0A",
+          backgroundColor: on ? "#0A0A0A" : "#737373",
           boxShadow: "0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1)",
         }}
       />
@@ -56,7 +57,52 @@ function Switch({ on }: { on: boolean }) {
   )
 }
 
-function AlertNote({ children, title }: { children: ReactNode; title?: string }) {
+function AlwaysOnNote({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "center",
+        backgroundColor: "#1F1F1F",
+        border: "1px solid #282828",
+        borderRadius: 4,
+        padding: "12px 16px",
+        marginBottom: 24,
+      }}
+    >
+      <AlertTriangle size={20} color="#818cf8" style={{ flexShrink: 0 }} />
+      <div style={{ fontSize: 14, lineHeight: "20px", color: "#818cf8" }}>{children}</div>
+    </div>
+  )
+}
+
+function AlertLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={{
+        color: "inherit",
+        fontWeight: 600,
+        textUnderlineOffset: 2,
+      }}
+    >
+      {children}
+    </a>
+  )
+}
+
+function AlertNote({
+  children,
+  title,
+  flush,
+}: {
+  children: ReactNode
+  title?: string
+  flush?: boolean
+}) {
   return (
     <div
       style={{
@@ -67,7 +113,7 @@ function AlertNote({ children, title }: { children: ReactNode; title?: string })
         border: "1px solid #282828",
         borderRadius: 4,
         padding: "12px 16px",
-        marginBottom: 24,
+        marginBottom: flush ? 0 : 24,
       }}
     >
       <Info size={20} color="#A3A3A3" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -86,13 +132,15 @@ function Field({
   help,
   children,
 }: {
-  label: string
+  label?: string
   help?: string
   children: ReactNode
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <label style={{ fontSize: 14, lineHeight: "20px", fontWeight: 500, color: "#A3A3A3" }}>{label}</label>
+      {label && (
+        <label style={{ fontSize: 14, lineHeight: "20px", fontWeight: 500, color: "#A3A3A3" }}>{label}</label>
+      )}
       {children}
       {help && <div style={{ fontSize: 14, lineHeight: "20px", color: "#A3A3A3" }}>{help}</div>}
     </div>
@@ -144,35 +192,53 @@ function SwitchRow({
   on,
   onToggle,
   dim,
+  locked,
 }: {
   label: string
   desc: string
   on: boolean
-  onToggle: () => void
+  onToggle?: () => void
   dim?: boolean
+  locked?: boolean
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        width: "100%",
-        padding: "12px 16px",
-        background: "none",
-        border: "none",
-        fontFamily: "inherit",
-        textAlign: "left",
-        cursor: "pointer",
-      }}
-    >
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4, opacity: dim ? 0.5 : 1 }}>
+  const body = (
+    <>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
         <div style={{ fontSize: 16, lineHeight: "24px", fontWeight: 300, color: "#E5E5E5" }}>{label}</div>
         <div style={{ fontSize: 14, lineHeight: "20px", color: "#737373" }}>{desc}</div>
       </div>
-      <Switch on={on} />
+      <Switch on={on} disabled={locked} />
+    </>
+  )
+  const rowStyle: CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+    padding: "12px 16px",
+    background: "none",
+    border: "none",
+    fontFamily: "inherit",
+    textAlign: "left",
+  }
+  if (locked) {
+    return (
+      <div role="group" aria-label={`${label}, always on`} style={{ ...rowStyle, cursor: "default" }}>
+        {body}
+      </div>
+    )
+  }
+  return (
+    <button type="button" onClick={onToggle} style={{ ...rowStyle, cursor: "pointer" }}>
+      {body}
     </button>
   )
 }
@@ -199,14 +265,10 @@ function Acc({
         <div
           style={{
             backgroundColor: "#111",
-            border: "1px solid #282828",
-            borderTop: "none",
-            borderBottom: last ? "none" : "1px solid #282828",
-            borderRadius: last ? "0 0 4px 4px" : 0,
             padding: 16,
             display: "flex",
             flexDirection: "column",
-            gap: 24,
+            gap: 16,
           }}
         >
           {children}
@@ -238,14 +300,10 @@ function StaticAcc({
       <div
         style={{
           backgroundColor: "#111",
-          border: "1px solid #282828",
-          borderTop: "none",
-          borderBottom: last ? "none" : "1px solid #282828",
-          borderRadius: last ? "0 0 4px 4px" : 0,
           padding: 16,
           display: "flex",
           flexDirection: "column",
-          gap: 24,
+          gap: 16,
         }}
       >
         {children}
@@ -425,41 +483,43 @@ export function RoutingConfigPanel({
 
           <div style={{ flex: 1, minWidth: 0 }}>
             {panel === "truck" && (
-              <PanelChrome title="Truck" desc="What a truck can carry, and where it is allowed to load.">
+              <PanelChrome title="Truck" desc="The engine only assigns a truck if the load fits, the products are allowed, and it can load at that terminal.">
+                <AlwaysOnNote>
+                  These are foundational rules that stay on for creating optimized routes.
+                </AlwaysOnNote>
                 <Grid>
                   <SwitchRow
+                    locked
                     label="Compartment capacity"
                     desc="Orders are only assigned to a truck if they fit its compartments."
-                    on={config.compartmentCapacity}
-                    onToggle={() => patch("compartmentCapacity", !config.compartmentCapacity)}
-                    dim={!config.compartmentCapacity}
+                    on
                   />
                   <Divider />
                   <SwitchRow
+                    locked
                     label="Product compatibility"
-                    desc="Only load products that can share a compartment, using your comparable and downgradable groups."
-                    on={config.productCompatibility}
-                    onToggle={() => patch("productCompatibility", !config.productCompatibility)}
-                    dim={!config.productCompatibility}
+                    desc="Only load products that can share a compartment, using comparable product categories."
+                    on
                   />
                   <Divider />
                   <SwitchRow
+                    locked
                     label="Compartment product approvals"
-                    desc="Skip compartments that are not approved for the product being loaded."
-                    on={config.compartmentProductApprovals}
-                    onToggle={() => patch("compartmentProductApprovals", !config.compartmentProductApprovals)}
-                    dim={!config.compartmentProductApprovals}
+                    desc="Skip compartments that are not approved for the product category being loaded."
+                    on
                   />
                   <Divider />
                   <SwitchRow
+                    locked
                     label="Terminal authorization"
                     desc="Trucks only load at terminals they are approved for."
-                    on={config.terminalAuthorization}
-                    onToggle={() => patch("terminalAuthorization", !config.terminalAuthorization)}
-                    dim={!config.terminalAuthorization}
+                    on
                   />
                 </Grid>
-                <AlertNote>Compartments, approved products and authorized terminals are set on the Asset page.</AlertNote>
+                <AlertNote>
+                  Compartments, approved products, and authorized terminals are set on the truck or trailer in the{" "}
+                  <AlertLink href="/self_customer/assets">Assets</AlertLink> page.
+                </AlertNote>
               </PanelChrome>
             )}
 
@@ -475,14 +535,6 @@ export function RoutingConfigPanel({
                   />
                   <Divider />
                   <SwitchRow
-                    label="Product qualifications"
-                    desc="Drivers are only given products they are qualified to handle."
-                    on={config.productQualifications}
-                    onToggle={() => patch("productQualifications", !config.productQualifications)}
-                    dim={!config.productQualifications}
-                  />
-                  <Divider />
-                  <SwitchRow
                     label="Driver hours"
                     desc="Routes are planned to finish inside the hours a driver has available."
                     on={config.driverHours}
@@ -491,7 +543,8 @@ export function RoutingConfigPanel({
                   />
                 </Grid>
                 <AlertNote>
-                  Cards, qualifications and working hours are set on the Driver page. Expired cards are skipped for the
+                  Cards and working hours are set on the{" "}
+                  <AlertLink href="/self_customer/drivers">Driver</AlertLink> page. Expired cards are skipped for the
                   date being planned.
                 </AlertNote>
               </PanelChrome>
@@ -502,7 +555,7 @@ export function RoutingConfigPanel({
                 <Grid>
                   <SwitchRow
                     label="Delivery windows"
-                    desc="Deliveries are planned to arrive inside the window set on the order."
+                    desc="Deliveries are planned to arrive inside the window set on the order, ship-to, or customer."
                     on={config.deliveryWindows}
                     onToggle={() => patch("deliveryWindows", !config.deliveryWindows)}
                     dim={!config.deliveryWindows}
@@ -540,7 +593,7 @@ export function RoutingConfigPanel({
             )}
 
             {panel === "terminal" && (
-              <PanelChrome title="Terminal and Supply" desc="Where trucks can load.">
+              <PanelChrome title="Terminal and Supply" desc="Where trucks can load, and how much product is available there.">
                 <Grid>
                   <SwitchRow
                     label="Terminal product availability"
@@ -550,9 +603,6 @@ export function RoutingConfigPanel({
                     dim={!config.terminalProductAvailability}
                   />
                 </Grid>
-                <AlertNote>
-                  Terminals are commercial entities and hence treated as having unlimited supply.
-                </AlertNote>
               </PanelChrome>
             )}
 
@@ -565,7 +615,7 @@ export function RoutingConfigPanel({
                     on={config.shiftLength}
                     onToggle={() => patch("shiftLength", !config.shiftLength)}
                   >
-                    <Field label="Longest Route">
+                    <Field>
                       <Control>
                         <input
                           type="number"
@@ -577,13 +627,6 @@ export function RoutingConfigPanel({
                       </Control>
                     </Field>
                   </Acc>
-                  <SwitchRow
-                    label="Product continuity"
-                    desc="Keep a compartment on the same product between loads, so it does not need flushing."
-                    on={config.productContinuity}
-                    onToggle={() => patch("productContinuity", !config.productContinuity)}
-                    dim={!config.productContinuity}
-                  />
                   <Divider />
                   <Acc
                     label="Minimum deliveries per route"
@@ -591,10 +634,7 @@ export function RoutingConfigPanel({
                     on={config.minDeliveries}
                     onToggle={() => patch("minDeliveries", !config.minDeliveries)}
                   >
-                    <Field
-                      label="Fewest deliveries"
-                      help="A route can still go below this if it is the only way to serve an order."
-                    >
+                    <Field help="A route can still go below this if it is the only way to serve an order.">
                       <Control>
                         <input
                           type="number"
@@ -606,6 +646,7 @@ export function RoutingConfigPanel({
                       </Control>
                     </Field>
                   </Acc>
+                  <Divider />
                   <StaticAcc last label="Hazmat roads" desc="Which road network routes are planned on">
                     <Field label="Plan routes by" help={profileHelp}>
                       <Control select>
@@ -676,12 +717,10 @@ export function RoutingConfigPanel({
                         </Field>
                       </div>
                     </div>
-                    <div style={{ marginBottom: 0 }}>
-                      <AlertNote>
-                        A 1,000 gal drop at 50 gal/min is planned as 20 minutes. Anything that works out shorter than 5
-                        min is given 5 min.
-                      </AlertNote>
-                    </div>
+                    <AlertNote flush>
+                      A 1,000 gal drop at 50 gal/min is planned as 20 minutes. Anything that works out shorter than 5 min
+                      is given 5 min.
+                    </AlertNote>
                   </StaticAcc>
                 </Grid>
               </PanelChrome>
@@ -693,7 +732,7 @@ export function RoutingConfigPanel({
                 desc="What the routing engine aims for when it has a choice between two workable plans."
               >
                 <Grid>
-                  <StaticAcc last label="Optimize for" desc="These two run together on every plan. They are the only objectives live in UAT today.">
+                  <StaticAcc last label="Optimize for" desc="These two run together on every plan.">
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {LIVE_OBJECTIVES.map((o) => (
                         <div
@@ -702,10 +741,6 @@ export function RoutingConfigPanel({
                             display: "flex",
                             alignItems: "center",
                             gap: 8,
-                            backgroundColor: "#1B1B1B",
-                            border: "1px solid #282828",
-                            borderRadius: 4,
-                            padding: 8,
                           }}
                         >
                           <span
@@ -725,39 +760,29 @@ export function RoutingConfigPanel({
                           >
                             {o.n}
                           </span>
-                          <div
-                            style={{
-                              flex: 1.1,
-                              minWidth: 0,
-                              height: 40,
-                              display: "flex",
-                              alignItems: "center",
-                              padding: "0 12px",
-                              border: "1px solid #333",
-                              borderRadius: 4,
-                              fontSize: 14,
-                              lineHeight: "20px",
-                              color: "#E5E5E5",
-                            }}
-                          >
-                            {o.typeLabel}
+                          <div style={{ flex: 1.1, minWidth: 0 }}>
+                            <Control select>
+                              <select
+                                value={o.typeLabel}
+                                onChange={() => undefined}
+                                style={{ ...inputReset, appearance: "none", cursor: "pointer" }}
+                              >
+                                <option value={o.typeLabel}>{o.typeLabel}</option>
+                              </select>
+                              <ChevronDown size={16} color="#A3A3A3" />
+                            </Control>
                           </div>
-                          <div
-                            style={{
-                              flex: 1.35,
-                              minWidth: 0,
-                              height: 40,
-                              display: "flex",
-                              alignItems: "center",
-                              padding: "0 12px",
-                              border: "1px solid #333",
-                              borderRadius: 4,
-                              fontSize: 14,
-                              lineHeight: "20px",
-                              color: "#E5E5E5",
-                            }}
-                          >
-                            {o.valueLabel}
+                          <div style={{ flex: 1.35, minWidth: 0 }}>
+                            <Control select>
+                              <select
+                                value={o.valueLabel}
+                                onChange={() => undefined}
+                                style={{ ...inputReset, appearance: "none", cursor: "pointer" }}
+                              >
+                                <option value={o.valueLabel}>{o.valueLabel}</option>
+                              </select>
+                              <ChevronDown size={16} color="#A3A3A3" />
+                            </Control>
                           </div>
                         </div>
                       ))}
@@ -765,8 +790,8 @@ export function RoutingConfigPanel({
                   </StaticAcc>
                 </Grid>
                 <AlertNote title="How do goals work?">
-                  Both run on every plan and the engine weighs them equally. Fewer trucks usually means a later finish.
-                  There is no Add — UAT only has these two. Ranking and extra objectives are later.
+                  Goals are applied together and weighed equally. Currently the above two goals pull against each other:
+                  fewer trucks means each one runs longer, and finishing earlier usually takes more trucks.
                 </AlertNote>
               </PanelChrome>
             )}
