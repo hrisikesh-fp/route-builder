@@ -2,15 +2,12 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { createPortal } from "react-dom"
-import { AlertTriangle, ChevronDown, GripVertical, Info, Plus, Trash2, X } from "lucide-react"
+import { AlertTriangle, ChevronDown, Info, X } from "lucide-react"
 import {
   DEFAULT_ROUTING_CONFIG,
-  OBJ_TYPES,
-  OBJ_VALUES,
+  LIVE_OBJECTIVES,
   PANELS,
   ROAD_PROFILES,
-  type ObjType,
-  type ObjValue,
   type PanelId,
   type RoutingConfig,
 } from "@/lib/routing-config-data"
@@ -301,7 +298,6 @@ export function RoutingConfigPanel({
   const [saved, setSaved] = useState(false)
   const [panel, setPanel] = useState<PanelId>("truck")
   const scrollRef = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ index: number; startY: number; active: boolean } | null>(null)
 
   function patch<K extends keyof RoutingConfig>(key: K, value: RoutingConfig[K]) {
     setConfig((c) => ({ ...c, [key]: value }))
@@ -324,63 +320,6 @@ export function RoutingConfigPanel({
     setPanel(id)
     if (scrollRef.current) scrollRef.current.scrollTop = 0
   }
-
-  function nextUnusedValue(): ObjValue {
-    const used = new Set(config.objectives.map((o) => o.value))
-    return OBJ_VALUES.find((o) => !used.has(o.value))?.value ?? OBJ_VALUES[0].value
-  }
-
-  function setObj(i: number, key: "type" | "value", value: string) {
-    const next = config.objectives.map((o, idx) => (idx === i ? { ...o, [key]: value } : o))
-    patch("objectives", next)
-  }
-
-  function addObjective() {
-    patch("objectives", [...config.objectives, { type: "min", value: nextUnusedValue() }])
-  }
-
-  function removeObjective(i: number) {
-    if (config.objectives.length <= 1) return
-    patch("objectives", config.objectives.filter((_, idx) => idx !== i))
-  }
-
-  useEffect(() => {
-    function move(e: PointerEvent) {
-      const d = drag.current
-      if (!d) return
-      if (!d.active) {
-        if (Math.abs(e.clientY - d.startY) < 4) return
-        d.active = true
-      }
-      const rows = [...document.querySelectorAll("[data-obj-row]")]
-      let target = d.index
-      rows.forEach((r, i) => {
-        const b = r.getBoundingClientRect()
-        if (e.clientY >= b.top && e.clientY <= b.bottom) target = i
-      })
-      if (target === d.index) return
-      setConfig((c) => {
-        const next = [...c.objectives]
-        const [moved] = next.splice(d.index, 1)
-        next.splice(target, 0, moved)
-        return { ...c, objectives: next }
-      })
-      d.index = target
-      setDirty(true)
-      setSaved(false)
-    }
-    function end() {
-      drag.current = null
-    }
-    document.addEventListener("pointermove", move)
-    document.addEventListener("pointerup", end)
-    document.addEventListener("pointercancel", end)
-    return () => {
-      document.removeEventListener("pointermove", move)
-      document.removeEventListener("pointerup", end)
-      document.removeEventListener("pointercancel", end)
-    }
-  }, [])
 
   const profileHelp =
     config.profilePreference === "hazmat"
@@ -754,12 +693,11 @@ export function RoutingConfigPanel({
                 desc="What the routing engine aims for when it has a choice between two workable plans."
               >
                 <Grid>
-                  <StaticAcc last label="Optimize for" desc="Applied together on every run. At least one is always needed.">
-                    <ul style={{ display: "flex", flexDirection: "column", gap: 8, listStyle: "none", margin: 0, padding: 0 }}>
-                      {config.objectives.map((o, i) => (
-                        <li
-                          key={`${o.type}-${o.value}-${i}`}
-                          data-obj-row
+                  <StaticAcc last label="Optimize for" desc="These two run together on every plan. They are the only objectives live in UAT today.">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {LIVE_OBJECTIVES.map((o) => (
+                        <div
+                          key={o.engine}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -770,27 +708,6 @@ export function RoutingConfigPanel({
                             padding: 8,
                           }}
                         >
-                          <button
-                            type="button"
-                            aria-label={`Reorder objective ${i + 1}`}
-                            onPointerDown={(e) => {
-                              e.preventDefault()
-                              drag.current = { index: i, startY: e.clientY, active: false }
-                            }}
-                            style={{
-                              width: 28,
-                              height: 28,
-                              display: "grid",
-                              placeItems: "center",
-                              border: "none",
-                              background: "transparent",
-                              color: "#A3A3A3",
-                              cursor: "grab",
-                              padding: 0,
-                            }}
-                          >
-                            <GripVertical size={16} />
-                          </button>
                           <span
                             aria-hidden
                             style={{
@@ -806,96 +723,50 @@ export function RoutingConfigPanel({
                               fontWeight: 500,
                             }}
                           >
-                            {i + 1}
+                            {o.n}
                           </span>
-                          <div style={{ flex: 1.1, minWidth: 0 }}>
-                            <Control select>
-                              <select
-                                aria-label={`Objective ${i + 1} type`}
-                                value={o.type}
-                                onChange={(e) => setObj(i, "type", e.target.value as ObjType)}
-                                style={{ ...inputReset, appearance: "none", cursor: "pointer", fontSize: 14 }}
-                              >
-                                {OBJ_TYPES.map((t) => (
-                                  <option key={t.value} value={t.value}>
-                                    {t.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <ChevronDown size={16} color="#A3A3A3" />
-                            </Control>
-                          </div>
-                          <div style={{ flex: 1.35, minWidth: 0 }}>
-                            <Control select>
-                              <select
-                                aria-label={`Objective ${i + 1} value`}
-                                value={o.value}
-                                onChange={(e) => setObj(i, "value", e.target.value as ObjValue)}
-                                style={{ ...inputReset, appearance: "none", cursor: "pointer", fontSize: 14 }}
-                              >
-                                {OBJ_VALUES.map((t) => (
-                                  <option key={t.value} value={t.value}>
-                                    {t.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <ChevronDown size={16} color="#A3A3A3" />
-                            </Control>
-                          </div>
-                          <button
-                            type="button"
-                            disabled={config.objectives.length <= 1}
-                            title={config.objectives.length <= 1 ? "At least one objective is required" : undefined}
-                            aria-label={`Remove objective ${i + 1}`}
-                            onClick={() => removeObjective(i)}
+                          <div
                             style={{
-                              width: 28,
-                              height: 28,
-                              display: "grid",
-                              placeItems: "center",
-                              border: "none",
-                              background: "transparent",
-                              color: "#A3A3A3",
-                              cursor: config.objectives.length <= 1 ? "not-allowed" : "pointer",
-                              opacity: config.objectives.length <= 1 ? 0.35 : 1,
-                              padding: 0,
+                              flex: 1.1,
+                              minWidth: 0,
+                              height: 40,
+                              display: "flex",
+                              alignItems: "center",
+                              padding: "0 12px",
+                              border: "1px solid #333",
+                              borderRadius: 4,
+                              fontSize: 14,
+                              lineHeight: "20px",
+                              color: "#E5E5E5",
                             }}
                           >
-                            <Trash2 size={16} />
-                          </button>
-                        </li>
+                            {o.typeLabel}
+                          </div>
+                          <div
+                            style={{
+                              flex: 1.35,
+                              minWidth: 0,
+                              height: 40,
+                              display: "flex",
+                              alignItems: "center",
+                              padding: "0 12px",
+                              border: "1px solid #333",
+                              borderRadius: 4,
+                              fontSize: 14,
+                              lineHeight: "20px",
+                              color: "#E5E5E5",
+                            }}
+                          >
+                            {o.valueLabel}
+                          </div>
+                        </div>
                       ))}
-                    </ul>
-                    <button
-                      type="button"
-                      onClick={addObjective}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        alignSelf: "flex-start",
-                        height: 36,
-                        padding: "0 12px",
-                        border: "1px solid #282828",
-                        borderRadius: 4,
-                        backgroundColor: "#1B1B1B",
-                        color: "#E5E5E5",
-                        fontFamily: "inherit",
-                        fontSize: 14,
-                        lineHeight: "20px",
-                        fontWeight: 500,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <Plus size={16} />
-                      Add Objective
-                    </button>
+                    </div>
                   </StaticAcc>
                 </Grid>
                 <AlertNote title="How do goals work?">
-                  Goals are applied together and the engine weighs them equally today. The order is saved for a later
-                  engine change. Some goals pull against each other: fewer trucks means each one runs longer, an earlier
-                  finish usually takes more trucks.
+                  Both run on every plan and the engine weighs them equally. Fewer trucks usually means a later finish.
+                  There is no Add — UAT only has these two. Ranking and extra objectives are later.
                 </AlertNote>
               </PanelChrome>
             )}

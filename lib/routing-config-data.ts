@@ -94,15 +94,13 @@ export const ROAD_PROFILES: { value: RoadProfile; label: string }[] = [
   { value: "shortest", label: "Shortest" },
 ]
 
-export const OBJ_TYPES: { value: ObjType; label: string }[] = [
-  { value: "min", label: "Minimize" },
-  { value: "min-max", label: "Minimize the highest" },
-]
-
-export const OBJ_VALUES: { value: ObjValue; label: string }[] = [
-  { value: "vehicles", label: "Trucks used" },
-  { value: "completion_time", label: "Finish time with drive back" },
-  { value: "completion_time_last_stop", label: "Finish time at last drop" },
-  { value: "route_duration", label: "Route length" },
-  { value: "transport_time", label: "Driving time" },
-]
+/** Live UAT/prod blend as of 11 Sept. Both are type `min`. Do not add rows in v1. */
+export const LIVE_OBJECTIVES = [
+  { n: 1, typeLabel: "Minimize", valueLabel: "Trucks used", engine: "min vehicles" },
+  {
+    n: 2,
+    typeLabel: "Minimize",
+    valueLabel: "Finish time at last drop",
+    engine: "min completion_time_last_stop",
+  },
+] as const
