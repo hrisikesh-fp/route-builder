@@ -7,9 +7,11 @@
 **Play (Figma + GitHub, same as prior handoffs):**
 
 - This doc: https://github.com/hrisikesh-fp/route-builder/blob/main/HANDOFF-routing-config.md
-- Proto: https://route-builder-routing-proto-v1.vercel.app → HM → **Routing Configuration**
-- Isolated screen: https://route-builder-routing-proto-v1.vercel.app/dev/routing-config
+- Proto: https://route-builder-navy.vercel.app → HM → **Routing Configuration**
+- Isolated screen: https://route-builder-navy.vercel.app/dev/routing-config
 - Local: `http://localhost:3005/dev/routing-config`
+
+**Do not use** `https://route-builder-routing-proto-v1.vercel.app` — that is a separate, stale Vercel project. It does not track `main`.
 - Figma: https://www.figma.com/design/3zQcvo51p6v57bYKCOdIee/RB---Routing-v1?node-id=6960-244164
 - ClickUp: [86eytv5hn](https://app.clickup.com/t/86eytv5hn) · design D1 [86eyrwxc2](https://app.clickup.com/t/86eyrwxc2)
 
