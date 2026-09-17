@@ -23,13 +23,26 @@ interface TimePickerProps {
   value: string
   onChange: (v: string) => void
   disabledTimes?: string[]
+  /** Closed-field label. Default 12h (`07:00 AM`) for route sequence. Routing Config uses 24h (`07:00`). */
+  displayFormat?: "12h" | "24h"
+  /** Hide Clear when the field is required. */
+  clearable?: boolean
+  showChevron?: boolean
 }
 
-export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerProps) {
+export function TimePicker({
+  value,
+  onChange,
+  disabledTimes = [],
+  displayFormat = "12h",
+  clearable = true,
+  showChevron = true,
+}: TimePickerProps) {
   const [open, setOpen] = useState(false)
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({})
   const triggerRef = useRef<HTMLButtonElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const hourScrollRef = useRef<HTMLDivElement>(null)
   const minScrollRef = useRef<HTMLDivElement>(null)
 
@@ -42,8 +55,12 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
 
   const displayLabel = useMemo(() => {
     if (!value) return "Set Start Time"
+    if (displayFormat === "24h") {
+      const [h, m] = value.split(":")
+      return `${pad2(parseInt(h, 10) || 0)}:${pad2(parseInt(m, 10) || 0)}`
+    }
     return formatTimeLabel(value)
-  }, [value])
+  }, [value, displayFormat])
 
   useEffect(() => {
     if (!open) return
@@ -68,7 +85,9 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (rootRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      setOpen(false)
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
@@ -120,11 +139,12 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
       >
         <Clock size={16} color="#737373" style={{ flexShrink: 0 }} />
         <span style={{ flex: 1 }}>{displayLabel}</span>
-        <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+        {showChevron && <ChevronDown size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />}
       </button>
 
       {open && createPortal(
         <div
+          ref={panelRef}
           style={{
             position: "fixed", ...panelStyle,
             backgroundColor: "#282828", border: "1px solid rgba(255,255,255,0.1)",
@@ -156,23 +176,27 @@ export function TimePicker({ value, onChange, disabledTimes = [] }: TimePickerPr
           </div>
 
           {/* Footer */}
-          <div style={{ display: "flex", gap: 8, padding: 8, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <button type="button"
-              onClick={() => { onChange(""); setOpen(false) }}
-              style={{
-                flex: 1, height: 32, fontSize: 13, fontWeight: 500, color: "#E5E5E5",
-                backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4,
-                cursor: "pointer", fontFamily: "inherit",
-                opacity: hasChange ? 1 : 0, pointerEvents: hasChange ? "auto" : "none",
-                transition: "opacity 150ms",
-              }}
-            >Clear</button>
+          <div style={{ display: "flex", gap: 8, padding: 8, borderTop: "1px solid rgba(255,255,255,0.06)", justifyContent: clearable ? "stretch" : "flex-end" }}>
+            {clearable && (
+              <button type="button"
+                onClick={() => { onChange(""); setOpen(false) }}
+                style={{
+                  flex: 1, height: 32, fontSize: 13, fontWeight: 500, color: "#E5E5E5",
+                  backgroundColor: "transparent", border: "1px solid #333", borderRadius: 4,
+                  cursor: "pointer", fontFamily: "inherit",
+                  opacity: hasChange ? 1 : 0, pointerEvents: hasChange ? "auto" : "none",
+                  transition: "opacity 150ms",
+                }}
+              >Clear</button>
+            )}
             <button type="button"
               onClick={() => { if (!isDraftDisabled) { onChange(draftStr); setOpen(false) } }}
               style={{
-                flex: 1, height: 32, fontSize: 13, fontWeight: 500, color: "#171717",
+                flex: clearable ? 1 : undefined, minWidth: clearable ? undefined : 72,
+                height: 32, padding: clearable ? 0 : "0 12px", fontSize: 13, fontWeight: 500, color: "#171717",
                 backgroundColor: "#E5E5E5", border: "none", borderRadius: 4,
-                cursor: (hasChange && !isDraftDisabled) ? "pointer" : "default", fontFamily: "inherit",
+                cursor: (hasChange && !isDraftDisabled) ? "pointer" : "default",
+                fontFamily: "inherit",
                 opacity: (hasChange && !isDraftDisabled) ? 1 : 0.5, transition: "opacity 150ms",
               }}
             >Apply</button>

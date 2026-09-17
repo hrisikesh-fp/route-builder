@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { createPortal } from "react-dom"
-import { AlertTriangle, ChevronDown, Clock, Info, X } from "lucide-react"
+import { AlertTriangle, ChevronDown, Info, X } from "lucide-react"
+import { TimePicker } from "@/components/time-picker"
 import {
   DEFAULT_ROUTING_CONFIG,
   LIVE_OBJECTIVES,
@@ -611,18 +612,13 @@ export function RoutingConfigPanel({
                 <Grid>
                   <StaticAcc label="Default start time" desc="Routes start at this time unless the driver has working hours.">
                     <Field>
-                      <Control>
-                        <Clock size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="07:00"
-                          value={config.defaultStartTime}
-                          onChange={(e) => patch("defaultStartTime", e.target.value)}
-                          style={inputReset}
-                          aria-label="Default start time"
-                        />
-                      </Control>
+                      <TimePicker
+                        value={config.defaultStartTime}
+                        onChange={(v) => patch("defaultStartTime", v || "07:00")}
+                        displayFormat="24h"
+                        clearable={false}
+                        showChevron={false}
+                      />
                     </Field>
                   </StaticAcc>
                   <Divider />
