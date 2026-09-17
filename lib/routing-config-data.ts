@@ -47,7 +47,8 @@ export interface RoutingConfig {
   urgentOrders: boolean
   linkedDeliveries: boolean
   terminalProductAvailability: boolean
-  shiftLength: boolean
+  /** UI `HH:mm`. API `optimization.shiftStartTime` as `HH:mm:ss`. */
+  defaultStartTime: string
   maxRouteDurationHours: number
   minDeliveries: boolean
   minJobsPerRoute: number
@@ -71,7 +72,8 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   urgentOrders: true,
   linkedDeliveries: true,
   terminalProductAvailability: true,
-  shiftLength: true,
+  // Engine today falls back to 00:00 if this is unset. 07:00 is the tenant default for the UI.
+  defaultStartTime: "07:00",
   maxRouteDurationHours: 10,
   minDeliveries: true,
   minJobsPerRoute: 5,

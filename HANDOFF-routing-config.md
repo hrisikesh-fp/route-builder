@@ -2,7 +2,7 @@
 
 **Repo:** `hrisikesh-fp/route-builder`  
 **Branch:** `main`  
-**Locked:** 16 Sept 2026 (1:1 with Marcos). Build this. Do not add rows from the 11 Sept sheet or older Figma.
+**Locked:** 16 Sept 2026 (1:1 with Marcos). **Route section add:** 17 Sept (start time + Route length, no toggles). Build this. Do not add rows from the 11 Sept sheet or older Figma.
 
 **Play (Figma + GitHub, same as prior handoffs):**
 
@@ -166,11 +166,20 @@ Copy is **terminals only** this pass. Bulk plants use the same product-availabil
 
 Section desc: *How a route is built, and which roads it can use.*
 
+Order: **Default start time → Route length → Minimum deliveries → Hazmat.** Do not say “shift” in the UI. The settings API still uses `shiftStartTime` / `shiftEndTime` / `maxRouteDurationSeconds`.
+
 | Label | Subtext | Type | Default | Engine |
 |---|---|---|---|---|
-| Shift length | Routes are planned to finish within the shift. | Constraint + user param | on, **10** hours | `optimization.maxRouteDurationSeconds` (convert hours → seconds at the boundary) |
+| Default start time | Routes start at this time unless the driver has working hours. | User param (no toggle) | **07:00** | `optimization.shiftStartTime` (`HH:mm:ss`). Driver working hours override this. |
+| Route length | Routes are planned to finish within this many hours of the start time. | User param (no toggle) | **10** hours | `optimization.maxRouteDurationSeconds` (hours × 3600). Always send. |
 | Minimum deliveries per route | Avoid running a truck out for only a couple of drops. | Constraint + user param | on, **5** stops | `optimization.minJobsPerRoute` |
 | Hazmat roads | Which road network routes are planned on | Feature (picker, not a toggle) | Hazmat approved roads | `routing.profilePreference` |
+
+Start time has no on/off. It is always sent. Empty `--:--` is not a valid default — the engine falls back to `00:00:00` (midnight), which with a 10h cap misses evening orders.
+
+Route length has no on/off. `maxRouteDurationSeconds` is always on the payload (36000 = 10h). Do not hide the hours field behind a switch.
+
+`optimization.shiftEndTime` exists on the API (today `23:59:59`). **Do not add an end-time picker this pass.** Confirm with Dylan whether to keep sending `23:59:59` or derive end from start + length. Do not invent a second clock.
 
 Min-deliveries help under the field: *A route can still go below this if it is the only way to serve an order.*
 
@@ -251,7 +260,8 @@ These were in the 11 Sept design and are **removed** so v1 matches the engine.
 - [ ] Assets / Driver links go to `/self_customer/assets` and `/self_customer/drivers`, semibold underline
 - [ ] Terminal carding default off; delivery windows default off
 - [ ] No product qualifications, no flush, no bulk-plant inventory
-- [ ] Shift 10 hours, min deliveries 5 stops, hazmat picker has four values
+- [ ] Route: Default start time first (07:00, no toggle), then Route length (10 hours, no toggle), then min deliveries, then hazmat
+- [ ] UI never says “shift”. API field is still `shiftStartTime`
 - [ ] Loading 15 / 50 / 5; example alert under Delivery
 - [ ] Goals: two locked Minimize rows, no Add / drag / trash
 - [ ] Discard / Confirm disabled until a change; unsaved row in the footer

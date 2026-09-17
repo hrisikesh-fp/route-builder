@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { createPortal } from "react-dom"
-import { AlertTriangle, ChevronDown, Info, X } from "lucide-react"
+import { AlertTriangle, ChevronDown, Clock, Info, X } from "lucide-react"
 import {
   DEFAULT_ROUTING_CONFIG,
   LIVE_OBJECTIVES,
@@ -609,12 +609,21 @@ export function RoutingConfigPanel({
             {panel === "route" && (
               <PanelChrome title="Route" desc="How a route is built, and which roads it can use.">
                 <Grid>
-                  <Acc
-                    label="Shift length"
-                    desc="Routes are planned to finish within the shift."
-                    on={config.shiftLength}
-                    onToggle={() => patch("shiftLength", !config.shiftLength)}
-                  >
+                  <StaticAcc label="Default start time" desc="Routes start at this time unless the driver has working hours.">
+                    <Field>
+                      <Control>
+                        <Clock size={16} color="#A3A3A3" style={{ flexShrink: 0 }} />
+                        <input
+                          type="time"
+                          value={config.defaultStartTime}
+                          onChange={(e) => patch("defaultStartTime", e.target.value)}
+                          style={inputReset}
+                        />
+                      </Control>
+                    </Field>
+                  </StaticAcc>
+                  <Divider />
+                  <StaticAcc label="Route length" desc="Routes are planned to finish within this many hours of the start time.">
                     <Field>
                       <Control>
                         <input
@@ -626,7 +635,7 @@ export function RoutingConfigPanel({
                         <Addon>hours</Addon>
                       </Control>
                     </Field>
-                  </Acc>
+                  </StaticAcc>
                   <Divider />
                   <Acc
                     label="Minimum deliveries per route"
