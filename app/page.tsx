@@ -278,6 +278,26 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     }
   }
 
+  // Select All — same outcome as lassoing every pin on the map:
+  // scheduled orders pull in their whole route, unassigned orders come in individually.
+  const handleSelectAll = () => {
+    const allRouteIds = Array.from(
+      new Set(filteredOrders.filter((o) => o.routeId).map((o) => o.routeId as string))
+    )
+    setIsLassoDrawing(false)
+    setSelectedOrders(filteredOrders)
+    setSelectedRouteIds(allRouteIds)
+    setIsWorkspaceOpen(true)
+    setIsFilterOpen(false)
+
+    const coords = filteredOrders
+      .filter((o) => o.latitude && o.longitude)
+      .map((o) => ({ lat: o.latitude, lng: o.longitude }))
+    if (coords.length > 0 && (window as any).__fitToShipTos) {
+      setTimeout(() => (window as any).__fitToShipTos(coords), 100)
+    }
+  }
+
   const handleWorkspaceClose = () => {
     setIsLassoDrawing(false)
     setIsWorkspaceOpen(false)
@@ -426,6 +446,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           isRouteListOpen={false}
           isLassoActive={isLassoDrawing}
           onLassoToggle={handleLassoToggle}
+          onSelectAll={handleSelectAll}
           isWorkspaceOpen={isWorkspaceOpen}
           isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
           isOptimizationDrawerOpen={isOptimizationDrawerOpen}

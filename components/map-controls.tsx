@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, LassoSelect, Layers, MapPinned } from "lucide-react"
+import { Minus, Plus, LassoSelect, Layers, MapPinned, SquareDashedMousePointer } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Entity visibility state type
@@ -25,6 +25,7 @@ interface MapControlsProps {
   isRouteListOpen?: boolean
   isLassoActive?: boolean
   onLassoToggle?: () => void
+  onSelectAll?: () => void
   isWorkspaceOpen?: boolean
   isCreateOrderSideSheetOpen?: boolean
   isOptimizationDrawerOpen?: boolean
@@ -130,6 +131,7 @@ export function MapControls({
   isRouteListOpen = false,
   isLassoActive = false,
   onLassoToggle,
+  onSelectAll,
   isWorkspaceOpen = false,
   isCreateOrderSideSheetOpen = false,
   isOptimizationDrawerOpen = false,
@@ -374,6 +376,34 @@ export function MapControls({
             </TooltipTrigger>
             <TooltipContent side="left" className="z-[1001]">
               <p>{isLassoActive ? "Disable lasso [Esc]" : "Lasso (Shift + L)"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
+      {/* Select All — selects every entity on the map, same outcome as a lasso around everything */}
+      {onSelectAll && (
+        <TooltipProvider>
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onSelectAll}
+                className="flex items-center justify-center rounded-lg transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                style={{
+                  width: 32,
+                  height: 32,
+                  flexShrink: 0,
+                  border: "1px solid #FF9752",
+                  background: "#FA6400",
+                  color: "#fff",
+                }}
+              >
+                <SquareDashedMousePointer size={16} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="z-[1001]">
+              <p>Select All</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
