@@ -67,6 +67,10 @@ interface LassoWorkspaceSheetProps {
   /** Modal 3: orders created via the side sheet flow (owned by page.tsx, merged into unassigned list). */
   externalUnassignedOrders?: ExtractionOrder[]
   topOffset?: number
+  /** Removes whole routes (and their orders) from the workspace selection — owned by page.tsx. */
+  onRemoveRoutes?: (routeIds: string[]) => void
+  /** Removes individual (unassigned) orders from the workspace selection — owned by page.tsx. */
+  onRemoveOrders?: (orderIds: string[]) => void
 }
 
 type LoadOrderInfo = {
@@ -166,7 +170,7 @@ const TypeBadge = ({ label }: { label: string }) => (
   <span style={{ fontSize: 12, fontWeight: 500, color: "#E5E5E5", backgroundColor: "#262626", borderRadius: 4, padding: "2px 6px", whiteSpace: "nowrap", flexShrink: 0 }}>{label}</span>
 )
 
-function CheckboxInput({
+export function CheckboxInput({
   checked,
   indeterminate,
   onChange,
@@ -2962,6 +2966,8 @@ export function LassoWorkspaceSheet({
   openCreateOrderTrigger,
   onCreateOrderModalOpenChange,
   topOffset = 0,
+  onRemoveRoutes,
+  onRemoveOrders,
 }: LassoWorkspaceSheetProps) {
   const { orderCardView, createOrderModalView, updateCreateOrderModalView } = useSettings()
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned">("routes")
@@ -4052,8 +4058,7 @@ export function LassoWorkspaceSheet({
                               }}
                               onViewRoute={() => { /* future: open route detail */ }}
                               onRemoveRoute={() => {
-                                setSelectedOrders(prev => prev.filter(o => o.routeId !== routeId))
-                                setSelectedRouteIds(prev => prev.filter(id => id !== routeId))
+                                onRemoveRoutes?.([routeId])
                                 setMenuRouteId(null)
                               }}
                               currentDriverId={selectedDrivers[routeId]?.id}
@@ -5166,11 +5171,11 @@ export function LassoWorkspaceSheet({
                   <button
                     onClick={() => {
                       if (hasRoutes) {
-                        setSelectedOrders(prev => prev.filter(o => !o.routeId || !checkedRouteIds.includes(o.routeId)))
-                        setSelectedRouteIds(prev => prev.filter(id => !checkedRouteIds.includes(id)))
+                        onRemoveRoutes?.(checkedRouteIds)
                         onCheckedRoutesChange([])
                       }
                       if (hasUnassigned) {
+                        onRemoveOrders?.(checkedUnassignedOrderIds)
                         setCheckedUnassignedOrderIds([])
                       }
                       if (hasScheduled) {

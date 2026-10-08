@@ -26,6 +26,8 @@ interface MapControlsProps {
   isLassoActive?: boolean
   onLassoToggle?: () => void
   onSelectAll?: () => void
+  /** True when every entity on the map is already in the workspace — Select All has nothing left to add. */
+  isSelectAllDisabled?: boolean
   isWorkspaceOpen?: boolean
   isCreateOrderSideSheetOpen?: boolean
   isOptimizationDrawerOpen?: boolean
@@ -132,6 +134,7 @@ export function MapControls({
   isLassoActive = false,
   onLassoToggle,
   onSelectAll,
+  isSelectAllDisabled = false,
   isWorkspaceOpen = false,
   isCreateOrderSideSheetOpen = false,
   isOptimizationDrawerOpen = false,
@@ -386,9 +389,13 @@ export function MapControls({
         <TooltipProvider>
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>
+              {/* aria-disabled (not disabled) so the tooltip still shows on hover */}
               <button
                 type="button"
-                onClick={onSelectAll}
+                aria-disabled={isSelectAllDisabled}
+                onClick={() => {
+                  if (!isSelectAllDisabled) onSelectAll()
+                }}
                 className="flex items-center justify-center rounded-lg transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
                 style={{
                   width: 32,
@@ -397,13 +404,15 @@ export function MapControls({
                   border: "1px solid #FF9752",
                   background: "#FA6400",
                   color: "#fff",
+                  opacity: isSelectAllDisabled ? 0.4 : 1,
+                  cursor: isSelectAllDisabled ? "not-allowed" : "pointer",
                 }}
               >
                 <SquareDashedMousePointer size={16} />
               </button>
             </TooltipTrigger>
             <TooltipContent side="left" className="z-[1001]">
-              <p>Select All</p>
+              <p>{isSelectAllDisabled ? "Everything on the map is in the workspace" : "Select All"}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

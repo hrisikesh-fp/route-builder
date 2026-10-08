@@ -137,6 +137,22 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     [selectedOrders]
   )
 
+  // True when every order on the map is already in the workspace: scheduled orders count via
+  // their route, unassigned orders individually. Drives the Select All control's disabled state.
+  const allOnMapInWorkspace = useMemo(() => {
+    const routeSet = new Set(selectedRouteIds)
+    const orderSet = new Set([...selectedOrders, ...modal3UnassignedOrders].map((o) => o.id))
+    return (
+      filteredOrders.length > 0 &&
+      filteredOrders.every((o) => (o.routeId ? routeSet.has(o.routeId) : orderSet.has(o.id)))
+    )
+  }, [filteredOrders, selectedOrders, selectedRouteIds, modal3UnassignedOrders])
+
+  const showToast = (message: string) => {
+    setToastMessage(message)
+    setTimeout(() => setToastMessage(null), 5000)
+  }
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -280,15 +296,38 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
   // Select All — same outcome as lassoing every pin on the map:
   // scheduled orders pull in their whole route, unassigned orders come in individually.
+  // Merges with what is already in the workspace and only reports what was missing.
   const handleSelectAll = () => {
-    const allRouteIds = Array.from(
-      new Set(filteredOrders.filter((o) => o.routeId).map((o) => o.routeId as string))
+    if (allOnMapInWorkspace) return
+    const routeSet = new Set(selectedRouteIds)
+    const orderSet = new Set([...selectedOrders, ...modal3UnassignedOrders].map((o) => o.id))
+    const missingRouteIds = Array.from(
+      new Set(filteredOrders.filter((o) => o.routeId && !routeSet.has(o.routeId)).map((o) => o.routeId as string))
     )
+    const missingUnassigned = filteredOrders.filter((o) => !o.routeId && !orderSet.has(o.id))
+    const missingRoutedOrders = filteredOrders.filter((o) => o.routeId && missingRouteIds.includes(o.routeId))
+    const isFirstSelection = selectedOrders.length === 0 && selectedRouteIds.length === 0
+
     setIsLassoDrawing(false)
-    setSelectedOrders(filteredOrders)
-    setSelectedRouteIds(allRouteIds)
+    setSelectedOrders((prev) => {
+      const prevIds = new Set(prev.map((o) => o.id))
+      return [...prev, ...filteredOrders.filter((o) => !prevIds.has(o.id))]
+    })
+    setSelectedRouteIds((prev) => Array.from(new Set([...prev, ...missingRouteIds])))
     setIsWorkspaceOpen(true)
     setIsFilterOpen(false)
+
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
+    const addedOrderCount = missingRoutedOrders.length + missingUnassigned.length
+    if (isFirstSelection) {
+      showToast(`Added ${plural(addedOrderCount, "order")} across ${plural(missingRouteIds.length, "route")} to the workspace`)
+    } else {
+      const parts = [
+        missingRouteIds.length > 0 ? plural(missingRouteIds.length, "missing route") : null,
+        missingUnassigned.length > 0 ? plural(missingUnassigned.length, "missing unassigned order") : null,
+      ].filter(Boolean)
+      showToast(`Added ${parts.join(" and ")} to the workspace`)
+    }
 
     const coords = filteredOrders
       .filter((o) => o.latitude && o.longitude)
@@ -296,6 +335,15 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     if (coords.length > 0 && (window as any).__fitToShipTos) {
       setTimeout(() => (window as any).__fitToShipTos(coords), 100)
     }
+  }
+
+  const handleRemoveRoutes = (routeIds: string[]) => {
+    setSelectedOrders((prev) => prev.filter((o) => !o.routeId || !routeIds.includes(o.routeId)))
+    setSelectedRouteIds((prev) => prev.filter((id) => !routeIds.includes(id)))
+  }
+
+  const handleRemoveOrders = (orderIds: string[]) => {
+    setSelectedOrders((prev) => prev.filter((o) => !orderIds.includes(o.id)))
   }
 
   const handleWorkspaceClose = () => {
@@ -447,6 +495,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           isLassoActive={isLassoDrawing}
           onLassoToggle={handleLassoToggle}
           onSelectAll={handleSelectAll}
+          isSelectAllDisabled={allOnMapInWorkspace}
           isWorkspaceOpen={isWorkspaceOpen}
           isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
           isOptimizationDrawerOpen={isOptimizationDrawerOpen}
@@ -487,6 +536,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         openCreateOrderTrigger={openCreateOrderTrigger}
         onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}
         topOffset={topOffset}
+        onRemoveRoutes={handleRemoveRoutes}
+        onRemoveOrders={handleRemoveOrders}
         onShowToast={(driverName) => {
           setToastMessage(`Load Order added to ${driverName}'s Route successfully`)
           setTimeout(() => setToastMessage(null), 5000)
