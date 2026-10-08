@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowUpRight, Search, X } from "lucide-react"
+import { ArrowUpRight, Info, Search, X } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { EntityToggle } from "@/components/map-controls"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { CheckboxInput } from "@/components/lasso-workspace-sheet"
 import { ListOrderCard } from "@/components/list-order-card"
@@ -33,6 +35,8 @@ interface MapListPanelProps {
 }
 
 const FOCUS_HIGHLIGHT_MS = 3000
+// Wait before flying so skimming down the list doesn't throw the map around
+const MOVE_ON_HOVER_DELAY_MS = 250
 
 export function MapListPanel({
   top,
@@ -51,6 +55,36 @@ export function MapListPanel({
   const [expandedRouteIds, setExpandedRouteIds] = useState<string[]>([])
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [moveOnHover, setMoveOnHover] = useState(false)
+  const moveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => { if (moveTimerRef.current) clearTimeout(moveTimerRef.current) }, [])
+
+  // Hover → pin lift always; with "Move" on, the map also flies to it (same zoom as picking a ship-to in Create Order)
+  const scheduleMove = (fly: () => void) => {
+    if (moveTimerRef.current) clearTimeout(moveTimerRef.current)
+    if (moveOnHover) moveTimerRef.current = setTimeout(fly, MOVE_ON_HOVER_DELAY_MS)
+  }
+
+  const handleOrderHover = (orderId: string | null) => {
+    onHoverOrderChange(orderId)
+    if (!orderId) {
+      if (moveTimerRef.current) clearTimeout(moveTimerRef.current)
+      return
+    }
+    const order = orders.find((o) => o.id === orderId)
+    if (!order?.latitude || !order?.longitude) return
+    scheduleMove(() => (window as any).__fitToShipTos?.([{ lat: order.latitude, lng: order.longitude }]))
+  }
+
+  const handleRouteHover = (routeId: string | null) => {
+    onHoverRouteChange(routeId)
+    if (!routeId) {
+      if (moveTimerRef.current) clearTimeout(moveTimerRef.current)
+      return
+    }
+    scheduleMove(() => (window as any).__zoomToRoute?.(routeId))
+  }
 
   const stopsByRoute = useMemo(() => {
     const map = new Map<string, ExtractionOrder[]>()
@@ -183,9 +217,28 @@ export function MapListPanel({
       }}
     >
       {/* Tabs — Figma order: Routes, Orders */}
-      <div role="tablist" style={{ display: "flex", alignItems: "stretch", borderBottom: "1px solid #333", flexShrink: 0 }}>
-        {tabButton("routes", `Routes (${routes.length})`)}
-        {tabButton("orders", `Orders (${orders.length})`)}
+      <div style={{ display: "flex", alignItems: "stretch", borderBottom: "1px solid #333", flexShrink: 0 }}>
+        <div role="tablist" style={{ display: "flex", alignItems: "stretch" }}>
+          {tabButton("routes", `Routes (${routes.length})`)}
+          {tabButton("orders", `Orders (${orders.length})`)}
+        </div>
+        {/* Move map on hover */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, paddingRight: 4 }}>
+          <span style={{ fontSize: 14, lineHeight: "20px", color: "#A3A3A3" }}>Move</span>
+          <TooltipProvider>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <span style={{ display: "flex", cursor: "help" }} aria-label="Move map on hover">
+                  <Info size={14} color="#737373" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="z-[1002]">
+                <p>Move map on hover</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <EntityToggle checked={moveOnHover} onChange={() => setMoveOnHover((v) => !v)} />
+        </div>
       </div>
 
       {/* Toolbar — search + select all (Hub / Source / Product / Problems only come later) */}
@@ -232,7 +285,7 @@ export function MapListPanel({
                 order={order}
                 checked={checkedOrderIds.includes(order.id)}
                 onToggleCheck={() => toggle(setCheckedOrderIds, order.id)}
-                onHoverChange={onHoverOrderChange}
+                onHoverChange={handleOrderHover}
                 isFocused={focusedId === order.id}
               />
             ))}
@@ -243,7 +296,7 @@ export function MapListPanel({
                 order={order}
                 checked={checkedOrderIds.includes(order.id)}
                 onToggleCheck={() => toggle(setCheckedOrderIds, order.id)}
-                onHoverChange={onHoverOrderChange}
+                onHoverChange={handleOrderHover}
                 isFocused={focusedId === order.id}
               />
             ))}
@@ -262,8 +315,8 @@ export function MapListPanel({
                 onToggleCheck={() => toggle(setCheckedRouteIds, route.id)}
                 isExpanded={expandedRouteIds.includes(route.id)}
                 onToggleExpand={() => toggle(setExpandedRouteIds, route.id)}
-                onHoverRouteChange={onHoverRouteChange}
-                onHoverStopChange={onHoverOrderChange}
+                onHoverRouteChange={handleRouteHover}
+                onHoverStopChange={handleOrderHover}
                 onEditInWorkspace={() => handleAdd({ orderIds: [], routeIds: [route.id] })}
                 isFocused={focusedId === route.id}
               />

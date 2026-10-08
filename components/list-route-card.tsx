@@ -67,6 +67,9 @@ export function ListRouteCard({
     <div
       data-list-route-id={route.id}
       className={isFocused ? "rb-stop-highlight" : undefined}
+      role="button"
+      aria-pressed={checked}
+      onClick={onToggleCheck}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = "#282828"
         onHoverRouteChange(route.id)
@@ -85,11 +88,12 @@ export function ListRouteCard({
         borderRadius: 4,
         boxShadow: isFocused ? "inset 0 0 0 1px #E5E5E5" : "none",
         flexShrink: 0,
+        cursor: "pointer",
         fontFamily: "Geist, sans-serif",
         transition: "background-color 120ms ease",
       }}
     >
-      <div style={{ paddingTop: 4 }}>
+      <div style={{ paddingTop: 4 }} onClick={(e) => e.stopPropagation()}>
         <CheckboxInput checked={checked} onChange={onToggleCheck} />
       </div>
 
@@ -119,7 +123,10 @@ export function ListRouteCard({
             type="button"
             aria-label={isExpanded ? "Collapse route" : "Expand route"}
             aria-expanded={isExpanded}
-            onClick={onToggleExpand}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleExpand()
+            }}
             style={{
               marginLeft: "auto",
               width: 24,
@@ -147,7 +154,10 @@ export function ListRouteCard({
         </span>
 
         {isExpanded && (
-          <div style={{ display: "flex", flexDirection: "column", marginTop: 8, paddingTop: 8, borderTop: "1px solid #333" }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ display: "flex", flexDirection: "column", marginTop: 8, paddingTop: 8, borderTop: "1px solid #333", cursor: "default" }}
+          >
             {stops.map((stop) => {
               const type = stop.orderType ?? "D"
               const time = getStopDisplayTime(stop)

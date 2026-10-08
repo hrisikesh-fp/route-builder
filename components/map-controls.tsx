@@ -93,7 +93,7 @@ function TerminalIconSmall() {
 }
 
 // Custom toggle — matches Figma Switch component (36×20px track, 16×16px thumb)
-function EntityToggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+export function EntityToggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
     <button
       type="button"

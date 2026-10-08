@@ -28,6 +28,9 @@ export function ListOrderCard({ order, checked, onToggleCheck, onHoverChange, is
     <div
       data-list-order-id={order.id}
       className={isFocused ? "rb-stop-highlight" : undefined}
+      role="button"
+      aria-pressed={checked}
+      onClick={onToggleCheck}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = "#282828"
         onHoverChange(order.id)
@@ -46,11 +49,13 @@ export function ListOrderCard({ order, checked, onToggleCheck, onHoverChange, is
         boxShadow: isFocused ? "inset 0 0 0 1px #E5E5E5" : "none",
         flexShrink: 0,
         overflow: "hidden",
+        cursor: "pointer",
         fontFamily: "Geist, sans-serif",
         transition: "background-color 120ms ease",
       }}
     >
-      <div style={{ paddingTop: 4 }}>
+      {/* stopPropagation: the card's own click already toggles, avoid a double toggle */}
+      <div style={{ paddingTop: 4 }} onClick={(e) => e.stopPropagation()}>
         <CheckboxInput checked={checked} onChange={onToggleCheck} />
       </div>
 

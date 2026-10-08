@@ -67,6 +67,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     if (showDriverConflict) setIsConflictBannerResolved(false)
   }, [showDriverConflict])
   const isConflictBannerVisible = showDriverConflict && !isConflictBannerResolved
+  // Orders needing reassignment in the conflict scenario (count was dropped when the banner moved to a resolved flag)
+  const conflictOrdersRemaining = 5
   const BANNER_HEIGHT = 95
   const topOffset = isConflictBannerVisible ? BANNER_HEIGHT : 0
 
