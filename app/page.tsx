@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { MapHeader } from "@/components/map-header"
 import { MapControls, type MapEntityVisibility } from "@/components/map-controls"
@@ -21,11 +21,18 @@ import { mockExtractionOrders, mockRoutes, shipTosWithoutOrders, buildShipToCoor
 import { CheckCircle2 } from "lucide-react"
 import { ConflictAssignmentBanner } from "@/components/conflict-assignment-banner"
 import { ConflictResolutionModal } from "@/components/conflict-resolution-modal"
+import { MapListToggle, type MapViewMode } from "@/components/map-list-toggle"
+import { MapListPanel, type ListFocus } from "@/components/map-list-panel"
+import type { ListRoute } from "@/components/list-route-card"
+import { getRouteColor } from "@/lib/route-display"
 
 export default function Home() {
 const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isFilterOpen, setIsFilterOpen] = useState(true)
+  // Map / List toggle. List opens the floating panel on the left; never alongside the filter sheet.
+  const [viewMode, setViewMode] = useState<MapViewMode>("map")
+  const [listFocus, setListFocus] = useState<ListFocus | null>(null)
   const [isRoutingConfigOpen, setIsRoutingConfigOpen] = useState(false)
   const [showAllRoutes, setShowAllRoutes] = useState(true)
   const [isLassoDrawing, setIsLassoDrawing] = useState(false)
@@ -147,6 +154,38 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       filteredOrders.every((o) => (o.routeId ? routeSet.has(o.routeId) : orderSet.has(o.id)))
     )
   }, [filteredOrders, selectedOrders, selectedRouteIds, modal3UnassignedOrders])
+
+  // Routes shown in the List panel's Routes tab — every route with at least one order on the map
+  const listRoutes = useMemo<ListRoute[]>(() => {
+    const routeIdsOnMap = new Set(filteredOrders.map((o) => o.routeId).filter(Boolean))
+    return mockRoutes
+      .filter((r: any) => routeIdsOnMap.has(r.id))
+      .map((r: any, i: number) => ({
+        id: r.id,
+        color: getRouteColor(r.id, i),
+        driverName: r.driverName,
+        truckId: r.truckId ?? null,
+        isPublished: r.id !== "route-6", // same rule the workspace uses
+      }))
+  }, [filteredOrders])
+
+  // Anything new landing in the workspace closes the List and returns to Map (the list gets out of the way)
+  const selectionSizeRef = useRef(0)
+  useEffect(() => {
+    const size = selectedOrders.length + selectedRouteIds.length
+    if (size > selectionSizeRef.current) setViewMode("map")
+    selectionSizeRef.current = size
+  }, [selectedOrders, selectedRouteIds])
+
+  const handleViewModeChange = (mode: MapViewMode) => {
+    setViewMode(mode)
+    if (mode === "list") setIsFilterOpen(false)
+  }
+
+  const openFilterSheet = () => {
+    setIsFilterOpen(true)
+    setViewMode("map")
+  }
 
   const showToast = (message: string) => {
     setToastMessage(message)
@@ -337,6 +376,32 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     }
   }
 
+  // List panel → workspace. Same rules as lasso: a scheduled order pulls in its whole route,
+  // an unassigned order comes in on its own, a route comes in whole.
+  const handleAddFromList = ({ orderIds, routeIds }: { orderIds: string[]; routeIds: string[] }) => {
+    const picked = filteredOrders.filter((o) => orderIds.includes(o.id))
+    const routeIdsToAdd = Array.from(new Set([...routeIds, ...picked.filter((o) => o.routeId).map((o) => o.routeId as string)]))
+    const ordersToAdd = [
+      ...filteredOrders.filter((o) => o.routeId && routeIdsToAdd.includes(o.routeId)),
+      ...picked.filter((o) => !o.routeId),
+    ]
+    const prevIds = new Set(selectedOrders.map((o) => o.id))
+    const newOrders = ordersToAdd.filter((o) => !prevIds.has(o.id))
+
+    setSelectedOrders((prev) => [...prev, ...newOrders])
+    setSelectedRouteIds((prev) => Array.from(new Set([...prev, ...routeIdsToAdd])))
+    setIsWorkspaceOpen(true)
+    setIsFilterOpen(false)
+    setViewMode("map")
+
+    if (newOrders.length === 0) {
+      showToast("Already in the workspace")
+    } else {
+      const routesNote = routeIdsToAdd.length > 0 ? ` across ${routeIdsToAdd.length} route${routeIdsToAdd.length === 1 ? "" : "s"}` : ""
+      showToast(`Added ${newOrders.length} order${newOrders.length === 1 ? "" : "s"}${routesNote} to the workspace`)
+    }
+  }
+
   const handleRemoveRoutes = (routeIds: string[]) => {
     setSelectedOrders((prev) => prev.filter((o) => !o.routeId || !routeIds.includes(o.routeId)))
     setSelectedRouteIds((prev) => prev.filter((id) => !routeIds.includes(id)))
@@ -356,6 +421,11 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   }
 
   const handleRouteClick = (routeId: string) => {
+    // List open: a route line click expands that route in the list instead of adding it
+    if (viewMode === "list") {
+      setListFocus({ kind: "route", id: routeId, nonce: Date.now() })
+      return
+    }
     // Check if this route is already selected
     if (selectedRouteIds.includes(routeId)) {
       return
@@ -380,6 +450,11 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   }
 
   const handleOrderPinClick = (order: ExtractionOrder) => {
+    // List open: a pin click scrolls the list to that order instead of adding it
+    if (viewMode === "list") {
+      setListFocus({ kind: "order", id: order.id, nonce: Date.now() })
+      return
+    }
     if (order.routeId) {
       // Scheduled order → add the whole route
       handleRouteClick(order.routeId)
@@ -442,7 +517,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   return (
     <main className="relative w-full h-screen overflow-hidden">
       <MapHeader
-        onFilterClick={() => setIsFilterOpen(!isFilterOpen)}
+        onFilterClick={() => (isFilterOpen ? setIsFilterOpen(false) : openFilterSheet())}
         onSettingsClick={() => setIsRoutingConfigOpen(true)}
         onCreateOrderClick={() => {
           setIsWorkspaceOpen(true)
@@ -503,6 +578,25 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           onEntityVisibilityChange={setEntityVisibility}
           topOffset={topOffset}
         />
+
+      <MapListToggle
+        value={viewMode}
+        onChange={handleViewModeChange}
+        top={78 + topOffset}
+        left={isFilterOpen ? 332 : 92}
+      />
+      {viewMode === "list" && (
+        <MapListPanel
+          top={78 + topOffset + 40 + 8}
+          left={92}
+          orders={filteredOrders}
+          routes={listRoutes}
+          onHoverOrderChange={setHoveredWorkspaceOrderId}
+          onHoverRouteChange={setHoveredWorkspaceRouteId}
+          onAddToWorkspace={handleAddFromList}
+          focus={listFocus}
+        />
+      )}
 
       <LassoCanvas
         isActive={isLassoDrawing}
@@ -576,7 +670,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         </div>
       )}
 
-      {!isFilterOpen && <FilterSheetCollapsed onExpand={() => setIsFilterOpen(true)} appliedFiltersCount={2} topOffset={topOffset} />}
+      {!isFilterOpen && <FilterSheetCollapsed onExpand={openFilterSheet} appliedFiltersCount={2} topOffset={topOffset} />}
       <FilterSideSheet
         isOpen={isFilterOpen}
         topOffset={topOffset}
