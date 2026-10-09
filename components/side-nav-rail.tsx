@@ -1,19 +1,22 @@
 "use client"
 
-import { Bell, ClipboardList, MapPinned, Truck, UserCheck, type LucideIcon } from "lucide-react"
+import { Bell, ChartColumn, ClipboardList, History, MapPinned, Route, Truck, UserCheck, type LucideIcon } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Left icon rail — Figma RB - Routing v2, node 9130:45476. Names show on hover.
-// Only Map is a real page in the prototype; the rest are shown but not wired yet.
+// Map, Orders, Routes and Analytics are built; Trucks, Drivers, Inbox and Run history are empty pages for now.
 
-export type SideNavPage = "map" | "orders" | "trucks" | "drivers" | "inbox"
+export type SideNavPage = "map" | "orders" | "routes" | "trucks" | "drivers" | "inbox" | "history" | "analytics"
 
 const ITEMS: { id: SideNavPage; label: string; icon: LucideIcon }[] = [
   { id: "map", label: "Map", icon: MapPinned },
   { id: "orders", label: "Orders", icon: ClipboardList },
+  { id: "routes", label: "Routes", icon: Route },
   { id: "trucks", label: "Trucks", icon: Truck },
   { id: "drivers", label: "Drivers", icon: UserCheck },
   { id: "inbox", label: "Inbox", icon: Bell },
+  { id: "history", label: "Run history", icon: History },
+  { id: "analytics", label: "Analytics & reporting", icon: ChartColumn },
 ]
 
 export const SIDE_NAV_WIDTH = 52

@@ -22,7 +22,9 @@ import { ConflictAssignmentBanner } from "@/components/conflict-assignment-banne
 import { ConflictResolutionModal } from "@/components/conflict-resolution-modal"
 import { MapListToggle, type MapViewMode } from "@/components/map-list-toggle"
 import { MapListPanel, type ListFocus, type ListTab } from "@/components/map-list-panel"
-import { SideNavRail, SIDE_NAV_WIDTH } from "@/components/side-nav-rail"
+import { SideNavRail, SIDE_NAV_WIDTH, type SideNavPage } from "@/components/side-nav-rail"
+import { OrdersPage, RoutesPage, EmptyPage, AnalyticsPage } from "@/components/rb-pages"
+import { Bell, History, Truck, UserCheck } from "lucide-react"
 import { MapSummaryChips } from "@/components/map-summary-chips"
 import type { ListRoute } from "@/components/list-route-card"
 import { getRouteColor } from "@/lib/route-display"
@@ -36,6 +38,10 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [listTabRequest, setListTabRequest] = useState<{ tab: ListTab; nonce: number } | null>(null)
   // Map / List toggle. List opens the floating panel on the left; never alongside the filter sheet.
   const [viewMode, setViewMode] = useState<MapViewMode>("map")
+  // Rail pages. The map stays mounted underneath every page; Orders / Routes show it beside the table by default.
+  const [activePage, setActivePage] = useState<SideNavPage>("map")
+  const [isTableMapOpen, setIsTableMapOpen] = useState(true)
+  const isMapPage = activePage === "map"
   const [listFocus, setListFocus] = useState<ListFocus | null>(null)
   const [isRoutingConfigOpen, setIsRoutingConfigOpen] = useState(false)
   const [showAllRoutes, setShowAllRoutes] = useState(true)
@@ -191,6 +197,16 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const filterTop = 78 + topOffset + 40 + 8
 
   const handleViewModeChange = (mode: MapViewMode) => setViewMode(mode)
+
+  useEffect(() => {
+    if ((activePage !== "orders" && activePage !== "routes") || !isTableMapOpen) return
+    const coords = filteredOrders.filter((o) => o.latitude && o.longitude).map((o) => ({ lat: o.latitude, lng: o.longitude }))
+    const panelWidth = (window.innerWidth - SIDE_NAV_WIDTH) / 2
+    const t = setTimeout(() => {
+      ;(window as any).__fitToShipTos?.(coords, { padding: { top: 80, right: 80, bottom: 80, left: SIDE_NAV_WIDTH + panelWidth + 40 } })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [activePage, isTableMapOpen])
 
   const openListOnTab = (tab: ListTab) => {
     setViewMode("list")
@@ -591,6 +607,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           topOffset={topOffset}
         />
 
+      {isMapPage && (<>
       <MapListToggle
         value={viewMode}
         onChange={handleViewModeChange}
@@ -621,6 +638,32 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onRoutesClick={() => openListOnTab("routes")}
         onOrdersClick={() => openListOnTab("orders")}
       />
+      </>)}
+
+      {activePage === "orders" && (
+        <OrdersPage
+          topOffset={topOffset}
+          isMapOpen={isTableMapOpen}
+          onToggleMap={() => setIsTableMapOpen((v) => !v)}
+          orders={filteredOrders}
+          onHoverOrder={setHoveredWorkspaceOrderId}
+        />
+      )}
+      {activePage === "routes" && (
+        <RoutesPage
+          topOffset={topOffset}
+          isMapOpen={isTableMapOpen}
+          onToggleMap={() => setIsTableMapOpen((v) => !v)}
+          routes={listRoutes}
+          orders={filteredOrders}
+          onHoverRoute={setHoveredWorkspaceRouteId}
+        />
+      )}
+      {activePage === "trucks" && <EmptyPage title="Trucks" icon={Truck} description="Your fleet for the day will show here, with the map beside it." topOffset={topOffset} />}
+      {activePage === "drivers" && <EmptyPage title="Drivers" icon={UserCheck} description="Drivers and their shifts will show here, with the map beside it." topOffset={topOffset} />}
+      {activePage === "inbox" && <EmptyPage title="Inbox" icon={Bell} description="Orders, trucks and drivers that need attention will show here." topOffset={topOffset} />}
+      {activePage === "history" && <EmptyPage title="Run history" icon={History} description="Past routing runs will show here, each opening as a read-only workspace." topOffset={topOffset} />}
+      {activePage === "analytics" && <AnalyticsPage topOffset={topOffset} />}
 
       <LassoCanvas
         isActive={isLassoDrawing}
@@ -628,7 +671,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onEscapePressed={handleLassoEscape}
       />
       <LassoWorkspaceSheet
-        isOpen={isWorkspaceOpen}
+        isOpen={isWorkspaceOpen && isMapPage}
         onClose={handleWorkspaceClose}
         selectedOrders={selectedOrders}
         selectedRouteIds={selectedRouteIds}
@@ -694,13 +737,20 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         </div>
       )}
 
-      <SideNavRail active="map" topOffset={topOffset} />
+      <SideNavRail
+        active={activePage}
+        onSelect={(page) => {
+          setActivePage(page)
+          if (page !== "map") setIsFilterOpen(false)
+        }}
+        topOffset={topOffset}
+      />
       <FilterSideSheet
         variant="floating"
         floatingLeft={chipsLeft}
         floatingTop={filterTop}
         onActiveFilterCountChange={setActiveFilterCount}
-        isOpen={isFilterOpen}
+        isOpen={isFilterOpen && isMapPage}
         topOffset={topOffset}
         onClose={() => setIsFilterOpen(false)}
         totalRoutes={mockRoutes.length}
@@ -726,7 +776,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
 
       {/* Collapsed tab — clicking opens workspace with empty state */}
-      {!isWorkspaceOpen && (
+      {!isWorkspaceOpen && isMapPage && (
         <RouteSheetCollapsed onExpand={() => setIsWorkspaceOpen(true)} hideExpandButton={isCreateOrderSideSheetOpen} topOffset={topOffset} />
       )}
 
