@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { ListFilter, MapPin, Route } from "lucide-react"
 
 // Bottom-left map chips (Figma RB - Routing v2 map frame): Filters | N Routes · N Orders.
@@ -25,23 +26,33 @@ const chipText: React.CSSProperties = {
 }
 
 function ChipButton({ onClick, children, isActive = false }: { onClick: () => void; children: React.ReactNode; isActive?: boolean }) {
+  const [isHovered, setIsHovered] = useState(false)
+  const [isFocusVisible, setIsFocusVisible] = useState(false)
+  // Open / keyboard focus = outlined (pill focused tokens). Hover = lighter fill that stands off the #111 chip.
+  const isOutlined = isActive || isFocusVisible
   return (
     <button
       type="button"
+      aria-pressed={isActive}
       onClick={onClick}
-      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "#1F1F1F" }}
-      onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent" }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onFocus={(e) => setIsFocusVisible(e.currentTarget.matches(":focus-visible"))}
+      onBlur={() => setIsFocusVisible(false)}
       style={{
         height: 40,
         display: "flex",
         alignItems: "center",
         gap: 8,
         padding: "0 16px",
-        border: "none",
+        border: isOutlined ? "1px solid #737373" : "1px solid transparent",
+        boxShadow: isOutlined ? "0px 0px 0px 3px rgba(115,115,115,0.5)" : "none",
         borderRadius: 4,
-        backgroundColor: isActive ? "#282828" : "transparent",
+        backgroundColor: isHovered ? "#333" : "transparent",
+        outline: "none",
         cursor: "pointer",
         fontFamily: "inherit",
+        transition: "background-color 120ms ease, box-shadow 120ms ease",
       }}
     >
       {children}

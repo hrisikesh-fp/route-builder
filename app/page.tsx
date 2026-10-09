@@ -187,8 +187,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const MAP_LEFT = SIDE_NAV_WIDTH + 12
   const LIST_PANEL_WIDTH = 419
   const chipsLeft = viewMode === "list" ? MAP_LEFT + LIST_PANEL_WIDTH + 12 : MAP_LEFT
-  // With the list closed the filter panel opens under the Map/List toggle; with it open, beside the list
-  const filterTop = viewMode === "list" ? 78 + topOffset : 78 + topOffset + 40 + 8
+  // Filter panel always starts under the Map/List toggle line, so its height is the same with or without the list
+  const filterTop = 78 + topOffset + 40 + 8
 
   const handleViewModeChange = (mode: MapViewMode) => setViewMode(mode)
 
