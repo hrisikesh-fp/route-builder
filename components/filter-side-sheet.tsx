@@ -21,6 +21,7 @@ import {
   Droplet,
   ClipboardPlus,
   ClipboardType,
+  X,
 } from "lucide-react"
 import { mockHubs, mockExtractionOrders, shipTosWithoutOrders, mockDrivers, mockRoutes } from "@/lib/mock-data"
 
@@ -38,6 +39,14 @@ interface FilterSideSheetProps {
   onDriverSelectionChange?: (ids: Set<string>) => void
   onProductSelectionChange?: (products: Set<string>) => void
   topOffset?: number
+  /** "sheet" = original left side sheet. "floating" = panel that opens upward from the map's Filters chip. */
+  variant?: "sheet" | "floating"
+  /** Floating variant only: left edge in px (sits next to the List panel when it is open). */
+  floatingLeft?: number
+  /** Floating variant only: top edge in px. */
+  floatingTop?: number
+  /** Reports the applied-filter count so the map's Filters chip can show it. */
+  onActiveFilterCountChange?: (count: number) => void
 }
 
 interface CityData {
@@ -496,7 +505,12 @@ export function FilterSideSheet({
   onDriverSelectionChange,
   onProductSelectionChange,
   topOffset = 0,
+  variant = "sheet",
+  floatingLeft = 64,
+  floatingTop = 126,
+  onActiveFilterCountChange,
 }: FilterSideSheetProps) {
+  const isFloating = variant === "floating"
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false)
   const [tempSelectedCities, setTempSelectedCities] = useState<Set<string>>(new Set())
   const [appliedCities, setAppliedCities] = useState<Set<string>>(new Set())
@@ -552,6 +566,10 @@ export function FilterSideSheet({
     deliveryChecked, loadChecked, transferChecked, extractionChecked,
     highChecked, mediumChecked, lowChecked, naChecked,
   ].filter(Boolean).length
+
+  useEffect(() => {
+    onActiveFilterCountChange?.(activeFilterCount)
+  }, [activeFilterCount, onActiveFilterCountChange])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -671,18 +689,35 @@ export function FilterSideSheet({
 
   return (
     <>
-      {/* Side Sheet */}
+      {/* Side Sheet, or the floating panel above the map's Filters chip (kept mounted so filters survive closing) */}
       <div
-        className={`fixed left-0 z-[1003] transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        style={{
-          top: 64 + topOffset,
-          height: `calc(100vh - ${64 + topOffset}px)`,
-          width: "320px",
-          backgroundColor: "#111",
-          borderRight: "1px solid #282828",
-        }}
+        className={
+          isFloating
+            ? "absolute z-[1002]"
+            : `fixed left-0 z-[1003] transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "-translate-x-full"}`
+        }
+        style={
+          isFloating
+            ? {
+                display: isOpen ? "block" : "none",
+                left: floatingLeft,
+                bottom: 24 + 40 + 8, // chips row (40px) + its 24px inset + 8px gap
+                top: floatingTop,
+                width: "320px",
+                backgroundColor: "#111",
+                border: "1px solid #282828",
+                borderRadius: 8,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                overflow: "hidden",
+              }
+            : {
+                top: 64 + topOffset,
+                height: `calc(100vh - ${64 + topOffset}px)`,
+                width: "320px",
+                backgroundColor: "#111",
+                borderRight: "1px solid #282828",
+              }
+        }
       >
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -710,14 +745,21 @@ export function FilterSideSheet({
                 </span>
               )}
             </div>
-            {activeFilterCount > 0 && (
-              <button
-                onClick={handleClearAll}
-                className="text-sm font-medium text-white hover:text-white/80 transition-colors"
-              >
-                Clear All
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="text-sm font-medium text-white hover:text-white/80 transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
+              {isFloating && (
+                <button aria-label="Close filters" onClick={onClose} className="flex items-center justify-center rounded hover:bg-[#282828]" style={{ width: 28, height: 28 }}>
+                  <X className="w-4 h-4 text-[#A3A3A3]" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Scrollable Content */}
@@ -1239,8 +1281,8 @@ export function FilterSideSheet({
             </div>
           </div>
 
-          {/* Footer with Stats */}
-          <div
+          {/* Footer with Stats — the floating variant shows these as map chips instead */}
+          {!isFloating && <div
             className="flex flex-col items-start w-full"
             style={{
               padding: "20px",
@@ -1258,11 +1300,11 @@ export function FilterSideSheet({
                 <span style={{ fontSize: "16px", fontWeight: 400, lineHeight: "24px" }}>{totalOrders} Orders</span>
               </div>
             </div>
-          </div>
+          </div>}
         </div>
       </div>
 
-      {isOpen && (
+      {isOpen && !isFloating && (
         <TooltipProvider>
           <div
             className="fixed z-[1004] flex items-center"

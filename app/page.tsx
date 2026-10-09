@@ -11,7 +11,6 @@ const RouteMap = dynamic(
 import { RouteSheetCollapsed } from "@/components/route-sheet-collapsed"
 import { CreateRoutePanel } from "@/components/create-route-panel"
 import { FilterSideSheet } from "@/components/filter-side-sheet"
-import { FilterSheetCollapsed } from "@/components/filter-sheet-collapsed"
 import { LassoWorkspaceSheet } from "@/components/lasso-workspace-sheet"
 import { LassoCanvas } from "@/components/lasso-canvas"
 import { RoutingConfigOverlay } from "@/components/routing-config-panel"
@@ -22,14 +21,19 @@ import { CheckCircle2 } from "lucide-react"
 import { ConflictAssignmentBanner } from "@/components/conflict-assignment-banner"
 import { ConflictResolutionModal } from "@/components/conflict-resolution-modal"
 import { MapListToggle, type MapViewMode } from "@/components/map-list-toggle"
-import { MapListPanel, type ListFocus } from "@/components/map-list-panel"
+import { MapListPanel, type ListFocus, type ListTab } from "@/components/map-list-panel"
+import { SideNavRail, SIDE_NAV_WIDTH } from "@/components/side-nav-rail"
+import { MapSummaryChips } from "@/components/map-summary-chips"
 import type { ListRoute } from "@/components/list-route-card"
 import { getRouteColor } from "@/lib/route-display"
 
 export default function Home() {
 const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const [isFilterOpen, setIsFilterOpen] = useState(true)
+  // Filters now float over the map, opened from the bottom-left Filters chip
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [activeFilterCount, setActiveFilterCount] = useState(0)
+  const [listTabRequest, setListTabRequest] = useState<{ tab: ListTab; nonce: number } | null>(null)
   // Map / List toggle. List opens the floating panel on the left; never alongside the filter sheet.
   const [viewMode, setViewMode] = useState<MapViewMode>("map")
   const [listFocus, setListFocus] = useState<ListFocus | null>(null)
@@ -179,15 +183,21 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     selectionSizeRef.current = size
   }, [selectedOrders, selectedRouteIds])
 
-  const handleViewModeChange = (mode: MapViewMode) => {
-    setViewMode(mode)
-    if (mode === "list") setIsFilterOpen(false)
+  // Left-side layout: rail, then the List panel (when open), then chips + floating filters beside it
+  const MAP_LEFT = SIDE_NAV_WIDTH + 12
+  const LIST_PANEL_WIDTH = 419
+  const chipsLeft = viewMode === "list" ? MAP_LEFT + LIST_PANEL_WIDTH + 12 : MAP_LEFT
+  // With the list closed the filter panel opens under the Map/List toggle; with it open, beside the list
+  const filterTop = viewMode === "list" ? 78 + topOffset : 78 + topOffset + 40 + 8
+
+  const handleViewModeChange = (mode: MapViewMode) => setViewMode(mode)
+
+  const openListOnTab = (tab: ListTab) => {
+    setViewMode("list")
+    setListTabRequest({ tab, nonce: Date.now() })
   }
 
-  const openFilterSheet = () => {
-    setIsFilterOpen(true)
-    setViewMode("map")
-  }
+  const openFilterSheet = () => setIsFilterOpen(true)
 
   const showToast = (message: string) => {
     setToastMessage(message)
@@ -585,20 +595,32 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         value={viewMode}
         onChange={handleViewModeChange}
         top={78 + topOffset}
-        left={isFilterOpen ? 332 : 92}
+        left={MAP_LEFT}
       />
       {viewMode === "list" && (
         <MapListPanel
           top={78 + topOffset + 40 + 8}
-          left={92}
+          left={MAP_LEFT}
           orders={filteredOrders}
           routes={listRoutes}
           onHoverOrderChange={setHoveredWorkspaceOrderId}
           onHoverRouteChange={setHoveredWorkspaceRouteId}
           onAddToWorkspace={handleAddFromList}
           focus={listFocus}
+          tabRequest={listTabRequest}
         />
       )}
+
+      <MapSummaryChips
+        left={chipsLeft}
+        routeCount={listRoutes.length}
+        orderCount={filteredOrders.length}
+        activeFilterCount={activeFilterCount}
+        isFilterOpen={isFilterOpen}
+        onFiltersClick={() => setIsFilterOpen((open) => !open)}
+        onRoutesClick={() => openListOnTab("routes")}
+        onOrdersClick={() => openListOnTab("orders")}
+      />
 
       <LassoCanvas
         isActive={isLassoDrawing}
@@ -672,8 +694,12 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         </div>
       )}
 
-      {!isFilterOpen && <FilterSheetCollapsed onExpand={openFilterSheet} appliedFiltersCount={2} topOffset={topOffset} />}
+      <SideNavRail active="map" topOffset={topOffset} />
       <FilterSideSheet
+        variant="floating"
+        floatingLeft={chipsLeft}
+        floatingTop={filterTop}
+        onActiveFilterCountChange={setActiveFilterCount}
         isOpen={isFilterOpen}
         topOffset={topOffset}
         onClose={() => setIsFilterOpen(false)}

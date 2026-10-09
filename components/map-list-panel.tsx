@@ -32,6 +32,8 @@ interface MapListPanelProps {
   onAddToWorkspace: (selection: { orderIds: string[]; routeIds: string[] }) => void
   /** Set by page.tsx when a pin or route line is clicked on the map while the list is open. */
   focus: ListFocus | null
+  /** Set when a bottom-left chip deep links into a tab (e.g. "5 Routes" → Routes tab). */
+  tabRequest?: { tab: ListTab; nonce: number } | null
 }
 
 const FOCUS_HIGHLIGHT_MS = 3000
@@ -47,8 +49,12 @@ export function MapListPanel({
   onHoverRouteChange,
   onAddToWorkspace,
   focus,
+  tabRequest,
 }: MapListPanelProps) {
-  const [activeTab, setActiveTab] = useState<ListTab>("orders")
+  const [activeTab, setActiveTab] = useState<ListTab>(tabRequest?.tab ?? "orders")
+  useEffect(() => {
+    if (tabRequest) setActiveTab(tabRequest.tab)
+  }, [tabRequest?.nonce])
   const [search, setSearch] = useState("")
   const [checkedOrderIds, setCheckedOrderIds] = useState<string[]>([])
   const [checkedRouteIds, setCheckedRouteIds] = useState<string[]>([])
