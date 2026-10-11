@@ -225,10 +225,12 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // ── 3D shell layout (Figma 9175:88966; rules in lib/layout-tiers.ts) ──
   const INSET = 4
   const GAP = 4
-  const bodyTop = APP_HEADER_HEIGHT + topOffset + (mode === "planning" ? METRICS_BAR_HEIGHT : 0)
+  // Expanded (a view or the map) hides everything else in Planning: metrics bar, rail, other panels.
+  // Only the app header stays, like the app chrome around an expanded pane in Claude Code.
+  const bodyTop = APP_HEADER_HEIGHT + topOffset + (mode === "planning" && !expanded ? METRICS_BAR_HEIGHT : 0)
   const isRightPanelOpen = isWorkspaceOpen || isRoutesOpen
   // While something is expanded the right panel is covered (map) or sits underneath (view); state is kept
-  const isRightPanelShown = isRightPanelOpen && expanded !== "map"
+  const isRightPanelShown = isRightPanelOpen && !expanded
   const tier = getLayoutTier(viewportWidth)
   const LEFT_START = INSET + SIDE_NAV_WIDTH + INSET // where the left column begins, right of the rail
 
@@ -251,7 +253,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const col1Views = leftDocked && leftCols === 2 ? leftViews.slice(0, 1) : leftViews
   const col2Views = leftDocked && leftCols === 2 ? leftViews.slice(1) : []
   const leftTotal = leftDocked ? col1W + (col2Views.length ? GAP + LEFT_MIN : 0) : 0
-  const colLeft = leftDocked ? LEFT_START + leftTotal + GAP : INSET + SIDE_NAV_WIDTH
+  const colLeft = leftDocked ? LEFT_START + leftTotal + GAP : expanded ? INSET : INSET + SIDE_NAV_WIDTH
   // Right panel: RIGHT_MIN at least, grows to the tier's max while the map keeps its minimum
   const rightW = isRightPanelShown
     ? Math.max(RIGHT_MIN, Math.min(RIGHT_MAX[tier], viewportWidth - colLeft - INSET - MAP_MIN_WIDTH))
@@ -822,7 +824,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         />
       )}
 
-      {mode === "planning" && (
+      {mode === "planning" && !expanded && (
         <MetricsBar
           totalGallons={totalGallons}
           routeCount={listRoutes.length}
@@ -836,7 +838,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       )}
 
       {/* Rail toggles views; open views dock around the map */}
-      <SideNavRail active={mode === "planning" ? openViews : []} onSelect={handleRailSelect} style={{ top: bodyTop + INSET, left: INSET, bottom: INSET }} />
+      {!expanded && <SideNavRail active={mode === "planning" ? openViews : []} onSelect={handleRailSelect} style={{ top: bodyTop + INSET, left: INSET, bottom: INSET }} />}
       {mode === "planning" && leftDocked && (
         <>
           <div style={{ position: "absolute", top: colTop, left: LEFT_START, width: col1W, bottom: INSET, display: "flex", flexDirection: "column", gap: GAP, overflowY: "auto", zIndex: 5 }}>
@@ -861,7 +863,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       )}
       {/* Expanded view: fills the planning area, over the map and the right panel */}
       {mode === "planning" && expanded && expanded !== "map" && openViews.includes(expanded) && (
-        <div style={{ position: "absolute", top: colTop, left: LEFT_START, right: INSET, bottom: INSET, display: "flex", zIndex: 1120 }}>
+        <div style={{ position: "absolute", top: colTop, left: INSET, right: INSET, bottom: INSET, display: "flex", zIndex: 1120 }}>
           {renderView(expanded)}
         </div>
       )}
