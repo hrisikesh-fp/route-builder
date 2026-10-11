@@ -21,7 +21,8 @@ import { CheckCircle2 } from "lucide-react"
 import { ConflictAssignmentBanner } from "@/components/conflict-assignment-banner"
 import { ConflictResolutionModal } from "@/components/conflict-resolution-modal"
 import { SideNavRail, SIDE_NAV_WIDTH, type LeftPanel } from "@/components/side-nav-rail"
-import { LeftPanelView, LEFT_PANEL_WIDTH } from "@/components/orders-panel"
+import { LEFT_PANEL_WIDTH } from "@/components/orders-panel"
+import { ViewPanel, type ViewDock } from "@/components/view-panel"
 import { RoutesPanel, RIGHT_PANEL_WIDTH } from "@/components/routes-panel"
 import { ReconciliationView } from "@/components/reconciliation-view"
 import { ListFilter, Plus } from "lucide-react"
@@ -36,7 +37,18 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [activeFilterCount, setActiveFilterCount] = useState(0)
   // 3D shell: Planning / Reconciliation, left input panel (rail), right output panel (Routes or Workspace)
   const [mode, setMode] = useState<AppMode>("planning")
-  const [leftPanel, setLeftPanel] = useState<LeftPanel | null>("orders")
+  // Views (Orders, Trucks, Drivers) — several can be open, each docked left / above / below the map
+  const [openViews, setOpenViews] = useState<LeftPanel[]>(["orders"])
+  const [viewDocks, setViewDocks] = useState<Record<LeftPanel, ViewDock>>({ orders: "left", trucks: "bottom", drivers: "bottom" })
+  const [bottomHeight, setBottomHeight] = useState(320)
+  const [topHeight, setTopHeight] = useState(280)
+  const [viewportHeight, setViewportHeight] = useState(900)
+  useEffect(() => {
+    const update = () => setViewportHeight(window.innerHeight)
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
   const [isRoutesOpen, setIsRoutesOpen] = useState(false)
   const [isRoutingConfigOpen, setIsRoutingConfigOpen] = useState(false)
   const [showAllRoutes, setShowAllRoutes] = useState(true)
@@ -185,12 +197,76 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const INSET = 4
   const bodyTop = APP_HEADER_HEIGHT + topOffset + (mode === "planning" ? METRICS_BAR_HEIGHT : 0)
   const isRightPanelOpen = isWorkspaceOpen || isRoutesOpen
-  const mapLeft = INSET + SIDE_NAV_WIDTH + (leftPanel ? LEFT_PANEL_WIDTH : 0)
+  const GAP = 4
+  const leftViews = openViews.filter((v) => viewDocks[v] === "left")
+  const topViews = openViews.filter((v) => viewDocks[v] === "top")
+  const bottomViews = openViews.filter((v) => viewDocks[v] === "bottom")
+  // Centre column = map plus anything docked above / below it
+  const colLeft = INSET + SIDE_NAV_WIDTH + (leftViews.length ? LEFT_PANEL_WIDTH : 0)
+  const colTop = bodyTop + INSET
+  const colHeight = Math.max(0, viewportHeight - colTop - INSET)
+  const MIN_MAP = 180
+  const topH = topViews.length ? Math.min(topHeight, colHeight - MIN_MAP - (bottomViews.length ? 160 : 0)) : 0
+  const bottomH = bottomViews.length ? Math.min(bottomHeight, colHeight - MIN_MAP - topH) : 0
+  const mapLeft = colLeft
   const mapRight = (isRightPanelOpen ? RIGHT_PANEL_WIDTH : 0) + INSET
+  const mapTop = colTop + (topH ? topH + GAP : 0)
+  const mapBottomInset = INSET + (bottomH ? bottomH + GAP : 0)
   const unassignedCount = filteredOrders.filter((o) => !o.routeId).length
   const totalGallons = filteredOrders.filter((o) => o.orderType !== "L").reduce((sum, o) => sum + (o.volume ?? 0), 0)
 
-  const handleRailSelect = (panel: LeftPanel) => setLeftPanel((cur) => (cur === panel ? null : panel))
+  // Rail toggles a view; it reopens where it was last docked
+  const handleRailSelect = (view: LeftPanel) =>
+    setOpenViews((cur) => (cur.includes(view) ? cur.filter((v) => v !== view) : [...cur, view]))
+  const closeView = (view: LeftPanel) => setOpenViews((cur) => cur.filter((v) => v !== view))
+  const dockView = (view: LeftPanel, dock: ViewDock) => setViewDocks((cur) => ({ ...cur, [view]: dock }))
+
+  // Drag the seam between the map and a docked region to resize it
+  const startResize = (edge: "top" | "bottom", e: React.MouseEvent) => {
+    e.preventDefault()
+    const startY = e.clientY
+    const startH = edge === "bottom" ? bottomH : topH
+    const onMove = (ev: MouseEvent) => {
+      const dy = ev.clientY - startY
+      const next = Math.max(140, edge === "bottom" ? startH - dy : startH + dy)
+      edge === "bottom" ? setBottomHeight(next) : setTopHeight(next)
+    }
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+      document.body.style.cursor = ""
+    }
+    document.body.style.cursor = "row-resize"
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }
+
+  const renderView = (view: LeftPanel) => (
+    <ViewPanel
+      key={view}
+      id={view}
+      dock={viewDocks[view]}
+      onDockChange={(d) => dockView(view, d)}
+      onClose={() => closeView(view)}
+      orders={filteredOrders}
+      onHoverOrder={setHoveredWorkspaceOrderId}
+      onAddToWorkspace={(orderIds) => handleAddFromList({ orderIds, routeIds: [] })}
+    />
+  )
+
+  const seam = (edge: "top" | "bottom", top: number): React.ReactNode => (
+    <div
+      role="separator"
+      aria-orientation="horizontal"
+      title="Drag to resize"
+      onMouseDown={(e) => startResize(edge, e)}
+      onMouseEnter={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "#6366F1") }}
+      onMouseLeave={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "#333") }}
+      style={{ position: "absolute", left: colLeft, right: mapRight, top: top - 4, height: 8, zIndex: 20, cursor: "row-resize", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+      <span style={{ width: 40, height: 3, borderRadius: 2, backgroundColor: "#333", transition: "background-color 120ms" }} />
+    </div>
+  )
   const handleRightPanelChange = (panel: "routes" | "workspace" | null) => {
     setIsRoutesOpen(panel === "routes")
     setIsWorkspaceOpen(panel === "workspace")
@@ -541,27 +617,38 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         />
       )}
 
-      {/* Left: rail + input panel */}
-      <SideNavRail active={leftPanel} onSelect={handleRailSelect} style={{ top: bodyTop + INSET, left: INSET, bottom: INSET }} />
-      {leftPanel && (
-        <LeftPanelView
-          panel={leftPanel}
-          orders={filteredOrders}
-          onCollapse={() => setLeftPanel(null)}
-          onHoverOrder={setHoveredWorkspaceOrderId}
-          onAddToWorkspace={(orderIds) => handleAddFromList({ orderIds, routeIds: [] })}
-          style={{ top: bodyTop + INSET, left: INSET + SIDE_NAV_WIDTH + INSET, width: LEFT_PANEL_WIDTH - 2 * INSET, bottom: INSET }}
-        />
+      {/* Rail toggles views; open views dock around the map */}
+      <SideNavRail active={mode === "planning" ? openViews : []} onSelect={handleRailSelect} style={{ top: bodyTop + INSET, left: INSET, bottom: INSET }} />
+      {leftViews.length > 0 && (
+        <div style={{ position: "absolute", top: colTop, left: INSET + SIDE_NAV_WIDTH + INSET, width: LEFT_PANEL_WIDTH - 2 * INSET, bottom: INSET, display: "flex", flexDirection: "column", gap: GAP, zIndex: 5 }}>
+          {leftViews.map(renderView)}
+        </div>
+      )}
+      {topViews.length > 0 && (
+        <>
+          <div style={{ position: "absolute", top: colTop, left: colLeft, right: mapRight, height: topH, display: "flex", gap: GAP, zIndex: 5 }}>
+            {topViews.map(renderView)}
+          </div>
+          {seam("top", colTop + topH + GAP / 2)}
+        </>
+      )}
+      {bottomViews.length > 0 && (
+        <>
+          <div style={{ position: "absolute", left: colLeft, right: mapRight, bottom: INSET, height: bottomH, display: "flex", gap: GAP, zIndex: 5 }}>
+            {bottomViews.map(renderView)}
+          </div>
+          {seam("bottom", viewportHeight - INSET - bottomH - GAP / 2)}
+        </>
       )}
 
       {/* Map region — bounded box; the map resizes as panels open and close */}
       <div
         style={{
           position: "absolute",
-          top: bodyTop + INSET,
+          top: mapTop,
           left: mapLeft,
           right: mapRight,
-          bottom: INSET,
+          bottom: mapBottomInset,
           borderRadius: 4,
           overflow: "hidden",
           backgroundColor: "#161616",
@@ -721,8 +808,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       <FilterSideSheet
         variant="floating"
         floatingLeft={mapLeft + 8}
-        floatingTop={bodyTop + INSET + 48}
-        floatingBottom={INSET + 8}
+        floatingTop={mapTop + 48}
+        floatingBottom={mapBottomInset + 8}
         onActiveFilterCountChange={setActiveFilterCount}
         isOpen={isFilterOpen && mode === "planning"}
         topOffset={topOffset}

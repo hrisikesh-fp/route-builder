@@ -4,7 +4,7 @@ import { ClipboardList, Truck, UserCheck, type LucideIcon } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // 3D shell left rail — Figma RB - Routing v2, node 9175:89003 ("Filter List").
-// Opens the left input panels (Orders, Trucks, Drivers). Names show on hover. More items later.
+// Toggles views (Orders, Trucks, Drivers). Views are not pages: several can be open, each docked around the map.
 
 export type LeftPanel = "orders" | "trucks" | "drivers"
 
@@ -17,7 +17,8 @@ const ITEMS: { id: LeftPanel; label: string; icon: LucideIcon }[] = [
 export const SIDE_NAV_WIDTH = 52
 
 interface SideNavRailProps {
-  active: LeftPanel | null
+  /** Views currently open (several can be open at once) */
+  active: LeftPanel[]
   onSelect: (panel: LeftPanel) => void
   style?: React.CSSProperties
 }
@@ -42,7 +43,7 @@ export function SideNavRail({ active, onSelect, style }: SideNavRailProps) {
         }}
       >
         {ITEMS.map(({ id, label, icon: Icon }) => {
-          const isActive = id === active
+          const isActive = active.includes(id)
           return (
             <Tooltip key={id} delayDuration={150}>
               <TooltipTrigger asChild>

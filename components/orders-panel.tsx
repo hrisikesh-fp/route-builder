@@ -12,7 +12,7 @@ import { orderTableColumns } from "@/components/rb-pages"
 // Orders: List (cards) or Table view. Group By only in Table view. Trucks / Drivers: empty for now.
 
 export const LEFT_PANEL_WIDTH = 600
-type OrdersView = "list" | "table"
+export type OrdersView = "list" | "table"
 type GroupKey = "none" | "status" | "type" | "customer"
 
 const GROUP_OPTIONS: { id: GroupKey; label: string }[] = [
@@ -80,7 +80,7 @@ function PanelShell({ title, onCollapse, children, style }: { title: string; onC
   )
 }
 
-function EmptyBody({ icon: Icon, text }: { icon: typeof Truck; text: string }) {
+export function EmptyBody({ icon: Icon, text }: { icon: typeof Truck; text: string }) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: 24, textAlign: "center" }}>
       <div style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: "#1F1F1F", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -114,8 +114,10 @@ export function LeftPanelView({ panel, orders, onCollapse, onHoverOrder, onAddTo
   )
 }
 
-function OrdersBody({ orders, onHoverOrder, onAddToWorkspace }: { orders: ExtractionOrder[]; onHoverOrder: (id: string | null) => void; onAddToWorkspace: (ids: string[]) => void }) {
-  const [view, setView] = useState<OrdersView>("list")
+export function OrdersBody({ orders, onHoverOrder, onAddToWorkspace, preferredView }: { orders: ExtractionOrder[]; onHoverOrder: (id: string | null) => void; onAddToWorkspace: (ids: string[]) => void; preferredView?: OrdersView }) {
+  const [view, setView] = useState<OrdersView>(preferredView ?? "list")
+  // Docking somewhere wide and short (top / bottom) suits the table; tall and narrow (left) suits cards
+  useEffect(() => { if (preferredView) setView(preferredView) }, [preferredView])
   const [search, setSearch] = useState("")
   const [groupKey, setGroupKey] = useState<GroupKey>("none")
   const [isGroupMenuOpen, setIsGroupMenuOpen] = useState(false)
