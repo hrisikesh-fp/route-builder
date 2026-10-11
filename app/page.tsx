@@ -27,9 +27,10 @@ import { SettingsModal } from "@/components/settings-modal"
 import {
   getLayoutTier, TIER_LABELS, LEFT_MIN, LEFT_MAX, RIGHT_MIN, RIGHT_MAX,
   MAP_MIN_WIDTH, MAP_MIN_HEIGHT, STACK_MIN_HEIGHT, MAX_LEFT_COLUMNS,
+  MAP_COMPACT_WIDTH, CREATE_SHEET_WIDTH, CREATE_SHEET_MIN_WIDTH,
 } from "@/lib/layout-tiers"
 import { ReconciliationView } from "@/components/reconciliation-view"
-import { ListFilter, Plus } from "lucide-react"
+import { ListFilter } from "lucide-react"
 import type { ListRoute } from "@/components/list-route-card"
 import { getRouteColor } from "@/lib/route-display"
 
@@ -53,6 +54,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(900)
   const [viewportWidth, setViewportWidth] = useState(1440)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  // Expand: one view, or the map, fills the whole planning area. Esc or the collapse icon puts it back.
+  const [expanded, setExpanded] = useState<LeftPanel | "map" | null>(null)
   useEffect(() => {
     const update = () => { setViewportHeight(window.innerHeight); setViewportWidth(window.innerWidth) }
     update()
@@ -78,15 +81,13 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // sheet so the modal can open prefilled with this shipto. Cleared when the modal closes.
   const [createOrderPrefillShipToId, setCreateOrderPrefillShipToId] = useState<string | null>(null)
 
-  // Modal 3 (side sheet) state — workspace is collapsed, Create Order floats to the right.
-  const [isCreateOrderSideSheetOpen, setIsCreateOrderSideSheetOpen] = useState(false)
   // Optimization drawer open state — surfaced so map controls can shift left.
   const [isOptimizationDrawerOpen, setIsOptimizationDrawerOpen] = useState(false)
   const [modal3UnassignedOrders, setModal3UnassignedOrders] = useState<ExtractionOrder[]>([])
 
   // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes.
   // Gated behind the `showDriverConflict` prototype flag (Settings → Driver Multi-Route Conflict).
-  const { showDriverConflict, unassignedOnly } = useSettings()
+  const { showDriverConflict, unassignedOnly, createOrderModalView } = useSettings()
   const [isConflictBannerResolved, setIsConflictBannerResolved] = useState(false)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
   // Flipping the flag on always re-arms a fresh banner so the scenario can be re-demoed.
@@ -144,7 +145,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     if (typeof window === "undefined") return
     ;(window as any).__openCreateOrderForShipTo = (shipToId: string) => {
       setCreateOrderPrefillShipToId(shipToId)
-      setIsWorkspaceOpen(true)
     }
     return () => {
       delete (window as any).__openCreateOrderForShipTo
@@ -224,6 +224,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const GAP = 4
   const bodyTop = APP_HEADER_HEIGHT + topOffset + (mode === "planning" ? METRICS_BAR_HEIGHT : 0)
   const isRightPanelOpen = isWorkspaceOpen || isRoutesOpen
+  // While something is expanded the right panel is covered (map) or sits underneath (view); state is kept
+  const isRightPanelShown = isRightPanelOpen && expanded !== "map"
   const tier = getLayoutTier(viewportWidth)
   const LEFT_START = INSET + SIDE_NAV_WIDTH + INSET // where the left column begins, right of the rail
 
@@ -238,7 +240,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     return { left, cols, floats, room: room(cols) }
   }
   const { left: leftViews, cols: leftCols, floats: leftFloats, room: leftRoom } = leftLayout(openViews)
-  const leftDocked = leftViews.length > 0 && !leftFloats
+  const leftDocked = leftViews.length > 0 && !leftFloats && expanded !== "map"
   // Column 1 opens at LEFT_MIN; the user drags it wider (up to LEFT_MAX) while there is room.
   // When room shrinks (right panel opens, window narrows) it gives width back before it floats.
   const col1Max = leftFloats ? LEFT_MAX : Math.max(LEFT_MIN, Math.min(LEFT_MAX, leftRoom))
@@ -248,14 +250,14 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const leftTotal = leftDocked ? col1W + (col2Views.length ? GAP + LEFT_MIN : 0) : 0
   const colLeft = leftDocked ? LEFT_START + leftTotal + GAP : INSET + SIDE_NAV_WIDTH
   // Right panel: RIGHT_MIN at least, grows to the tier's max while the map keeps its minimum
-  const rightW = isRightPanelOpen
+  const rightW = isRightPanelShown
     ? Math.max(RIGHT_MIN, Math.min(RIGHT_MAX[tier], viewportWidth - colLeft - INSET - MAP_MIN_WIDTH))
     : 0
   const mapRight = rightW + INSET
   const mapWidth = Math.max(0, viewportWidth - colLeft - mapRight)
 
-  const topViews = openViews.filter((v) => viewDocks[v] === "top")
-  const bottomViews = openViews.filter((v) => viewDocks[v] === "bottom")
+  const topViews = expanded === "map" ? [] : openViews.filter((v) => viewDocks[v] === "top")
+  const bottomViews = expanded === "map" ? [] : openViews.filter((v) => viewDocks[v] === "bottom")
   // Centre column = map plus anything docked above / below it; the map keeps MAP_MIN_HEIGHT
   const colTop = bodyTop + INSET
   const colHeight = Math.max(0, viewportHeight - colTop - INSET)
@@ -268,12 +270,21 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // Floating views sit inside the map, under the Filters button (same spot the Filters panel uses)
   const floatLeft = mapLeft + 8
   const floatW = Math.min(col1W, Math.max(LEFT_MIN, mapWidth - 16))
+  // Create Order side sheet: inside the map region on the right; the map controls move to its left
+  const isCreateSheetOpen = isCreateOrderModalOpen && createOrderModalView === "modal3"
+  const MAP_CONTROLS_W = 32 + 16
+  const createSheetW = Math.max(CREATE_SHEET_MIN_WIDTH, Math.min(CREATE_SHEET_WIDTH, mapWidth - 16 - MAP_CONTROLS_W))
+  const createSheetBounds = { top: mapTop, left: mapLeft, right: mapRight, bottom: mapBottomInset, width: createSheetW }
+  // Free map = what is left of the map beside the Create Order sheet; when it is narrow, Filters goes icon-only
+  const freeMapWidth = mapWidth - (isCreateSheetOpen ? createSheetW + 8 : 0)
+  const isFilterCompact = freeMapWidth < MAP_COMPACT_WIDTH
   const unassignedCount = filteredOrders.filter((o) => !o.routeId).length
   const totalGallons = filteredOrders.filter((o) => o.orderType !== "L").reduce((sum, o) => sum + (o.volume ?? 0), 0)
 
   // Rail toggles a view; it reopens where it was last docked. A floating view and the Filters
   // panel share the same spot on the map, so opening one closes the other.
   const handleRailSelect = (view: LeftPanel) => {
+    setExpanded(null)
     setStashedViews((cur) => cur.filter((v) => v !== view))
     if (openViews.includes(view)) {
       setOpenViews((cur) => cur.filter((v) => v !== view))
@@ -284,6 +295,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     setOpenViews(next)
   }
   const closeView = (view: LeftPanel) => {
+    setExpanded((cur) => (cur === view ? null : cur))
     setStashedViews((cur) => cur.filter((v) => v !== view))
     setOpenViews((cur) => cur.filter((v) => v !== view))
   }
@@ -351,7 +363,9 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       key={view}
       id={view}
       minHeight={viewDocks[view] === "left" ? STACK_MIN_HEIGHT : 0}
-      floating={viewDocks[view] === "left" && leftFloats}
+      floating={viewDocks[view] === "left" && leftFloats && expanded !== view}
+      isExpanded={expanded === view}
+      onToggleExpand={() => setExpanded((cur) => (cur === view ? null : view))}
       dock={viewDocks[view]}
       onDockChange={(d) => dockView(view, d)}
       onClose={() => closeView(view)}
@@ -418,6 +432,14 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isLassoDrawing])
+
+  // Esc collapses whatever is expanded (unless the lasso is drawing; Esc cancels that first)
+  useEffect(() => {
+    if (!expanded) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !isLassoDrawing) setExpanded(null) }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [expanded, isLassoDrawing])
 
   const handleAddRoute = () => {
     console.log("[v0] Add route clicked")
@@ -734,7 +756,9 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           routeCount={listRoutes.length}
           unassignedCount={unassignedCount}
           rightPanel={isWorkspaceOpen ? "workspace" : isRoutesOpen ? "routes" : null}
-          onRightPanelChange={handleRightPanelChange}
+          onRightPanelChange={(p) => { setExpanded(null); handleRightPanelChange(p) }}
+          onCreateOrder={() => setOpenCreateOrderTrigger((n) => n + 1)}
+          isCreateOrderDisabled={isCreateOrderModalOpen}
           topOffset={topOffset}
         />
       )}
@@ -744,29 +768,35 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       {mode === "planning" && leftDocked && (
         <>
           <div style={{ position: "absolute", top: colTop, left: LEFT_START, width: col1W, bottom: INSET, display: "flex", flexDirection: "column", gap: GAP, overflowY: "auto", zIndex: 5 }}>
-            {col1Views.map(renderView)}
+            {col1Views.filter((v) => v !== expanded).map(renderView)}
           </div>
           {col2Views.length > 0 && (
             <div style={{ position: "absolute", top: colTop, left: LEFT_START + col1W + GAP, width: LEFT_MIN, bottom: INSET, display: "flex", flexDirection: "column", gap: GAP, overflowY: "auto", zIndex: 5 }}>
-              {col2Views.map(renderView)}
+              {col2Views.filter((v) => v !== expanded).map(renderView)}
             </div>
           )}
           {widthSeam(LEFT_START + col1W + GAP / 2, colTop, INSET)}
         </>
       )}
       {/* Not enough room to dock beside the map: the left views float over it, like the Filters panel */}
-      {mode === "planning" && leftFloats && (
+      {mode === "planning" && leftFloats && expanded !== "map" && (
         <>
           <div style={{ position: "absolute", top: mapTop + 48, left: floatLeft, width: floatW, bottom: mapBottomInset + 8, display: "flex", flexDirection: "column", gap: GAP, overflowY: "auto", zIndex: 1010 }}>
-            {leftViews.map(renderView)}
+            {leftViews.filter((v) => v !== expanded).map(renderView)}
           </div>
           {widthSeam(floatLeft + floatW + 2, mapTop + 48, mapBottomInset + 8)}
         </>
       )}
+      {/* Expanded view: fills the planning area, over the map and the right panel */}
+      {mode === "planning" && expanded && expanded !== "map" && openViews.includes(expanded) && (
+        <div style={{ position: "absolute", top: colTop, left: LEFT_START, right: INSET, bottom: INSET, display: "flex", zIndex: 1120 }}>
+          {renderView(expanded)}
+        </div>
+      )}
       {topViews.length > 0 && (
         <>
           <div style={{ position: "absolute", top: colTop, left: colLeft, right: mapRight, height: topH, display: "flex", gap: GAP, zIndex: 5 }}>
-            {topViews.map(renderView)}
+            {topViews.filter((v) => v !== expanded).map(renderView)}
           </div>
           {seam("top", colTop + topH + GAP / 2)}
         </>
@@ -774,7 +804,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       {bottomViews.length > 0 && (
         <>
           <div style={{ position: "absolute", left: colLeft, right: mapRight, bottom: INSET, height: bottomH, display: "flex", gap: GAP, zIndex: 5 }}>
-            {bottomViews.map(renderView)}
+            {bottomViews.filter((v) => v !== expanded).map(renderView)}
           </div>
           {seam("bottom", viewportHeight - INSET - bottomH - GAP / 2)}
         </>
@@ -814,7 +844,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
           isWorkspaceOpen={isWorkspaceOpen}
           workspaceWidth={rightW}
-          isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
+          isCreateOrderSideSheetOpen={isCreateSheetOpen}
           addedLoadOrders={addedLoadOrders}
           selectedUnassignedOrderIds={selectedUnassignedIds}
           reorderedRoutes={reorderedRoutes}
@@ -825,17 +855,15 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           type="button"
           onClick={handleFilterToggle}
           aria-pressed={isFilterOpen}
-          style={{ ...mapButton, position: "absolute", top: 8, left: 8, zIndex: 1000, boxShadow: isFilterOpen ? "0 0 0 1px #737373, 0 0 0 4px rgba(115,115,115,0.5)" : "none" }}
+          aria-label="Filters"
+          title={isFilterCompact ? "Filters" : undefined}
+          style={{ ...mapButton, ...(isFilterCompact ? { width: 32, padding: 0, justifyContent: "center" } : null), position: "absolute", top: 8, left: 8, zIndex: 1000, boxShadow: isFilterOpen ? "0 0 0 1px #737373, 0 0 0 4px rgba(115,115,115,0.5)" : "none" }}
         >
-          <ListFilter size={16} /> Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-        </button>
-        <button
-          type="button"
-          disabled={isCreateOrderModalOpen}
-          onClick={() => { setIsWorkspaceOpen(true); setOpenCreateOrderTrigger((n) => n + 1) }}
-          style={{ ...mapButton, position: "absolute", top: 8, right: 8 + 32 + 8, zIndex: 1000, opacity: isCreateOrderModalOpen ? 0.4 : 1 }}
-        >
-          <Plus size={16} /> Create Order
+          <ListFilter size={16} />
+          {!isFilterCompact && <>Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}</>}
+          {isFilterCompact && activeFilterCount > 0 && (
+            <span style={{ position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, backgroundColor: "#6366F1", color: "#FFF", fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>{activeFilterCount}</span>
+          )}
         </button>
 
         <MapControls
@@ -850,12 +878,14 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           onSelectAll={handleSelectAll}
           isSelectAllDisabled={allOnMapInWorkspace}
           isWorkspaceOpen={isWorkspaceOpen}
-          isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
+          isCreateOrderSideSheetOpen={isCreateSheetOpen}
           isOptimizationDrawerOpen={isOptimizationDrawerOpen}
           entityVisibility={entityVisibility}
           onEntityVisibilityChange={setEntityVisibility}
           topOffset={topOffset}
-          pinned={{ top: 8, right: 8 }}
+          pinned={{ top: 8, right: isCreateSheetOpen ? 8 + createSheetW + 8 : 8 }}
+          isMapExpanded={expanded === "map"}
+          onToggleMapExpand={() => setExpanded((cur) => (cur === "map" ? null : "map"))}
         />
 
         {/* Prototype readout: which layout tier this window is in (tag name for analytics) */}
@@ -865,7 +895,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       </div>
 
       {/* Right: Routes (view only) — Workspace is the LassoWorkspaceSheet below */}
-      {mode === "planning" && isRoutesOpen && (
+      {mode === "planning" && isRoutesOpen && isRightPanelShown && (
         <RoutesPanel
           routes={listRoutes}
           orders={filteredOrders}
@@ -883,7 +913,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onEscapePressed={handleLassoEscape}
       />
       <LassoWorkspaceSheet
-        isOpen={isWorkspaceOpen && mode === "planning"}
+        isOpen={isWorkspaceOpen && mode === "planning" && isRightPanelShown}
         onClose={handleWorkspaceClose}
         selectedOrders={selectedOrders}
         selectedRouteIds={selectedRouteIds}
@@ -901,8 +931,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onClearCreateOrderPrefillShipToId={() => setCreateOrderPrefillShipToId(null)}
         initialExpandedRouteIds={[]}
         onExpandedRouteIdsChange={setExpandedRouteIds}
-        onCreateOrderSideSheetOpen={() => { setIsWorkspaceOpen(false); setIsCreateOrderSideSheetOpen(true) }}
-        onCreateOrderSideSheetClose={() => { setIsCreateOrderSideSheetOpen(false); setIsWorkspaceOpen(true) }}
+
         onOptimizationDrawerOpen={() => { setIsWorkspaceOpen(false); setIsOptimizationDrawerOpen(true) }}
         onOptimizationDrawerClose={() => { setIsWorkspaceOpen(true); setIsOptimizationDrawerOpen(false) }}
         externalUnassignedOrders={modal3UnassignedOrders}
@@ -910,6 +939,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}
         topOffset={topOffset + METRICS_BAR_HEIGHT}
         width={rightW || RIGHT_MAX[tier]}
+        createOrderSheetBounds={createSheetBounds}
         onRemoveRoutes={handleRemoveRoutes}
         onRemoveOrders={handleRemoveOrders}
         onShowToast={(driverName) => {

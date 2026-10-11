@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, LassoSelect, Layers, MapPinned, SquareDashedMousePointer } from "lucide-react"
+import { Minus, Plus, LassoSelect, Layers, MapPinned, Maximize2, Minimize2, SquareDashedMousePointer } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Entity visibility state type
@@ -36,6 +36,9 @@ interface MapControlsProps {
   topOffset?: number
   /** 3D shell: pin inside the map box at this offset (bypasses topOffset / panel-based right) */
   pinned?: { top: number; right: number }
+  /** 3D shell: expand the map to fill the planning area (own group, under the other controls) */
+  isMapExpanded?: boolean
+  onToggleMapExpand?: () => void
 }
 
 // ShipTo pin — exact Figma SVG, viewBox cropped to pin content (24×24 display)
@@ -152,6 +155,8 @@ export function MapControls({
   onEntityVisibilityChange,
   topOffset = 0,
   pinned,
+  isMapExpanded = false,
+  onToggleMapExpand,
 }: MapControlsProps) {
   const [isLayersOpen, setIsLayersOpen] = useState(false)
   const layersRef = useRef<HTMLDivElement>(null)
@@ -451,6 +456,33 @@ export function MapControls({
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {/* Expand / collapse the map — its own group, set apart from the map tools */}
+      {onToggleMapExpand && (
+        <>
+          <span aria-hidden style={{ height: 1, width: 20, margin: "4px auto", backgroundColor: "#333" }} />
+          <TooltipProvider>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={isMapExpanded ? "Collapse map" : "Expand map"}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                  style={{ backgroundColor: "#111", border: "1px solid #27272A" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#27272A" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#111" }}
+                  onClick={onToggleMapExpand}
+                >
+                  {isMapExpanded ? <Minimize2 className="h-4 w-4 text-white" /> : <Maximize2 className="h-4 w-4 text-white" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="z-[1001]">
+                <p>{isMapExpanded ? "Collapse map (Esc)" : "Expand map"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </>
+      )}
     </div>
   )
 }

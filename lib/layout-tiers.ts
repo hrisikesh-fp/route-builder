@@ -28,6 +28,13 @@ export const RIGHT_MAX: Record<LayoutTier, number> = { compact: 560, laptop: 560
 export const MAP_MIN_WIDTH = 480
 export const MAP_MIN_HEIGHT = 360 // to revisit after playing with it
 
+/** Below this much free map width, the Filters button becomes an icon button */
+export const MAP_COMPACT_WIDTH = 640
+
+/** Create Order side sheet floats inside the map, right side; map controls move to its left */
+export const CREATE_SHEET_WIDTH = 560
+export const CREATE_SHEET_MIN_WIDTH = 400
+
 /** A view stacked in the left column never gets shorter than this */
 export const STACK_MIN_HEIGHT = 240
 

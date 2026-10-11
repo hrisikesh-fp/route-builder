@@ -179,6 +179,8 @@ interface Props {
   onExpandToModal?: () => void
   /** Collapse icon: modal1/2 → modal3. Shown only when createOrderModalView !== "modal3". */
   onCollapseToDrawer?: () => void
+  /** 3D shell: the side sheet floats inside the map region (viewport offsets + sheet width) instead of the full right edge */
+  sheetBounds?: { top: number; left: number; right: number; bottom: number; width: number } | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -724,7 +726,7 @@ const PO_TYPE_OPTIONS = [
   { id: "spot", label: "Spot" },
 ]
 
-export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, editOrder, prefillDriverName, onExpandToModal, onCollapseToDrawer }: Props) {
+export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, editOrder, prefillDriverName, onExpandToModal, onCollapseToDrawer, sheetBounds = null }: Props) {
   const { customers, shipTosByCustomer } = useMemo(buildCustomerAndShipToIndex, [])
   const { createOrderModalView } = useSettings()
   const isEdit = !!editOrder
@@ -1384,8 +1386,11 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
         left: 0,
         right: 0,
         bottom: 0,
+        ...(createOrderModalView === "modal3" && sheetBounds
+          ? { top: sheetBounds.top, left: sheetBounds.left, right: sheetBounds.right, bottom: sheetBounds.bottom }
+          : null),
         backgroundColor: createOrderModalView === "modal3" ? "transparent" : "rgba(0,0,0,0.6)",
-        zIndex: 200,
+        zIndex: createOrderModalView === "modal3" && sheetBounds ? 1005 : 200,
         display: createOrderModalView === "modal3" ? "block" : "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -1411,9 +1416,9 @@ export function CreateOrderModal({ isOpen, onClose, onSubmit, prefillShipToId, e
           ...(createOrderModalView === "modal3" ? {
             position: "absolute",
             top: 8,
-            right: 52,
+            right: sheetBounds ? 8 : 52,
             bottom: 8,
-            width: 560,
+            width: sheetBounds ? sheetBounds.width : 560,
             pointerEvents: "auto",
             border: "1px solid #282828",
           } : {

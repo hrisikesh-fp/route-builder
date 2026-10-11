@@ -1,14 +1,15 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AppWindow, Check, ChevronDown, PanelBottom, PanelLeft, PanelTop, Truck, UserCheck, X, type LucideIcon } from "lucide-react"
+import { AppWindow, ChevronDown, Maximize2, Minimize2, PanelBottom, PanelLeft, PanelTop, Truck, UserCheck, X, type LucideIcon } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import type { LeftPanel } from "@/components/side-nav-rail"
 import { EmptyBody, OrdersBody } from "@/components/orders-panel"
 
 // A dockable view (Orders, Trucks, Drivers). The map is the anchor, like the chat in Claude Code:
 // views dock to its left, above it or below it. The right edge is reserved for Routes / Workspace.
-// Header: title · dock button (icon of where it sits + chevron menu to move it) · close.
+// Header: title · dock button (icon of where it sits + chevron menu to move it) · expand · close.
+// Expand fills the whole planning area (over the map and the right panel); collapse puts it back.
 
 export type ViewDock = "left" | "top" | "bottom"
 
@@ -32,6 +33,8 @@ interface ViewPanelProps {
   minHeight?: number
   /** Floating over the map (when docking would squeeze the map below its minimum) */
   floating?: boolean
+  isExpanded?: boolean
+  onToggleExpand?: () => void
 }
 
 const headerButton: React.CSSProperties = {
@@ -102,7 +105,7 @@ function DockMenu({ dock, onDockChange }: { dock: ViewDock; onDockChange: (d: Vi
   )
 }
 
-export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrder, onAddToWorkspace, minHeight = 0, floating = false }: ViewPanelProps) {
+export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrder, onAddToWorkspace, minHeight = 0, floating = false, isExpanded = false, onToggleExpand }: ViewPanelProps) {
   return (
     <section
       data-view={id}
@@ -123,7 +126,20 @@ export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrde
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 12px 0", height: 44, boxSizing: "border-box", flexShrink: 0 }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500, lineHeight: "28px", color: "#FFFFFF" }}>{TITLES[id]}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <DockMenu dock={dock} onDockChange={onDockChange} />
+          {!isExpanded && <DockMenu dock={dock} onDockChange={onDockChange} />}
+          {onToggleExpand && (
+            <button
+              type="button"
+              aria-label={isExpanded ? `Collapse ${TITLES[id]}` : `Expand ${TITLES[id]}`}
+              title={isExpanded ? "Collapse (Esc)" : "Expand"}
+              onClick={onToggleExpand}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#282828" }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
+              style={{ ...headerButton, width: 32 }}
+            >
+              {isExpanded ? <Minimize2 size={16} color="#E5E5E5" /> : <Maximize2 size={16} color="#E5E5E5" />}
+            </button>
+          )}
           <button
             type="button"
             aria-label={`Close ${TITLES[id]}`}
@@ -138,7 +154,7 @@ export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrde
         </div>
       </div>
       {id === "orders" && (
-        <OrdersBody orders={orders} onHoverOrder={onHoverOrder} onAddToWorkspace={onAddToWorkspace} preferredView={dock === "left" ? "list" : "table"} />
+        <OrdersBody orders={orders} onHoverOrder={onHoverOrder} onAddToWorkspace={onAddToWorkspace} preferredView={dock === "left" && !isExpanded ? "list" : "table"} />
       )}
       {id === "trucks" && <EmptyBody icon={Truck} text="Trucks for the day, with capacity and status, will show here." />}
       {id === "drivers" && <EmptyBody icon={UserCheck} text="Drivers and their shifts will show here." />}

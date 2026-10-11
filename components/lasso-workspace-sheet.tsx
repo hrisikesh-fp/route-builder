@@ -69,6 +69,8 @@ interface LassoWorkspaceSheetProps {
   topOffset?: number
   /** Panel width; the 3D shell grows it per layout tier (560 minimum) */
   width?: number
+  /** 3D shell: Create Order side sheet floats inside the map region */
+  createOrderSheetBounds?: { top: number; left: number; right: number; bottom: number; width: number } | null
   /** Removes whole routes (and their orders) from the workspace selection — owned by page.tsx. */
   onRemoveRoutes?: (routeIds: string[]) => void
   /** Removes individual (unassigned) orders from the workspace selection — owned by page.tsx. */
@@ -2969,6 +2971,7 @@ export function LassoWorkspaceSheet({
   onCreateOrderModalOpenChange,
   topOffset = 0,
   width = 560,
+  createOrderSheetBounds = null,
   onRemoveRoutes,
   onRemoveOrders,
 }: LassoWorkspaceSheetProps) {
@@ -3549,9 +3552,9 @@ export function LassoWorkspaceSheet({
         />
       )
     }
-    // Modal 3 side sheet: workspace is collapsed but the Create Order modal must stay rendered.
+    // Create Order with the workspace closed (3D shell opens it from the metrics bar): any modal style.
     // Component stays mounted (never conditionally removed from page.tsx), so state is preserved.
-    if (createOrderModalView === "modal3" && isCreateOrderModalOpen) {
+    if (isCreateOrderModalOpen) {
       const closeModal3 = () => {
         setIsCreateOrderModalOpen(false)
         setCreateOrderRouteId(null)
@@ -3564,10 +3567,9 @@ export function LassoWorkspaceSheet({
           prefillShipToId={createOrderPrefillShipToId ?? null}
           prefillDriverName={null}
           onClose={closeModal3}
-          onExpandToModal={() => {
-            updateCreateOrderModalView("modal1")
-            onCreateOrderSideSheetClose?.()
-          }}
+          sheetBounds={createOrderSheetBounds}
+          onExpandToModal={() => updateCreateOrderModalView("modal1")}
+          onCollapseToDrawer={() => updateCreateOrderModalView("modal3")}
           onSubmit={(data: CreateOrderSubmit) => {
             const orderId = `delivery-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
             const baseOrder: ExtractionOrder = {
@@ -5422,6 +5424,7 @@ export function LassoWorkspaceSheet({
       {isCreateOrderModalOpen && (
         <CreateOrderModal
           isOpen={isCreateOrderModalOpen}
+          sheetBounds={createOrderSheetBounds}
           editOrder={editOrder}
           prefillShipToId={createOrderPrefillShipToId ?? null}
           prefillDriverName={
@@ -5439,6 +5442,7 @@ export function LassoWorkspaceSheet({
             updateCreateOrderModalView("modal3")
             onCreateOrderSideSheetOpen?.()
           }}
+          onExpandToModal={() => updateCreateOrderModalView("modal1")}
           onSubmit={(data: CreateOrderSubmit) => {
             // Edit mode — prototype: confirm + close (no mock mutation yet).
             if (editOrder) {

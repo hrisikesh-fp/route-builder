@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { Plus } from "lucide-react"
 import { APP_HEADER_HEIGHT } from "@/components/app-header"
 
 // Planning metrics bar — Figma RB - Routing v2, node 9175:88983.
-// Left: the day's numbers. Right: Routes | Workspace, which open panels on the right edge.
+// Left: the day's numbers. Right: Create Order | Routes  Workspace (the last two open panels on the right edge).
 
 export const METRICS_BAR_HEIGHT = 56
 export type RightPanel = "routes" | "workspace" | null
@@ -15,6 +16,8 @@ interface MetricsBarProps {
   unassignedCount: number
   rightPanel: RightPanel
   onRightPanelChange: (panel: RightPanel) => void
+  onCreateOrder: () => void
+  isCreateOrderDisabled?: boolean
   topOffset?: number
 }
 
@@ -27,18 +30,23 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-function BarButton({ label, isActive, onClick }: { label: string; isActive: boolean; onClick: () => void }) {
+function BarButton({ label, isActive, onClick, icon, disabled = false }: { label: string; isActive: boolean; onClick: () => void; icon?: React.ReactNode; disabled?: boolean }) {
   const [hover, setHover] = useState(false)
   return (
     <button
       type="button"
       aria-pressed={isActive}
+      disabled={disabled}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
         height: 32,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
         padding: "0 12px",
+        opacity: disabled ? 0.4 : 1,
         border: "none",
         borderRadius: 4,
         backgroundColor: isActive ? "#282828" : hover ? "#1F1F1F" : "#111",
@@ -47,15 +55,16 @@ function BarButton({ label, isActive, onClick }: { label: string; isActive: bool
         fontWeight: 500,
         lineHeight: "20px",
         fontFamily: "inherit",
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
       }}
     >
+      {icon}
       {label}
     </button>
   )
 }
 
-export function MetricsBar({ totalGallons, routeCount, unassignedCount, rightPanel, onRightPanelChange, topOffset = 0 }: MetricsBarProps) {
+export function MetricsBar({ totalGallons, routeCount, unassignedCount, rightPanel, onRightPanelChange, onCreateOrder, isCreateOrderDisabled = false, topOffset = 0 }: MetricsBarProps) {
   const toggle = (panel: Exclude<RightPanel, null>) => onRightPanelChange(rightPanel === panel ? null : panel)
   return (
     <div
@@ -82,9 +91,10 @@ export function MetricsBar({ totalGallons, routeCount, unassignedCount, rightPan
         <Metric label="Unassigned Orders" value={unassignedCount} />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <BarButton label="Routes" isActive={rightPanel === "routes"} onClick={() => toggle("routes")} />
+        <BarButton label="Create Order" icon={<Plus size={16} />} isActive={false} disabled={isCreateOrderDisabled} onClick={onCreateOrder} />
+        <span style={{ width: 1, height: 18.5, backgroundColor: "#333" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 1, height: 18.5, backgroundColor: "#333" }} />
+          <BarButton label="Routes" isActive={rightPanel === "routes"} onClick={() => toggle("routes")} />
           <BarButton label="Workspace" isActive={rightPanel === "workspace"} onClick={() => toggle("workspace")} />
         </div>
       </div>
