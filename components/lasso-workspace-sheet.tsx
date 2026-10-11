@@ -67,6 +67,8 @@ interface LassoWorkspaceSheetProps {
   /** Modal 3: orders created via the side sheet flow (owned by page.tsx, merged into unassigned list). */
   externalUnassignedOrders?: ExtractionOrder[]
   topOffset?: number
+  /** Panel width; the 3D shell grows it per layout tier (560 minimum) */
+  width?: number
   /** Removes whole routes (and their orders) from the workspace selection — owned by page.tsx. */
   onRemoveRoutes?: (routeIds: string[]) => void
   /** Removes individual (unassigned) orders from the workspace selection — owned by page.tsx. */
@@ -2966,6 +2968,7 @@ export function LassoWorkspaceSheet({
   openCreateOrderTrigger,
   onCreateOrderModalOpenChange,
   topOffset = 0,
+  width = 560,
   onRemoveRoutes,
   onRemoveOrders,
 }: LassoWorkspaceSheetProps) {
@@ -3662,7 +3665,7 @@ export function LassoWorkspaceSheet({
       className="fixed right-0 bottom-0 z-[1100] flex flex-col"
       style={{
         top: 68 + topOffset,
-        width: 560,
+        width,
         backgroundColor: "#111111",
         borderLeft: "1px solid #282828",
         animation: "rb-co-drawer-in 320ms cubic-bezier(0.32, 0.72, 0, 1)",

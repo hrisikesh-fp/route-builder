@@ -28,6 +28,10 @@ interface ViewPanelProps {
   orders: ExtractionOrder[]
   onHoverOrder: (id: string | null) => void
   onAddToWorkspace: (orderIds: string[]) => void
+  /** Stacked views never get shorter than this */
+  minHeight?: number
+  /** Floating over the map (when docking would squeeze the map below its minimum) */
+  floating?: boolean
 }
 
 const headerButton: React.CSSProperties = {
@@ -98,7 +102,7 @@ function DockMenu({ dock, onDockChange }: { dock: ViewDock; onDockChange: (d: Vi
   )
 }
 
-export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrder, onAddToWorkspace }: ViewPanelProps) {
+export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrder, onAddToWorkspace, minHeight = 0, floating = false }: ViewPanelProps) {
   return (
     <section
       data-view={id}
@@ -106,13 +110,14 @@ export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrde
         position: "relative",
         flex: 1,
         minWidth: 0,
-        minHeight: 0,
+        minHeight,
         display: "flex",
         flexDirection: "column",
         backgroundColor: "#171717",
         borderRadius: 4,
         overflow: "hidden",
         fontFamily: "Geist, sans-serif",
+        ...(floating ? { border: "1px solid #282828", boxShadow: "0 16px 40px rgba(0,0,0,0.55)" } : null),
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 12px 0", height: 44, boxSizing: "border-box", flexShrink: 0 }}>

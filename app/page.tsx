@@ -21,9 +21,13 @@ import { CheckCircle2 } from "lucide-react"
 import { ConflictAssignmentBanner } from "@/components/conflict-assignment-banner"
 import { ConflictResolutionModal } from "@/components/conflict-resolution-modal"
 import { SideNavRail, SIDE_NAV_WIDTH, type LeftPanel } from "@/components/side-nav-rail"
-import { LEFT_PANEL_WIDTH } from "@/components/orders-panel"
 import { ViewPanel, type ViewDock } from "@/components/view-panel"
-import { RoutesPanel, RIGHT_PANEL_WIDTH } from "@/components/routes-panel"
+import { RoutesPanel } from "@/components/routes-panel"
+import { SettingsModal } from "@/components/settings-modal"
+import {
+  getLayoutTier, TIER_LABELS, LEFT_MIN, LEFT_MAX, RIGHT_MIN, RIGHT_MAX,
+  MAP_MIN_WIDTH, MAP_MIN_HEIGHT, STACK_MIN_HEIGHT, MAX_LEFT_COLUMNS,
+} from "@/lib/layout-tiers"
 import { ReconciliationView } from "@/components/reconciliation-view"
 import { ListFilter, Plus } from "lucide-react"
 import type { ListRoute } from "@/components/list-route-card"
@@ -37,14 +41,20 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [activeFilterCount, setActiveFilterCount] = useState(0)
   // 3D shell: Planning / Reconciliation, left input panel (rail), right output panel (Routes or Workspace)
   const [mode, setMode] = useState<AppMode>("planning")
-  // Views (Orders, Trucks, Drivers) — several can be open, each docked left / above / below the map
+  // Views (Orders, Trucks, Drivers) — several can be open. All open in the left column (stacked) so the
+  // map keeps its height; above / below the map is a choice from each view's dock menu.
   const [openViews, setOpenViews] = useState<LeftPanel[]>(["orders"])
-  const [viewDocks, setViewDocks] = useState<Record<LeftPanel, ViewDock>>({ orders: "left", trucks: "bottom", drivers: "bottom" })
+  const [viewDocks, setViewDocks] = useState<Record<LeftPanel, ViewDock>>({ orders: "left", trucks: "left", drivers: "left" })
+  // Views collapsed to the rail because the right panel needed their room; they come back when it closes
+  const [stashedViews, setStashedViews] = useState<LeftPanel[]>([])
+  const [leftWidth, setLeftWidth] = useState(LEFT_MIN)
   const [bottomHeight, setBottomHeight] = useState(320)
   const [topHeight, setTopHeight] = useState(280)
   const [viewportHeight, setViewportHeight] = useState(900)
+  const [viewportWidth, setViewportWidth] = useState(1440)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   useEffect(() => {
-    const update = () => setViewportHeight(window.innerHeight)
+    const update = () => { setViewportHeight(window.innerHeight); setViewportWidth(window.innerWidth) }
     update()
     window.addEventListener("resize", update)
     return () => window.removeEventListener("resize", update)
@@ -76,7 +86,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
   // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes.
   // Gated behind the `showDriverConflict` prototype flag (Settings → Driver Multi-Route Conflict).
-  const { showDriverConflict } = useSettings()
+  const { showDriverConflict, unassignedOnly } = useSettings()
   const [isConflictBannerResolved, setIsConflictBannerResolved] = useState(false)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
   // Flipping the flag on always re-arms a fresh banner so the scenario can be re-demoed.
@@ -153,10 +163,26 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // Merge static mock orders with workspace-created orders so the map sees freshly added
   // pins + routes can redraw with the new stop. Routed adds carry routeId + routeSequence;
   // unassigned adds don't, so they show as Unassigned pins on the map.
+  // Prototype data: "Unassigned orders only" (Settings, on by default) starts the day before any routes
+  // exist, so every order of every type comes in unassigned.
+  const baseOrders = useMemo<ExtractionOrder[]>(
+    () => unassignedOnly
+      ? mockExtractionOrders.map((o) => ({ ...o, routeId: undefined, routeSequence: undefined, driverId: undefined, status: "pending" as const }))
+      : mockExtractionOrders,
+    [unassignedOnly],
+  )
   const filteredOrders = useMemo(() => {
     const routedAdds = Object.values(addedDeliveryOrders).flat()
-    return [...mockExtractionOrders, ...routedAdds, ...modal3UnassignedOrders]
-  }, [addedDeliveryOrders, modal3UnassignedOrders])
+    return [...baseOrders, ...routedAdds, ...modal3UnassignedOrders]
+  }, [baseOrders, addedDeliveryOrders, modal3UnassignedOrders])
+  // Switching the data set empties the workspace so it never holds routes that no longer exist
+  const isFirstDataRender = useRef(true)
+  useEffect(() => {
+    if (isFirstDataRender.current) { isFirstDataRender.current = false; return }
+    setSelectedOrders([])
+    setSelectedRouteIds([])
+    setCheckedRouteIds([])
+  }, [unassignedOnly])
 
   const selectedUnassignedIds = useMemo(
     () => selectedOrders.filter(o => !o.routeId).map(o => o.id),
@@ -193,33 +219,112 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     if (isWorkspaceOpen) setIsRoutesOpen(false)
   }, [isWorkspaceOpen])
 
-  // ── 3D shell layout (Figma 9175:88966) ──
+  // ── 3D shell layout (Figma 9175:88966; rules in lib/layout-tiers.ts) ──
   const INSET = 4
+  const GAP = 4
   const bodyTop = APP_HEADER_HEIGHT + topOffset + (mode === "planning" ? METRICS_BAR_HEIGHT : 0)
   const isRightPanelOpen = isWorkspaceOpen || isRoutesOpen
-  const GAP = 4
-  const leftViews = openViews.filter((v) => viewDocks[v] === "left")
+  const tier = getLayoutTier(viewportWidth)
+  const LEFT_START = INSET + SIDE_NAV_WIDTH + INSET // where the left column begins, right of the rail
+
+  // Left views push the map while it keeps MAP_MIN_WIDTH; otherwise they float over it.
+  // Room = how wide column 1 can be with the right panel at its minimum and the map at its minimum.
+  const leftLayout = (views: LeftPanel[]) => {
+    const left = views.filter((v) => viewDocks[v] === "left")
+    const room = (cols: number) =>
+      viewportWidth - LEFT_START - GAP - (isRightPanelOpen ? RIGHT_MIN : 0) - INSET - MAP_MIN_WIDTH - (cols === 2 ? LEFT_MIN + GAP : 0)
+    const cols = MAX_LEFT_COLUMNS[tier] >= 2 && left.length >= 2 && room(2) >= LEFT_MIN ? 2 : 1
+    const floats = left.length > 0 && (tier === "compact" || room(cols) < LEFT_MIN)
+    return { left, cols, floats, room: room(cols) }
+  }
+  const { left: leftViews, cols: leftCols, floats: leftFloats, room: leftRoom } = leftLayout(openViews)
+  const leftDocked = leftViews.length > 0 && !leftFloats
+  // Column 1 opens at LEFT_MIN; the user drags it wider (up to LEFT_MAX) while there is room.
+  // When room shrinks (right panel opens, window narrows) it gives width back before it floats.
+  const col1Max = leftFloats ? LEFT_MAX : Math.max(LEFT_MIN, Math.min(LEFT_MAX, leftRoom))
+  const col1W = Math.min(Math.max(leftWidth, LEFT_MIN), col1Max)
+  const col1Views = leftDocked && leftCols === 2 ? leftViews.slice(0, 1) : leftViews
+  const col2Views = leftDocked && leftCols === 2 ? leftViews.slice(1) : []
+  const leftTotal = leftDocked ? col1W + (col2Views.length ? GAP + LEFT_MIN : 0) : 0
+  const colLeft = leftDocked ? LEFT_START + leftTotal + GAP : INSET + SIDE_NAV_WIDTH
+  // Right panel: RIGHT_MIN at least, grows to the tier's max while the map keeps its minimum
+  const rightW = isRightPanelOpen
+    ? Math.max(RIGHT_MIN, Math.min(RIGHT_MAX[tier], viewportWidth - colLeft - INSET - MAP_MIN_WIDTH))
+    : 0
+  const mapRight = rightW + INSET
+  const mapWidth = Math.max(0, viewportWidth - colLeft - mapRight)
+
   const topViews = openViews.filter((v) => viewDocks[v] === "top")
   const bottomViews = openViews.filter((v) => viewDocks[v] === "bottom")
-  // Centre column = map plus anything docked above / below it
-  const colLeft = INSET + SIDE_NAV_WIDTH + (leftViews.length ? LEFT_PANEL_WIDTH : 0)
+  // Centre column = map plus anything docked above / below it; the map keeps MAP_MIN_HEIGHT
   const colTop = bodyTop + INSET
   const colHeight = Math.max(0, viewportHeight - colTop - INSET)
-  const MIN_MAP = 180
-  const topH = topViews.length ? Math.min(topHeight, colHeight - MIN_MAP - (bottomViews.length ? 160 : 0)) : 0
-  const bottomH = bottomViews.length ? Math.min(bottomHeight, colHeight - MIN_MAP - topH) : 0
+  const DOCK_MIN_HEIGHT = 140
+  const topH = topViews.length ? Math.max(0, Math.min(topHeight, colHeight - MAP_MIN_HEIGHT - (bottomViews.length ? DOCK_MIN_HEIGHT + GAP : 0))) : 0
+  const bottomH = bottomViews.length ? Math.max(0, Math.min(bottomHeight, colHeight - MAP_MIN_HEIGHT - (topH ? topH + GAP : 0))) : 0
   const mapLeft = colLeft
-  const mapRight = (isRightPanelOpen ? RIGHT_PANEL_WIDTH : 0) + INSET
   const mapTop = colTop + (topH ? topH + GAP : 0)
   const mapBottomInset = INSET + (bottomH ? bottomH + GAP : 0)
+  // Floating views sit inside the map, under the Filters button (same spot the Filters panel uses)
+  const floatLeft = mapLeft + 8
+  const floatW = Math.min(col1W, Math.max(LEFT_MIN, mapWidth - 16))
   const unassignedCount = filteredOrders.filter((o) => !o.routeId).length
   const totalGallons = filteredOrders.filter((o) => o.orderType !== "L").reduce((sum, o) => sum + (o.volume ?? 0), 0)
 
-  // Rail toggles a view; it reopens where it was last docked
-  const handleRailSelect = (view: LeftPanel) =>
-    setOpenViews((cur) => (cur.includes(view) ? cur.filter((v) => v !== view) : [...cur, view]))
-  const closeView = (view: LeftPanel) => setOpenViews((cur) => cur.filter((v) => v !== view))
+  // Rail toggles a view; it reopens where it was last docked. A floating view and the Filters
+  // panel share the same spot on the map, so opening one closes the other.
+  const handleRailSelect = (view: LeftPanel) => {
+    setStashedViews((cur) => cur.filter((v) => v !== view))
+    if (openViews.includes(view)) {
+      setOpenViews((cur) => cur.filter((v) => v !== view))
+      return
+    }
+    const next = [...openViews, view]
+    if (leftLayout(next).floats) setIsFilterOpen(false)
+    setOpenViews(next)
+  }
+  const closeView = (view: LeftPanel) => {
+    setStashedViews((cur) => cur.filter((v) => v !== view))
+    setOpenViews((cur) => cur.filter((v) => v !== view))
+  }
   const dockView = (view: LeftPanel, dock: ViewDock) => setViewDocks((cur) => ({ ...cur, [view]: dock }))
+  const handleFilterToggle = () => {
+    if (!isFilterOpen && leftFloats) setOpenViews((cur) => cur.filter((v) => !leftViews.includes(v)))
+    setIsFilterOpen((open) => !open)
+  }
+
+  // Opening Routes / Workspace: if the left views would no longer fit beside it, they collapse to the
+  // rail (reopen there, floating). Closing the right panel brings them back docked.
+  const prevRightOpen = useRef(isRightPanelOpen)
+  useEffect(() => {
+    const wasOpen = prevRightOpen.current
+    prevRightOpen.current = isRightPanelOpen
+    if (isRightPanelOpen && !wasOpen && leftFloats) {
+      setStashedViews(leftViews)
+      setOpenViews((cur) => cur.filter((v) => !leftViews.includes(v)))
+    }
+    if (!isRightPanelOpen && wasOpen && stashedViews.length) {
+      setOpenViews((cur) => [...cur, ...stashedViews.filter((v) => !cur.includes(v))])
+      setStashedViews([])
+    }
+  }, [isRightPanelOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Drag column 1's right edge to widen the left views (LEFT_MIN to whatever room allows)
+  const startWidthResize = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = col1W
+    const maxW = leftFloats ? Math.min(LEFT_MAX, Math.max(LEFT_MIN, mapWidth - 16)) : col1Max
+    const onMove = (ev: MouseEvent) => setLeftWidth(Math.min(maxW, Math.max(LEFT_MIN, startW + ev.clientX - startX)))
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+      document.body.style.cursor = ""
+    }
+    document.body.style.cursor = "col-resize"
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }
 
   // Drag the seam between the map and a docked region to resize it
   const startResize = (edge: "top" | "bottom", e: React.MouseEvent) => {
@@ -228,7 +333,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     const startH = edge === "bottom" ? bottomH : topH
     const onMove = (ev: MouseEvent) => {
       const dy = ev.clientY - startY
-      const next = Math.max(140, edge === "bottom" ? startH - dy : startH + dy)
+      const next = Math.max(DOCK_MIN_HEIGHT, edge === "bottom" ? startH - dy : startH + dy)
       edge === "bottom" ? setBottomHeight(next) : setTopHeight(next)
     }
     const onUp = () => {
@@ -245,6 +350,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     <ViewPanel
       key={view}
       id={view}
+      minHeight={viewDocks[view] === "left" ? STACK_MIN_HEIGHT : 0}
+      floating={viewDocks[view] === "left" && leftFloats}
       dock={viewDocks[view]}
       onDockChange={(d) => dockView(view, d)}
       onClose={() => closeView(view)}
@@ -252,6 +359,20 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       onHoverOrder={setHoveredWorkspaceOrderId}
       onAddToWorkspace={(orderIds) => handleAddFromList({ orderIds, routeIds: [] })}
     />
+  )
+
+  const widthSeam = (x: number, top: number, bottom: number): React.ReactNode => (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      title="Drag to resize"
+      onMouseDown={startWidthResize}
+      onMouseEnter={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "#6366F1") }}
+      onMouseLeave={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "#333") }}
+      style={{ position: "absolute", left: x - 4, width: 8, top, bottom, zIndex: 1020, cursor: "col-resize", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+      <span style={{ width: 3, height: 40, borderRadius: 2, backgroundColor: "#333", transition: "background-color 120ms" }} />
+    </div>
   )
 
   const seam = (edge: "top" | "bottom", top: number): React.ReactNode => (
@@ -592,11 +713,12 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   }
 
   return (
-    <main className="relative w-full h-screen overflow-hidden" style={{ backgroundColor: "#111" }}>
+    <main className="relative w-full h-screen overflow-hidden" data-layout-tier={tier} style={{ backgroundColor: "#111" }}>
       <AppHeader
         mode={mode}
         onModeChange={(m) => { setMode(m); setIsFilterOpen(false) }}
         onSettingsClick={() => setIsRoutingConfigOpen(true)}
+        onPrototypeSettingsClick={() => setIsSettingsOpen(true)}
       />
 
       {isConflictBannerVisible && (
@@ -619,10 +741,27 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
       {/* Rail toggles views; open views dock around the map */}
       <SideNavRail active={mode === "planning" ? openViews : []} onSelect={handleRailSelect} style={{ top: bodyTop + INSET, left: INSET, bottom: INSET }} />
-      {leftViews.length > 0 && (
-        <div style={{ position: "absolute", top: colTop, left: INSET + SIDE_NAV_WIDTH + INSET, width: LEFT_PANEL_WIDTH - 2 * INSET, bottom: INSET, display: "flex", flexDirection: "column", gap: GAP, zIndex: 5 }}>
-          {leftViews.map(renderView)}
-        </div>
+      {mode === "planning" && leftDocked && (
+        <>
+          <div style={{ position: "absolute", top: colTop, left: LEFT_START, width: col1W, bottom: INSET, display: "flex", flexDirection: "column", gap: GAP, overflowY: "auto", zIndex: 5 }}>
+            {col1Views.map(renderView)}
+          </div>
+          {col2Views.length > 0 && (
+            <div style={{ position: "absolute", top: colTop, left: LEFT_START + col1W + GAP, width: LEFT_MIN, bottom: INSET, display: "flex", flexDirection: "column", gap: GAP, overflowY: "auto", zIndex: 5 }}>
+              {col2Views.map(renderView)}
+            </div>
+          )}
+          {widthSeam(LEFT_START + col1W + GAP / 2, colTop, INSET)}
+        </>
+      )}
+      {/* Not enough room to dock beside the map: the left views float over it, like the Filters panel */}
+      {mode === "planning" && leftFloats && (
+        <>
+          <div style={{ position: "absolute", top: mapTop + 48, left: floatLeft, width: floatW, bottom: mapBottomInset + 8, display: "flex", flexDirection: "column", gap: GAP, overflowY: "auto", zIndex: 1010 }}>
+            {leftViews.map(renderView)}
+          </div>
+          {widthSeam(floatLeft + floatW + 2, mapTop + 48, mapBottomInset + 8)}
+        </>
       )}
       {topViews.length > 0 && (
         <>
@@ -674,7 +813,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           expandedRouteIds={expandedRouteIds}
           hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
           isWorkspaceOpen={isWorkspaceOpen}
-          workspaceWidth={RIGHT_PANEL_WIDTH}
+          workspaceWidth={rightW}
           isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
           addedLoadOrders={addedLoadOrders}
           selectedUnassignedOrderIds={selectedUnassignedIds}
@@ -684,7 +823,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         {/* Actions on map — Figma 9175:89258 */}
         <button
           type="button"
-          onClick={() => setIsFilterOpen((open) => !open)}
+          onClick={handleFilterToggle}
           aria-pressed={isFilterOpen}
           style={{ ...mapButton, position: "absolute", top: 8, left: 8, zIndex: 1000, boxShadow: isFilterOpen ? "0 0 0 1px #737373, 0 0 0 4px rgba(115,115,115,0.5)" : "none" }}
         >
@@ -718,6 +857,11 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           topOffset={topOffset}
           pinned={{ top: 8, right: 8 }}
         />
+
+        {/* Prototype readout: which layout tier this window is in (tag name for analytics) */}
+        <div style={{ position: "absolute", left: 8, bottom: 8, zIndex: 1000, padding: "2px 8px", borderRadius: 4, backgroundColor: "rgba(17,17,17,0.8)", color: "#737373", fontSize: 12, fontFamily: "Geist, sans-serif", pointerEvents: "none" }}>
+          {TIER_LABELS[tier]} · {viewportWidth}px · map {Math.round(mapWidth)}px
+        </div>
       </div>
 
       {/* Right: Routes (view only) — Workspace is the LassoWorkspaceSheet below */}
@@ -729,7 +873,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           onHoverRoute={setHoveredWorkspaceRouteId}
           onHoverStop={setHoveredWorkspaceOrderId}
           onEditInWorkspace={(routeId) => handleAddFromList({ orderIds: [], routeIds: [routeId] })}
-          style={{ top: bodyTop, right: 0, bottom: 0 }}
+          style={{ top: bodyTop, right: 0, bottom: 0, width: rightW }}
         />
       )}
 
@@ -765,6 +909,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         openCreateOrderTrigger={openCreateOrderTrigger}
         onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}
         topOffset={topOffset + METRICS_BAR_HEIGHT}
+        width={rightW || RIGHT_MAX[tier]}
         onRemoveRoutes={handleRemoveRoutes}
         onRemoveOrders={handleRemoveOrders}
         onShowToast={(driverName) => {
@@ -840,6 +985,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       <CreateRoutePanel isOpen={isCreatePanelOpen} onClose={() => setIsCreatePanelOpen(false)} />
 
       <RoutingConfigOverlay isOpen={isRoutingConfigOpen} onClose={() => setIsRoutingConfigOpen(false)} />
+
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
       <ConflictResolutionModal
         isOpen={isConflictModalOpen && showDriverConflict}

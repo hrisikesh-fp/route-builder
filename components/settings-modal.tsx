@@ -1,6 +1,6 @@
 "use client"
 
-import { X, Settings, Route, Tag, Sun, Pencil, GitBranch } from "lucide-react"
+import { X, Settings, Route, Tag, Sun, Pencil, GitBranch, ClipboardList } from "lucide-react"
 import { useSettings } from "@/contexts/settings-context"
 import { Switch } from "@/components/ui/switch"
 
@@ -19,6 +19,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     showEditInFab,
     showDriverConflict,
     optimizationInputLayout,
+    unassignedOnly,
+    updateUnassignedOnly,
     updateRouteLineDisplay,
     updateShowBadges,
     updateReducedOpacity,
@@ -71,6 +73,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* Content */}
         <div className="p-6" style={{ display: "flex", flexDirection: "column", gap: 24, overflowY: "auto", flex: 1 }}>
+
+          {/* ── PROTOTYPE DATA ── */}
+          <div className="flex items-center justify-between p-4 rounded-lg" style={{ border: "1px solid #282828" }}>
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center mt-0.5" style={{ backgroundColor: "#282828" }}>
+                <ClipboardList className="w-5 h-5 text-[#A3A3A3]" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                  Unassigned orders only
+                </span>
+                <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                  Start of the day: every order, of any type, is unassigned and no routes exist yet. Turn off to load the demo routes.
+                </span>
+              </div>
+            </div>
+            <Switch
+              checked={unassignedOnly}
+              onCheckedChange={updateUnassignedOnly}
+              className="data-[state=checked]:bg-[#6366F1] data-[state=unchecked]:bg-[#404040]"
+            />
+          </div>
 
           {/* ── APPEARANCE ── */}
           <div>

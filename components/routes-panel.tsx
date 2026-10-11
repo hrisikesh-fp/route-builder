@@ -5,7 +5,7 @@ import { Search, X } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { ListRouteCard, type ListRoute } from "@/components/list-route-card"
 
-// 3D shell Routes panel (right side, read only) — opened from "Routes" in the metrics bar.
+// 3D shell Routes panel (right side, read only; width comes from the layout tier, see lib/layout-tiers.ts) — opened from "Routes" in the metrics bar.
 // Viewing the day's routes; "Edit in workspace" moves a route into the Workspace. No Figma node yet.
 
 export const RIGHT_PANEL_WIDTH = 560
@@ -60,6 +60,12 @@ export function RoutesPanel({ routes, orders, onClose, onHoverRoute, onHoverStop
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 24px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {routes.length === 0 && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "48px 0" }}>
+            <div style={{ fontSize: 16, fontWeight: 500, color: "#E5E5E5" }}>No routes yet</div>
+            <div style={{ fontSize: 14, color: "#737373", maxWidth: 320 }}>Every order is still unassigned. Routes you create in the workspace will show here.</div>
+          </div>
+        )}
         {visible.map((route) => (
           <ListRouteCard
             key={route.id}

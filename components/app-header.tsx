@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Calendar, ChevronDown, Key, LogOut, Maximize2, Settings, Shield, SquarePen } from "lucide-react"
+import { Bell, Calendar, ChevronDown, Key, LogOut, Maximize2, Settings, Shield, SlidersHorizontal, SquarePen } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useMemo, useRef, useState } from "react"
 
@@ -14,6 +14,8 @@ interface AppHeaderProps {
   mode: AppMode
   onModeChange: (mode: AppMode) => void
   onSettingsClick: () => void
+  /** Opens the prototype Settings modal (data and display flags) */
+  onPrototypeSettingsClick?: () => void
 }
 
 const INBOX_ITEMS = [
@@ -47,7 +49,7 @@ function useOutsideClose(ref: React.RefObject<HTMLElement | null>, onClose: () =
   }, [ref, onClose])
 }
 
-export function AppHeader({ mode, onModeChange, onSettingsClick }: AppHeaderProps) {
+export function AppHeader({ mode, onModeChange, onSettingsClick, onPrototypeSettingsClick }: AppHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isInboxOpen, setIsInboxOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -229,6 +231,12 @@ export function AppHeader({ mode, onModeChange, onSettingsClick }: AppHeaderProp
                   className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 transition-colors"
                 >
                   <Settings className="w-5 h-5" /><span>Routing Configuration</span>
+                </button>
+                <button
+                  onClick={() => { setIsProfileOpen(false); onPrototypeSettingsClick?.() }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 transition-colors"
+                >
+                  <SlidersHorizontal className="w-5 h-5" /><span>Prototype Settings</span>
                 </button>
                 <button className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 transition-colors"><Shield className="w-5 h-5" /><span>2FA Authentication</span></button>
                 <button className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/5 transition-colors"><LogOut className="w-5 h-5" /><span>Logout</span></button>
