@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, LassoSelect, Layers, MapPinned, Maximize2, Minimize2, SquareDashedMousePointer } from "lucide-react"
+import { Focus, Minus, Plus, LassoSelect, Layers, MapPinned, Maximize2, Minimize2, SquareDashedMousePointer } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Entity visibility state type
@@ -39,6 +39,8 @@ interface MapControlsProps {
   /** 3D shell: expand the map to fill the planning area (own group, under the other controls) */
   isMapExpanded?: boolean
   onToggleMapExpand?: () => void
+  /** Zoom to the level that shows every order and route on the map */
+  onZoomToFit?: () => void
 }
 
 // ShipTo pin — exact Figma SVG, viewBox cropped to pin content (24×24 display)
@@ -157,6 +159,7 @@ export function MapControls({
   pinned,
   isMapExpanded = false,
   onToggleMapExpand,
+  onZoomToFit,
 }: MapControlsProps) {
   const [isLayersOpen, setIsLayersOpen] = useState(false)
   const layersRef = useRef<HTMLDivElement>(null)
@@ -208,6 +211,33 @@ export function MapControls({
         right: pinned ? pinned.right : getRightPosition(),
       }}
     >
+      {/* Expand / collapse the map — its own group, set apart from the map tools */}
+      {onToggleMapExpand && (
+        <>
+          <TooltipProvider>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={isMapExpanded ? "Collapse map" : "Expand map"}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                  style={{ backgroundColor: "#111", border: "1px solid #27272A" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#27272A" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#111" }}
+                  onClick={onToggleMapExpand}
+                >
+                  {isMapExpanded ? <Minimize2 className="h-4 w-4 text-white" /> : <Maximize2 className="h-4 w-4 text-white" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="z-[1001]">
+                <p>{isMapExpanded ? "Collapse map (Esc)" : "Expand map"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <span aria-hidden style={{ height: 1, width: 20, margin: "0 auto", backgroundColor: "#333" }} />
+        </>
+      )}
+
       {/* Map Layers Button with Dropdown */}
       <div className="relative" ref={layersRef}>
         <TooltipProvider>
@@ -341,86 +371,35 @@ export function MapControls({
         )}
       </div>
 
-      {/* Zoom Controls */}
-      <div className="flex flex-col bg-card/95 backdrop-blur-sm rounded-lg border border-border overflow-hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 rounded-none border-b border-border"
-          onClick={onZoomIn}
-        >
+      {/* Zoom Controls — one group, 32px wide including its border */}
+      <div className="flex flex-col rounded-lg overflow-hidden" style={{ width: 32, boxSizing: "border-box", border: "1px solid #27272A", backgroundColor: "#18181B" }}>
+        <Button variant="ghost" size="icon" className="h-[31px] w-full rounded-none" style={{ borderBottom: "1px solid #27272A" }} onClick={onZoomIn} aria-label="Zoom in">
           <Plus className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={onZoomOut}>
+        <Button variant="ghost" size="icon" className="h-[30px] w-full rounded-none" onClick={onZoomOut} aria-label="Zoom out">
           <Minus className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Lasso Tool */}
-      {onLassoToggle && (
+      {/* Zoom to fit — the level that shows every order and route */}
+      {onZoomToFit && (
         <TooltipProvider>
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={onLassoToggle}
-                className="flex items-center justify-center rounded-lg transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
-                style={{
-                  width: 32,
-                  height: 32,
-                  flexShrink: 0,
-                  ...(isLassoActive
-                    ? {
-                        border: "2px solid rgba(250, 100, 0, 0.70)",
-                        background: "rgba(250, 100, 0, 0.15)",
-                        color: "#FA6400",
-                      }
-                    : {
-                        border: "1px solid #FF9752",
-                        background: "#FA6400",
-                        color: "#fff",
-                      }),
-                }}
+                aria-label="Zoom to fit all"
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                style={{ backgroundColor: "#18181B", border: "1px solid #27272A" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#27272A" }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#18181B" }}
+                onClick={onZoomToFit}
               >
-                <LassoSelect size={16} />
+                <Focus className="h-4 w-4 text-white" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="left" className="z-[1001]">
-              <p>{isLassoActive ? "Disable lasso [Esc]" : "Lasso (Shift + L)"}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-
-      {/* Select All — selects every entity on the map, same outcome as a lasso around everything */}
-      {onSelectAll && (
-        <TooltipProvider>
-          <Tooltip delayDuration={200}>
-            <TooltipTrigger asChild>
-              {/* aria-disabled (not disabled) so the tooltip still shows on hover */}
-              <button
-                type="button"
-                aria-disabled={isSelectAllDisabled}
-                onClick={() => {
-                  if (!isSelectAllDisabled) onSelectAll()
-                }}
-                className="flex items-center justify-center rounded-lg transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
-                style={{
-                  width: 32,
-                  height: 32,
-                  flexShrink: 0,
-                  border: "1px solid #FF9752",
-                  background: "#FA6400",
-                  color: "#fff",
-                  opacity: isSelectAllDisabled ? 0.4 : 1,
-                  cursor: isSelectAllDisabled ? "not-allowed" : "pointer",
-                }}
-              >
-                <SquareDashedMousePointer size={16} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="z-[1001]">
-              <p>{isSelectAllDisabled ? "Everything on the map is in the workspace" : "Select All"}</p>
+              <p>Zoom to fit all</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -456,32 +435,68 @@ export function MapControls({
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
-
-      {/* Expand / collapse the map — its own group, set apart from the map tools */}
-      {onToggleMapExpand && (
-        <>
-          <span aria-hidden style={{ height: 1, width: 20, margin: "4px auto", backgroundColor: "#333" }} />
-          <TooltipProvider>
-            <Tooltip delayDuration={200}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={isMapExpanded ? "Collapse map" : "Expand map"}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
-                  style={{ backgroundColor: "#111", border: "1px solid #27272A" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#27272A" }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#111" }}
-                  onClick={onToggleMapExpand}
-                >
-                  {isMapExpanded ? <Minimize2 className="h-4 w-4 text-white" /> : <Maximize2 className="h-4 w-4 text-white" />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="z-[1001]">
-                <p>{isMapExpanded ? "Collapse map (Esc)" : "Expand map"}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </>
+      {/* Selection tools — one orange group (lasso, add all), set apart from the view tools */}
+      {(onLassoToggle || onSelectAll) && (
+        <div className="flex flex-col rounded-lg overflow-hidden" style={{ width: 32, boxSizing: "border-box", border: "1px solid #FF9752", backgroundColor: "#FA6400" }}>
+          {onLassoToggle && (
+            <TooltipProvider>
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Lasso"
+                    aria-pressed={isLassoActive}
+                    onClick={onLassoToggle}
+                    className="flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                    style={{
+                      width: "100%",
+                      height: 31,
+                      borderBottom: onSelectAll ? "1px solid rgba(255,255,255,0.35)" : "none",
+                      background: isLassoActive ? "#111" : "transparent",
+                      color: isLassoActive ? "#FA6400" : "#fff",
+                    }}
+                  >
+                    <LassoSelect size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="z-[1001]">
+                  <p>{isLassoActive ? "Disable lasso [Esc]" : "Lasso (Shift + L)"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {onSelectAll && (
+            <TooltipProvider>
+              <Tooltip delayDuration={200}>
+                <TooltipTrigger asChild>
+                  {/* aria-disabled (not disabled) so the tooltip still shows on hover */}
+                  <button
+                    type="button"
+                    aria-label="Add all to workspace"
+                    aria-disabled={isSelectAllDisabled}
+                    onClick={() => {
+                      if (!isSelectAllDisabled) onSelectAll()
+                    }}
+                    className="flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                    style={{
+                      width: "100%",
+                      height: 30,
+                      background: "transparent",
+                      color: "#fff",
+                      opacity: isSelectAllDisabled ? 0.4 : 1,
+                      cursor: isSelectAllDisabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <SquareDashedMousePointer size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="z-[1001]">
+                  <p>{isSelectAllDisabled ? "Everything on the map is in the workspace" : "Add all to workspace"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       )}
     </div>
   )

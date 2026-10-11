@@ -35,6 +35,10 @@ interface ViewPanelProps {
   floating?: boolean
   isExpanded?: boolean
   onToggleExpand?: () => void
+  /** Press on the header (not its buttons) to drag the view somewhere else, like Claude Code panes */
+  onHeaderMouseDown?: (e: React.MouseEvent) => void
+  /** Dimmed while it is being dragged */
+  isDragging?: boolean
 }
 
 const headerButton: React.CSSProperties = {
@@ -105,10 +109,11 @@ function DockMenu({ dock, onDockChange }: { dock: ViewDock; onDockChange: (d: Vi
   )
 }
 
-export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrder, onAddToWorkspace, minHeight = 0, floating = false, isExpanded = false, onToggleExpand }: ViewPanelProps) {
+export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrder, onAddToWorkspace, minHeight = 0, floating = false, isExpanded = false, onToggleExpand, onHeaderMouseDown, isDragging = false }: ViewPanelProps) {
   return (
     <section
       data-view={id}
+      data-dock={dock}
       style={{
         position: "relative",
         flex: 1,
@@ -121,9 +126,17 @@ export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrde
         overflow: "hidden",
         fontFamily: "Geist, sans-serif",
         ...(floating ? { border: "1px solid #282828", boxShadow: "0 16px 40px rgba(0,0,0,0.55)" } : null),
+        opacity: isDragging ? 0.45 : 1,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 12px 0", height: 44, boxSizing: "border-box", flexShrink: 0 }}>
+      <div
+        onMouseDown={(e) => {
+          if (!onHeaderMouseDown || e.button !== 0 || (e.target as HTMLElement).closest("button")) return
+          onHeaderMouseDown(e)
+        }}
+        title={onHeaderMouseDown ? "Drag to move" : undefined}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 12px 0", height: 44, boxSizing: "border-box", flexShrink: 0, cursor: onHeaderMouseDown ? "grab" : "default", userSelect: "none" }}
+      >
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500, lineHeight: "28px", color: "#FFFFFF" }}>{TITLES[id]}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           {!isExpanded && <DockMenu dock={dock} onDockChange={onDockChange} />}

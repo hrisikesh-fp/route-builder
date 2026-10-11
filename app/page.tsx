@@ -56,6 +56,9 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   // Expand: one view, or the map, fills the whole planning area. Esc or the collapse icon puts it back.
   const [expanded, setExpanded] = useState<LeftPanel | "map" | null>(null)
+  // Drag a view by its header to reorder it or move it to another dock (Claude Code style)
+  type DropTarget = { dock: ViewDock; index: number; indicator: { left: number; top: number; width: number; height: number; zone: boolean } }
+  const [drag, setDrag] = useState<{ view: LeftPanel; x: number; y: number; target: DropTarget | null } | null>(null)
   useEffect(() => {
     const update = () => { setViewportHeight(window.innerHeight); setViewportWidth(window.innerWidth) }
     update()
@@ -358,6 +361,72 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     window.addEventListener("mouseup", onUp)
   }
 
+  // Where would the dragged view land? Over another view: before / after it in that view's dock.
+  // Over the map: its left edge docks left, its top third docks above, its bottom third docks below.
+  const findDropTarget = (dragged: LeftPanel, x: number, y: number): DropTarget | null => {
+    const others = Array.from(document.querySelectorAll<HTMLElement>("[data-view][data-dock]")).filter((el) => el.dataset.view !== dragged)
+    for (const el of others) {
+      const r = el.getBoundingClientRect()
+      if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue
+      const dock = el.dataset.dock as ViewDock
+      const same = openViews.filter((v) => v !== dragged && viewDocks[v] === dock)
+      const vertical = dock === "left"
+      const after = vertical ? y > r.top + r.height / 2 : x > r.left + r.width / 2
+      const index = same.indexOf(el.dataset.view as LeftPanel) + (after ? 1 : 0)
+      const indicator = vertical
+        ? { left: r.left, width: r.width, top: (after ? r.bottom : r.top) - 2, height: 4, zone: false }
+        : { left: (after ? r.right : r.left) - 2, width: 4, top: r.top, height: r.height, zone: false }
+      return { dock, index, indicator }
+    }
+    const mapR = { left: mapLeft, top: mapTop, right: viewportWidth - mapRight, bottom: viewportHeight - mapBottomInset }
+    if (x < mapR.left || x > mapR.right || y < mapR.top || y > mapR.bottom) return null
+    const w = mapR.right - mapR.left
+    const h = mapR.bottom - mapR.top
+    const end = (dock: ViewDock) => openViews.filter((v) => v !== dragged && viewDocks[v] === dock).length
+    if (x < mapR.left + w * 0.2) return { dock: "left", index: end("left"), indicator: { left: mapR.left, top: mapR.top, width: Math.min(LEFT_MIN, w / 2), height: h, zone: true } }
+    if (y < mapR.top + h / 3) return { dock: "top", index: end("top"), indicator: { left: mapR.left, top: mapR.top, width: w, height: Math.min(topHeight, h / 2), zone: true } }
+    if (y > mapR.bottom - h / 3) return { dock: "bottom", index: end("bottom"), indicator: { left: mapR.left, top: mapR.bottom - Math.min(bottomHeight, h / 2), width: w, height: Math.min(bottomHeight, h / 2), zone: true } }
+    return null
+  }
+
+  const moveView = (view: LeftPanel, dock: ViewDock, index: number) => {
+    setViewDocks((cur) => ({ ...cur, [view]: dock }))
+    setOpenViews((cur) => {
+      const rest = cur.filter((v) => v !== view)
+      const same = rest.filter((v) => viewDocks[v] === dock)
+      const anchor = same[index]
+      if (anchor) rest.splice(rest.indexOf(anchor), 0, view)
+      else if (same.length) rest.splice(rest.indexOf(same[same.length - 1]) + 1, 0, view)
+      else rest.push(view)
+      return rest
+    })
+  }
+
+  const startViewDrag = (view: LeftPanel, e: React.MouseEvent) => {
+    const startX = e.clientX
+    const startY = e.clientY
+    let started = false
+    let target: DropTarget | null = null
+    const onMove = (ev: MouseEvent) => {
+      if (!started && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return
+      started = true
+      document.body.style.cursor = "grabbing"
+      document.body.style.userSelect = "none"
+      target = findDropTarget(view, ev.clientX, ev.clientY)
+      setDrag({ view, x: ev.clientX, y: ev.clientY, target })
+    }
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+      if (started && target) moveView(view, target.dock, target.index)
+      setDrag(null)
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }
+
   const renderView = (view: LeftPanel) => (
     <ViewPanel
       key={view}
@@ -365,6 +434,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       minHeight={viewDocks[view] === "left" ? STACK_MIN_HEIGHT : 0}
       floating={viewDocks[view] === "left" && leftFloats && expanded !== view}
       isExpanded={expanded === view}
+      isDragging={drag?.view === view}
+      onHeaderMouseDown={expanded === view ? undefined : (e) => startViewDrag(view, e)}
       onToggleExpand={() => setExpanded((cur) => (cur === view ? null : view))}
       dock={viewDocks[view]}
       onDockChange={(d) => dockView(view, d)}
@@ -382,10 +453,11 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       title="Drag to resize"
       onMouseDown={startWidthResize}
       onMouseEnter={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "#6366F1") }}
-      onMouseLeave={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "#333") }}
+      onMouseLeave={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "transparent") }}
       style={{ position: "absolute", left: x - 4, width: 8, top, bottom, zIndex: 1020, cursor: "col-resize", display: "flex", alignItems: "center", justifyContent: "center" }}
     >
-      <span style={{ width: 3, height: 40, borderRadius: 2, backgroundColor: "#333", transition: "background-color 120ms" }} />
+      {/* Handle only shows when the pointer is near the edge */}
+      <span style={{ width: 3, height: 40, borderRadius: 2, backgroundColor: "transparent", transition: "background-color 120ms" }} />
     </div>
   )
 
@@ -396,10 +468,10 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       title="Drag to resize"
       onMouseDown={(e) => startResize(edge, e)}
       onMouseEnter={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "#6366F1") }}
-      onMouseLeave={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "#333") }}
+      onMouseLeave={(e) => { e.currentTarget.firstElementChild && ((e.currentTarget.firstElementChild as HTMLElement).style.backgroundColor = "transparent") }}
       style={{ position: "absolute", left: colLeft, right: mapRight, top: top - 4, height: 8, zIndex: 20, cursor: "row-resize", display: "flex", alignItems: "center", justifyContent: "center" }}
     >
-      <span style={{ width: 40, height: 3, borderRadius: 2, backgroundColor: "#333", transition: "background-color 120ms" }} />
+      <span style={{ width: 40, height: 3, borderRadius: 2, backgroundColor: "transparent", transition: "background-color 120ms" }} />
     </div>
   )
   const handleRightPanelChange = (panel: "routes" | "workspace" | null) => {
@@ -885,6 +957,10 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           topOffset={topOffset}
           pinned={{ top: 8, right: isCreateSheetOpen ? 8 + createSheetW + 8 : 8 }}
           isMapExpanded={expanded === "map"}
+          onZoomToFit={() => {
+            const coords = filteredOrders.filter((o) => o.latitude && o.longitude).map((o) => ({ lat: o.latitude, lng: o.longitude }))
+            if (coords.length) (window as any).__fitToShipTos?.(coords)
+          }}
           onToggleMapExpand={() => setExpanded((cur) => (cur === "map" ? null : "map"))}
         />
 
@@ -1017,6 +1093,28 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       <RoutingConfigOverlay isOpen={isRoutingConfigOpen} onClose={() => setIsRoutingConfigOpen(false)} />
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {/* Dragging a view: where it will land, plus a label that follows the pointer */}
+      {drag?.target && (
+        <div
+          style={{
+            position: "fixed",
+            ...drag.target.indicator,
+            zIndex: 2500,
+            pointerEvents: "none",
+            borderRadius: drag.target.indicator.zone ? 4 : 2,
+            backgroundColor: drag.target.indicator.zone ? "rgba(99,102,241,0.15)" : "#6366F1",
+            border: drag.target.indicator.zone ? "1px dashed #6366F1" : "none",
+            boxSizing: "border-box",
+          }}
+        />
+      )}
+      {drag && (
+        <div style={{ position: "fixed", left: drag.x + 12, top: drag.y + 12, zIndex: 2600, pointerEvents: "none", padding: "6px 10px", borderRadius: 4, backgroundColor: "#282828", border: "1px solid #333", color: "#FAFAFA", fontSize: 13, fontWeight: 500, fontFamily: "Geist, sans-serif", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+          {drag.view === "orders" ? "Orders" : drag.view === "trucks" ? "Trucks" : "Drivers"}
+          <span style={{ color: "#A3A3A3", fontWeight: 400 }}>{drag.target ? ` → ${drag.target.dock === "left" ? "left" : drag.target.dock === "top" ? "above map" : "below map"}` : ""}</span>
+        </div>
+      )}
 
       <ConflictResolutionModal
         isOpen={isConflictModalOpen && showDriverConflict}
