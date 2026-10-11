@@ -695,8 +695,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         <div
           style={{
             position: "fixed",
-            top: bodyTop + 12,
-            left: "50%",
+            top: bodyTop + 52,
+            left: `calc((${mapLeft}px + 100% - ${mapRight}px) / 2)`, // centred over the map region
             transform: "translateX(-50%)",
             zIndex: 1250,
             display: "flex",
