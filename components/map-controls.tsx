@@ -220,7 +220,7 @@ export function MapControls({
                 <button
                   type="button"
                   aria-label={isMapExpanded ? "Collapse map" : "Expand map"}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                  className="w-8 h-8 rounded-[4px] flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
                   style={{ backgroundColor: "#111", border: "1px solid #27272A" }}
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#27272A" }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#111" }}
@@ -245,7 +245,7 @@ export function MapControls({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="h-8 w-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                className="h-8 w-8 rounded-[4px] flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
                 style={{
                   backgroundColor: isLayersOpen ? "#27272A" : "#18181B",
                   border: isLayersOpen ? "1px solid #52525B" : "1px solid #27272A",
@@ -372,7 +372,7 @@ export function MapControls({
       </div>
 
       {/* Zoom Controls — one group, 32px wide including its border */}
-      <div className="flex flex-col rounded-lg overflow-hidden" style={{ width: 32, boxSizing: "border-box", border: "1px solid #27272A", backgroundColor: "#18181B" }}>
+      <div className="flex flex-col rounded-[4px] overflow-hidden" style={{ width: 32, boxSizing: "border-box", border: "1px solid #27272A", backgroundColor: "#18181B" }}>
         <Button variant="ghost" size="icon" className="h-[31px] w-full rounded-none" style={{ borderBottom: "1px solid #27272A" }} onClick={onZoomIn} aria-label="Zoom in">
           <Plus className="h-4 w-4" />
         </Button>
@@ -389,7 +389,7 @@ export function MapControls({
               <button
                 type="button"
                 aria-label="Zoom to fit all"
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+                className="w-8 h-8 rounded-[4px] flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
                 style={{ backgroundColor: "#18181B", border: "1px solid #27272A" }}
                 onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#27272A" }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#18181B" }}
@@ -411,7 +411,7 @@ export function MapControls({
           <TooltipTrigger asChild>
             <button
               type="button"
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
+              className="w-8 h-8 rounded-[4px] flex items-center justify-center transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[#52525B]"
               style={{
                 backgroundColor: "#111",
                 border: "1px solid #27272A",
@@ -437,7 +437,7 @@ export function MapControls({
       </TooltipProvider>
       {/* Selection tools — one orange group (lasso, add all), set apart from the view tools */}
       {(onLassoToggle || onSelectAll) && (
-        <div className="flex flex-col rounded-lg overflow-hidden" style={{ width: 32, boxSizing: "border-box", border: "1px solid #FF9752", backgroundColor: "#FA6400" }}>
+        <div className="flex flex-col rounded-[4px] overflow-hidden" style={{ width: 32, boxSizing: "border-box", border: "1px solid #FF9752", backgroundColor: "#FA6400" }}>
           {onLassoToggle && (
             <TooltipProvider>
               <Tooltip delayDuration={200}>
