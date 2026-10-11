@@ -34,6 +34,8 @@ interface MapControlsProps {
   entityVisibility?: MapEntityVisibility
   onEntityVisibilityChange?: (visibility: MapEntityVisibility) => void
   topOffset?: number
+  /** 3D shell: pin inside the map box at this offset (bypasses topOffset / panel-based right) */
+  pinned?: { top: number; right: number }
 }
 
 // ShipTo pin — exact Figma SVG, viewBox cropped to pin content (24×24 display)
@@ -149,6 +151,7 @@ export function MapControls({
   },
   onEntityVisibilityChange,
   topOffset = 0,
+  pinned,
 }: MapControlsProps) {
   const [isLayersOpen, setIsLayersOpen] = useState(false)
   const layersRef = useRef<HTMLDivElement>(null)
@@ -196,8 +199,8 @@ export function MapControls({
     <div
       className="absolute z-[1000] flex flex-col gap-2 rb-map-controls-shift"
       style={{
-        top: 78 + topOffset,
-        right: getRightPosition(),
+        top: pinned ? pinned.top : 78 + topOffset,
+        right: pinned ? pinned.right : getRightPosition(),
       }}
     >
       {/* Map Layers Button with Dropdown */}

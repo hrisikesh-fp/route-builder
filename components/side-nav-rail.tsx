@@ -1,43 +1,34 @@
 "use client"
 
-import { Bell, ChartColumn, ClipboardList, History, MapPinned, Route, Truck, UserCheck, type LucideIcon } from "lucide-react"
+import { ClipboardList, Truck, UserCheck, type LucideIcon } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-// Left icon rail — Figma RB - Routing v2, node 9130:45476. Names show on hover.
-// Map, Orders, Routes and Analytics are built; Trucks, Drivers, Inbox and Run history are empty pages for now.
+// 3D shell left rail — Figma RB - Routing v2, node 9175:89003 ("Filter List").
+// Opens the left input panels (Orders, Trucks, Drivers). Names show on hover. More items later.
 
-export type SideNavPage = "map" | "orders" | "routes" | "trucks" | "drivers" | "inbox" | "history" | "analytics"
+export type LeftPanel = "orders" | "trucks" | "drivers"
 
-const ITEMS: { id: SideNavPage; label: string; icon: LucideIcon }[] = [
-  { id: "map", label: "Map", icon: MapPinned },
+const ITEMS: { id: LeftPanel; label: string; icon: LucideIcon }[] = [
   { id: "orders", label: "Orders", icon: ClipboardList },
-  { id: "routes", label: "Routes", icon: Route },
   { id: "trucks", label: "Trucks", icon: Truck },
   { id: "drivers", label: "Drivers", icon: UserCheck },
-  { id: "inbox", label: "Inbox", icon: Bell },
-  { id: "history", label: "Run history", icon: History },
-  { id: "analytics", label: "Analytics & reporting", icon: ChartColumn },
 ]
 
 export const SIDE_NAV_WIDTH = 52
 
 interface SideNavRailProps {
-  active: SideNavPage
-  onSelect?: (page: SideNavPage) => void
-  topOffset?: number
+  active: LeftPanel | null
+  onSelect: (panel: LeftPanel) => void
+  style?: React.CSSProperties
 }
 
-export function SideNavRail({ active, onSelect, topOffset = 0 }: SideNavRailProps) {
+export function SideNavRail({ active, onSelect, style }: SideNavRailProps) {
   return (
     <TooltipProvider>
       <nav
-        aria-label="Route Builder pages"
+        aria-label="Planning panels"
         style={{
-          position: "fixed",
-          left: 0,
-          top: 68 + topOffset,
-          bottom: 0,
-          zIndex: 999,
+          position: "absolute",
           width: SIDE_NAV_WIDTH,
           display: "flex",
           flexDirection: "column",
@@ -45,8 +36,9 @@ export function SideNavRail({ active, onSelect, topOffset = 0 }: SideNavRailProp
           gap: 10,
           padding: "8px 8px 24px",
           backgroundColor: "#111",
-          borderRight: "1px solid #282828",
           boxSizing: "border-box",
+          zIndex: 999,
+          ...style,
         }}
       >
         {ITEMS.map(({ id, label, icon: Icon }) => {
@@ -57,8 +49,8 @@ export function SideNavRail({ active, onSelect, topOffset = 0 }: SideNavRailProp
                 <button
                   type="button"
                   aria-label={label}
-                  aria-current={isActive ? "page" : undefined}
-                  onClick={() => onSelect?.(id)}
+                  aria-pressed={isActive}
+                  onClick={() => onSelect(id)}
                   onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "#1F1F1F" }}
                   onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent" }}
                   style={{
@@ -70,7 +62,7 @@ export function SideNavRail({ active, onSelect, topOffset = 0 }: SideNavRailProp
                     justifyContent: "center",
                     border: "none",
                     borderRadius: 4,
-                    backgroundColor: isActive ? "#282828" : "transparent",
+                    backgroundColor: isActive ? "#333" : "transparent",
                     cursor: "pointer",
                   }}
                 >

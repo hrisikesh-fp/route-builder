@@ -45,6 +45,8 @@ interface FilterSideSheetProps {
   floatingLeft?: number
   /** Floating variant only: top edge in px. */
   floatingTop?: number
+  /** Floating variant only: bottom edge in px (default leaves room for the old map chips). */
+  floatingBottom?: number
   /** Reports the applied-filter count so the map's Filters chip can show it. */
   onActiveFilterCountChange?: (count: number) => void
 }
@@ -508,6 +510,7 @@ export function FilterSideSheet({
   variant = "sheet",
   floatingLeft = 64,
   floatingTop = 126,
+  floatingBottom = 24 + 40 + 8,
   onActiveFilterCountChange,
 }: FilterSideSheetProps) {
   const isFloating = variant === "floating"
@@ -701,7 +704,7 @@ export function FilterSideSheet({
             ? {
                 display: isOpen ? "block" : "none",
                 left: floatingLeft,
-                bottom: 24 + 40 + 8, // chips row (40px) + its 24px inset + 8px gap
+                bottom: floatingBottom,
                 top: floatingTop,
                 width: "320px",
                 backgroundColor: "#111",

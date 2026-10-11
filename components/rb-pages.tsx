@@ -33,6 +33,29 @@ interface TablePageProps {
   onToggleMap: () => void
 }
 
+/** Orders table columns (Figma Orders page) — shared by the 3D Orders panel table view */
+export function orderTableColumns(): DataTableColumn<ExtractionOrder>[] {
+  return [
+    { key: "stop", label: "Stop (ShipTo/Terminal)", width: "minmax(0, 1.3fr)", render: (o) => <CellText>{o.shipToName ?? o.customerName}</CellText> },
+    { key: "customer", label: "Customer", render: (o) => <CellText>{o.orderType === "L" ? "NA" : o.customerName}</CellText> },
+    { key: "qty", label: "Planned Qty", render: (o) => <CellText>{o.volume.toLocaleString()} gal</CellText> },
+    { key: "type", label: "Order Type", render: (o) => <CellText>{ORDER_TYPE_LABEL[o.orderType ?? "D"]}</CellText> },
+    {
+      key: "status",
+      label: "Status",
+      render: (o) =>
+        o.routeId ? (
+          <>
+            <StatusBadge label="Scheduled" tone="grey" />
+            <CellText muted>Route: {routeLabel(o.routeId)}</CellText>
+          </>
+        ) : (
+          <StatusBadge label="Unassigned" tone="orange" />
+        ),
+    },
+  ]
+}
+
 export function OrdersPage({ orders, onHoverOrder, ...shell }: TablePageProps & { orders: ExtractionOrder[]; onHoverOrder: (id: string | null) => void }) {
   const [tab, setTab] = useState("all")
   const rows = tab === "all" ? orders : []
@@ -165,6 +188,26 @@ const METRICS: Metric[] = [
   { id: "warn", label: "Findings: warn", definition: "Worth a look", plan: 0, actual: 0 },
   { id: "info", label: "Findings: info", definition: "For information", plan: 1, actual: 1 },
 ]
+
+export function AnalyticsTable() {
+  const fmt = (n: number, d = 0) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d })
+  const columns: DataTableColumn<Metric>[] = [
+    {
+      key: "number",
+      label: "Number",
+      width: "minmax(0, 2fr)",
+      render: (m) => (
+        <>
+          <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "20px", color: "#E5E5E5" }}>{m.label}</span>
+          <span style={{ fontSize: 12, lineHeight: "16px", color: "#737373" }}>{m.definition}</span>
+        </>
+      ),
+    },
+    { key: "plan", label: "Plan", render: (m) => <CellText>{fmt(m.plan, m.decimals)}</CellText> },
+    { key: "actual", label: "Actual", render: (m) => <CellText>{fmt(m.actual, m.decimals)}</CellText> },
+  ]
+  return <DataTable columns={columns} rows={METRICS} getRowId={(m) => m.id} />
+}
 
 export function AnalyticsPage({ topOffset }: { topOffset: number }) {
   const fmt = (n: number, d = 0) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d })

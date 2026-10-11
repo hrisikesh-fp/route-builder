@@ -73,10 +73,23 @@ interface DataTableProps<Row> {
   getRowId: (row: Row) => string
   onRowHover?: (id: string | null) => void
   emptyText?: string
+  /** When set, rows are grouped under a full-width header row per group (in first-seen order). */
+  groupBy?: (row: Row) => string
 }
 
-export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText = "Nothing to show" }: DataTableProps<Row>) {
+export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText = "Nothing to show", groupBy }: DataTableProps<Row>) {
   const template = columns.map((c) => c.width ?? "minmax(0, 1fr)").join(" ")
+  const groups: { key: string; rows: Row[] }[] = []
+  if (groupBy) {
+    for (const row of rows) {
+      const key = groupBy(row)
+      const existing = groups.find((g) => g.key === key)
+      if (existing) existing.rows.push(row)
+      else groups.push({ key, rows: [row] })
+    }
+  } else {
+    groups.push({ key: "", rows })
+  }
   return (
     <div style={{ border: "1px solid #282828", borderRadius: 4, overflow: "hidden" }}>
       <div style={{ display: "grid", gridTemplateColumns: template, backgroundColor: "#282828" }}>
@@ -89,7 +102,15 @@ export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText 
       {rows.length === 0 && (
         <div style={{ padding: "32px 12px", textAlign: "center", fontSize: 14, color: "#737373" }}>{emptyText}</div>
       )}
-      {rows.map((row) => {
+      {groups.map((group) => (
+        <div key={group.key || "all"}>
+          {groupBy && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderTop: "1px solid #282828", backgroundColor: "#1B1B1B", fontSize: 13, fontWeight: 500, color: "#E5E5E5" }}>
+              {group.key}
+              <span style={{ fontSize: 12, fontWeight: 400, color: "#737373" }}>{group.rows.length}</span>
+            </div>
+          )}
+          {group.rows.map((row) => {
         const id = getRowId(row)
         return (
           <div
@@ -106,6 +127,8 @@ export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText 
           </div>
         )
       })}
+        </div>
+      ))}
     </div>
   )
 }

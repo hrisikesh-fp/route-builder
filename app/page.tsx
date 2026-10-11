@@ -2,13 +2,13 @@
 
 import { useState, useMemo, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
-import { MapHeader } from "@/components/map-header"
+import { AppHeader, APP_HEADER_HEIGHT, type AppMode } from "@/components/app-header"
+import { MetricsBar, METRICS_BAR_HEIGHT } from "@/components/metrics-bar"
 import { MapControls, type MapEntityVisibility } from "@/components/map-controls"
 const RouteMap = dynamic(
   () => import("@/components/route-map").then((m) => ({ default: m.RouteMap })),
   { ssr: false },
 )
-import { RouteSheetCollapsed } from "@/components/route-sheet-collapsed"
 import { CreateRoutePanel } from "@/components/create-route-panel"
 import { FilterSideSheet } from "@/components/filter-side-sheet"
 import { LassoWorkspaceSheet } from "@/components/lasso-workspace-sheet"
@@ -20,29 +20,24 @@ import { mockExtractionOrders, mockRoutes, shipTosWithoutOrders, buildShipToCoor
 import { CheckCircle2 } from "lucide-react"
 import { ConflictAssignmentBanner } from "@/components/conflict-assignment-banner"
 import { ConflictResolutionModal } from "@/components/conflict-resolution-modal"
-import { MapListToggle, type MapViewMode } from "@/components/map-list-toggle"
-import { MapListPanel, type ListFocus, type ListTab } from "@/components/map-list-panel"
-import { SideNavRail, SIDE_NAV_WIDTH, type SideNavPage } from "@/components/side-nav-rail"
-import { OrdersPage, RoutesPage, EmptyPage, AnalyticsPage } from "@/components/rb-pages"
-import { Bell, History, Truck, UserCheck } from "lucide-react"
-import { MapSummaryChips } from "@/components/map-summary-chips"
+import { SideNavRail, SIDE_NAV_WIDTH, type LeftPanel } from "@/components/side-nav-rail"
+import { LeftPanelView, LEFT_PANEL_WIDTH } from "@/components/orders-panel"
+import { RoutesPanel, RIGHT_PANEL_WIDTH } from "@/components/routes-panel"
+import { ReconciliationView } from "@/components/reconciliation-view"
+import { ListFilter, Plus } from "lucide-react"
 import type { ListRoute } from "@/components/list-route-card"
 import { getRouteColor } from "@/lib/route-display"
 
 export default function Home() {
 const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  // Filters now float over the map, opened from the bottom-left Filters chip
+  // Filters float over the map, opened from the Filters button at the map's top left
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [activeFilterCount, setActiveFilterCount] = useState(0)
-  const [listTabRequest, setListTabRequest] = useState<{ tab: ListTab; nonce: number } | null>(null)
-  // Map / List toggle. List opens the floating panel on the left; never alongside the filter sheet.
-  const [viewMode, setViewMode] = useState<MapViewMode>("map")
-  // Rail pages. The map stays mounted underneath every page; Orders / Routes show it beside the table by default.
-  const [activePage, setActivePage] = useState<SideNavPage>("map")
-  const [isTableMapOpen, setIsTableMapOpen] = useState(true)
-  const isMapPage = activePage === "map"
-  const [listFocus, setListFocus] = useState<ListFocus | null>(null)
+  // 3D shell: Planning / Reconciliation, left input panel (rail), right output panel (Routes or Workspace)
+  const [mode, setMode] = useState<AppMode>("planning")
+  const [leftPanel, setLeftPanel] = useState<LeftPanel | null>("orders")
+  const [isRoutesOpen, setIsRoutesOpen] = useState(false)
   const [isRoutingConfigOpen, setIsRoutingConfigOpen] = useState(false)
   const [showAllRoutes, setShowAllRoutes] = useState(true)
   const [isLassoDrawing, setIsLassoDrawing] = useState(false)
@@ -181,39 +176,25 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       }))
   }, [filteredOrders])
 
-  // Anything new landing in the workspace closes the List and returns to Map (the list gets out of the way)
-  const selectionSizeRef = useRef(0)
+  // Routes and Workspace share the right edge: one at a time, both always reachable from the metrics bar
   useEffect(() => {
-    const size = selectedOrders.length + selectedRouteIds.length
-    if (size > selectionSizeRef.current) setViewMode("map")
-    selectionSizeRef.current = size
-  }, [selectedOrders, selectedRouteIds])
+    if (isWorkspaceOpen) setIsRoutesOpen(false)
+  }, [isWorkspaceOpen])
 
-  // Left-side layout: rail, then the List panel (when open), then chips + floating filters beside it
-  const MAP_LEFT = SIDE_NAV_WIDTH + 12
-  const LIST_PANEL_WIDTH = 419
-  const chipsLeft = viewMode === "list" ? MAP_LEFT + LIST_PANEL_WIDTH + 12 : MAP_LEFT
-  // Filter panel always starts under the Map/List toggle line, so its height is the same with or without the list
-  const filterTop = 78 + topOffset + 40 + 8
+  // ── 3D shell layout (Figma 9175:88966) ──
+  const INSET = 4
+  const bodyTop = APP_HEADER_HEIGHT + topOffset + (mode === "planning" ? METRICS_BAR_HEIGHT : 0)
+  const isRightPanelOpen = isWorkspaceOpen || isRoutesOpen
+  const mapLeft = INSET + SIDE_NAV_WIDTH + (leftPanel ? LEFT_PANEL_WIDTH : 0)
+  const mapRight = (isRightPanelOpen ? RIGHT_PANEL_WIDTH : 0) + INSET
+  const unassignedCount = filteredOrders.filter((o) => !o.routeId).length
+  const totalGallons = filteredOrders.filter((o) => o.orderType !== "L").reduce((sum, o) => sum + (o.volume ?? 0), 0)
 
-  const handleViewModeChange = (mode: MapViewMode) => setViewMode(mode)
-
-  useEffect(() => {
-    if ((activePage !== "orders" && activePage !== "routes") || !isTableMapOpen) return
-    const coords = filteredOrders.filter((o) => o.latitude && o.longitude).map((o) => ({ lat: o.latitude, lng: o.longitude }))
-    const panelWidth = (window.innerWidth - SIDE_NAV_WIDTH) / 2
-    const t = setTimeout(() => {
-      ;(window as any).__fitToShipTos?.(coords, { padding: { top: 80, right: 80, bottom: 80, left: SIDE_NAV_WIDTH + panelWidth + 40 } })
-    }, 300)
-    return () => clearTimeout(t)
-  }, [activePage, isTableMapOpen])
-
-  const openListOnTab = (tab: ListTab) => {
-    setViewMode("list")
-    setListTabRequest({ tab, nonce: Date.now() })
+  const handleRailSelect = (panel: LeftPanel) => setLeftPanel((cur) => (cur === panel ? null : panel))
+  const handleRightPanelChange = (panel: "routes" | "workspace" | null) => {
+    setIsRoutesOpen(panel === "routes")
+    setIsWorkspaceOpen(panel === "workspace")
   }
-
-  const openFilterSheet = () => setIsFilterOpen(true)
 
   const showToast = (message: string) => {
     setToastMessage(message)
@@ -420,7 +401,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     setSelectedRouteIds((prev) => Array.from(new Set([...prev, ...routeIdsToAdd])))
     setIsWorkspaceOpen(true)
     setIsFilterOpen(false)
-    setViewMode("map")
 
     if (newOrders.length === 0) {
       showToast("Already in the workspace")
@@ -439,21 +419,14 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     setSelectedOrders((prev) => prev.filter((o) => !orderIds.includes(o.id)))
   }
 
+  // Closing the Workspace only hides it; what is in it stays and comes back from the bar
   const handleWorkspaceClose = () => {
     setIsLassoDrawing(false)
     setIsWorkspaceOpen(false)
-    setSelectedOrders([])
-    setSelectedRouteIds([])
-    setCheckedRouteIds([])
     setHoveredWorkspaceRouteId(null)
   }
 
   const handleRouteClick = (routeId: string) => {
-    // List open: a route line click expands that route in the list instead of adding it
-    if (viewMode === "list") {
-      setListFocus({ kind: "route", id: routeId, nonce: Date.now() })
-      return
-    }
     // Check if this route is already selected
     if (selectedRouteIds.includes(routeId)) {
       return
@@ -478,11 +451,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   }
 
   const handleOrderPinClick = (order: ExtractionOrder) => {
-    // List open: a pin click scrolls the list to that order instead of adding it
-    if (viewMode === "list") {
-      setListFocus({ kind: "order", id: order.id, nonce: Date.now() })
-      return
-    }
     if (order.routeId) {
       // Scheduled order → add the whole route
       handleRouteClick(order.routeId)
@@ -542,16 +510,17 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     return inside
   }
 
+  const mapButton: React.CSSProperties = {
+    height: 32, display: "flex", alignItems: "center", gap: 8, padding: "0 12px", border: "none", borderRadius: 4,
+    backgroundColor: "#111", color: "#FAFAFA", fontSize: 14, fontWeight: 500, lineHeight: "20px", fontFamily: "Geist, sans-serif", cursor: "pointer",
+  }
+
   return (
-    <main className="relative w-full h-screen overflow-hidden">
-      <MapHeader
-        onFilterClick={() => (isFilterOpen ? setIsFilterOpen(false) : openFilterSheet())}
+    <main className="relative w-full h-screen overflow-hidden" style={{ backgroundColor: "#111" }}>
+      <AppHeader
+        mode={mode}
+        onModeChange={(m) => { setMode(m); setIsFilterOpen(false) }}
         onSettingsClick={() => setIsRoutingConfigOpen(true)}
-        onCreateOrderClick={() => {
-          setIsWorkspaceOpen(true)
-          setOpenCreateOrderTrigger((n) => n + 1)
-        }}
-        isCreateOrderOpen={isCreateOrderModalOpen}
       />
 
       {isConflictBannerVisible && (
@@ -561,34 +530,89 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         />
       )}
 
-<RouteMap
-  orders={filteredOrders}
-  shipTosWithoutOrders={shipTosWithoutOrders}
-  entityVisibility={entityVisibility}
-  onZoomIn={handleZoomIn}
-  onZoomOut={handleZoomOut}
-  onResetNorth={handleResetNorth}
-  onLocate={handleLocate}
-  isRouteListOpen={false}
-  isCreatePanelOpen={isCreatePanelOpen}
-  isLassoActive={isLassoDrawing}
-  onRouteClick={handleRouteClick}
+      {mode === "planning" && (
+        <MetricsBar
+          totalGallons={totalGallons}
+          routeCount={listRoutes.length}
+          unassignedCount={unassignedCount}
+          rightPanel={isWorkspaceOpen ? "workspace" : isRoutesOpen ? "routes" : null}
+          onRightPanelChange={handleRightPanelChange}
+          topOffset={topOffset}
+        />
+      )}
+
+      {/* Left: rail + input panel */}
+      <SideNavRail active={leftPanel} onSelect={handleRailSelect} style={{ top: bodyTop + INSET, left: INSET, bottom: INSET }} />
+      {leftPanel && (
+        <LeftPanelView
+          panel={leftPanel}
+          orders={filteredOrders}
+          onCollapse={() => setLeftPanel(null)}
+          onHoverOrder={setHoveredWorkspaceOrderId}
+          onAddToWorkspace={(orderIds) => handleAddFromList({ orderIds, routeIds: [] })}
+          style={{ top: bodyTop + INSET, left: INSET + SIDE_NAV_WIDTH + INSET, width: LEFT_PANEL_WIDTH - 2 * INSET, bottom: INSET }}
+        />
+      )}
+
+      {/* Map region — bounded box; the map resizes as panels open and close */}
+      <div
+        style={{
+          position: "absolute",
+          top: bodyTop + INSET,
+          left: mapLeft,
+          right: mapRight,
+          bottom: INSET,
+          borderRadius: 4,
+          overflow: "hidden",
+          backgroundColor: "#161616",
+        }}
+      >
+        <RouteMap
+          orders={filteredOrders}
+          shipTosWithoutOrders={shipTosWithoutOrders}
+          entityVisibility={entityVisibility}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetNorth={handleResetNorth}
+          onLocate={handleLocate}
+          isRouteListOpen={false}
+          isCreatePanelOpen={isCreatePanelOpen}
+          isLassoActive={isLassoDrawing}
+          onRouteClick={handleRouteClick}
           onTerminalClick={handleTerminalClick}
           onOrderPinClick={handleOrderPinClick}
-  selectedRouteIds={selectedRouteIds}
-  checkedRouteIds={checkedRouteIds}
-  hoveredWorkspaceRouteId={hoveredWorkspaceRouteId}
-  expandedRouteIds={expandedRouteIds}
-  hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
-  isWorkspaceOpen={isWorkspaceOpen}
-  workspaceWidth={560}
-  isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
-  addedLoadOrders={addedLoadOrders}
-  selectedUnassignedOrderIds={selectedUnassignedIds}
-  reorderedRoutes={reorderedRoutes}
-  />
+          selectedRouteIds={selectedRouteIds}
+          checkedRouteIds={checkedRouteIds}
+          hoveredWorkspaceRouteId={hoveredWorkspaceRouteId}
+          expandedRouteIds={expandedRouteIds}
+          hoveredWorkspaceOrderId={hoveredWorkspaceOrderId}
+          isWorkspaceOpen={isWorkspaceOpen}
+          workspaceWidth={RIGHT_PANEL_WIDTH}
+          isCreateOrderSideSheetOpen={isCreateOrderSideSheetOpen}
+          addedLoadOrders={addedLoadOrders}
+          selectedUnassignedOrderIds={selectedUnassignedIds}
+          reorderedRoutes={reorderedRoutes}
+        />
 
-<MapControls
+        {/* Actions on map — Figma 9175:89258 */}
+        <button
+          type="button"
+          onClick={() => setIsFilterOpen((open) => !open)}
+          aria-pressed={isFilterOpen}
+          style={{ ...mapButton, position: "absolute", top: 8, left: 8, zIndex: 1000, boxShadow: isFilterOpen ? "0 0 0 1px #737373, 0 0 0 4px rgba(115,115,115,0.5)" : "none" }}
+        >
+          <ListFilter size={16} /> Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </button>
+        <button
+          type="button"
+          disabled={isCreateOrderModalOpen}
+          onClick={() => { setIsWorkspaceOpen(true); setOpenCreateOrderTrigger((n) => n + 1) }}
+          style={{ ...mapButton, position: "absolute", top: 8, right: 8 + 32 + 8, zIndex: 1000, opacity: isCreateOrderModalOpen ? 0.4 : 1 }}
+        >
+          <Plus size={16} /> Create Order
+        </button>
+
+        <MapControls
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onResetNorth={handleResetNorth}
@@ -605,65 +629,22 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           entityVisibility={entityVisibility}
           onEntityVisibilityChange={setEntityVisibility}
           topOffset={topOffset}
+          pinned={{ top: 8, right: 8 }}
         />
+      </div>
 
-      {isMapPage && (<>
-      <MapListToggle
-        value={viewMode}
-        onChange={handleViewModeChange}
-        top={78 + topOffset}
-        left={MAP_LEFT}
-      />
-      {viewMode === "list" && (
-        <MapListPanel
-          top={78 + topOffset + 40 + 8}
-          left={MAP_LEFT}
-          orders={filteredOrders}
-          routes={listRoutes}
-          onHoverOrderChange={setHoveredWorkspaceOrderId}
-          onHoverRouteChange={setHoveredWorkspaceRouteId}
-          onAddToWorkspace={handleAddFromList}
-          focus={listFocus}
-          tabRequest={listTabRequest}
-        />
-      )}
-
-      <MapSummaryChips
-        left={chipsLeft}
-        routeCount={listRoutes.length}
-        orderCount={filteredOrders.length}
-        activeFilterCount={activeFilterCount}
-        isFilterOpen={isFilterOpen}
-        onFiltersClick={() => setIsFilterOpen((open) => !open)}
-        onRoutesClick={() => openListOnTab("routes")}
-        onOrdersClick={() => openListOnTab("orders")}
-      />
-      </>)}
-
-      {activePage === "orders" && (
-        <OrdersPage
-          topOffset={topOffset}
-          isMapOpen={isTableMapOpen}
-          onToggleMap={() => setIsTableMapOpen((v) => !v)}
-          orders={filteredOrders}
-          onHoverOrder={setHoveredWorkspaceOrderId}
-        />
-      )}
-      {activePage === "routes" && (
-        <RoutesPage
-          topOffset={topOffset}
-          isMapOpen={isTableMapOpen}
-          onToggleMap={() => setIsTableMapOpen((v) => !v)}
+      {/* Right: Routes (view only) — Workspace is the LassoWorkspaceSheet below */}
+      {mode === "planning" && isRoutesOpen && (
+        <RoutesPanel
           routes={listRoutes}
           orders={filteredOrders}
+          onClose={() => setIsRoutesOpen(false)}
           onHoverRoute={setHoveredWorkspaceRouteId}
+          onHoverStop={setHoveredWorkspaceOrderId}
+          onEditInWorkspace={(routeId) => handleAddFromList({ orderIds: [], routeIds: [routeId] })}
+          style={{ top: bodyTop, right: 0, bottom: 0 }}
         />
       )}
-      {activePage === "trucks" && <EmptyPage title="Trucks" icon={Truck} description="Your fleet for the day will show here, with the map beside it." topOffset={topOffset} />}
-      {activePage === "drivers" && <EmptyPage title="Drivers" icon={UserCheck} description="Drivers and their shifts will show here, with the map beside it." topOffset={topOffset} />}
-      {activePage === "inbox" && <EmptyPage title="Inbox" icon={Bell} description="Orders, trucks and drivers that need attention will show here." topOffset={topOffset} />}
-      {activePage === "history" && <EmptyPage title="Run history" icon={History} description="Past routing runs will show here, each opening as a read-only workspace." topOffset={topOffset} />}
-      {activePage === "analytics" && <AnalyticsPage topOffset={topOffset} />}
 
       <LassoCanvas
         isActive={isLassoDrawing}
@@ -671,7 +652,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onEscapePressed={handleLassoEscape}
       />
       <LassoWorkspaceSheet
-        isOpen={isWorkspaceOpen && isMapPage}
+        isOpen={isWorkspaceOpen && mode === "planning"}
         onClose={handleWorkspaceClose}
         selectedOrders={selectedOrders}
         selectedRouteIds={selectedRouteIds}
@@ -696,7 +677,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         externalUnassignedOrders={modal3UnassignedOrders}
         openCreateOrderTrigger={openCreateOrderTrigger}
         onCreateOrderModalOpenChange={setIsCreateOrderModalOpen}
-        topOffset={topOffset}
+        topOffset={topOffset + METRICS_BAR_HEIGHT}
         onRemoveRoutes={handleRemoveRoutes}
         onRemoveOrders={handleRemoveOrders}
         onShowToast={(driverName) => {
@@ -709,15 +690,15 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         }}
       />
 
-      {/* Success toast — fixed over map */}
+      {/* Success toast — under the metrics bar */}
       {toastMessage && (
         <div
           style={{
             position: "fixed",
-            top: 74,
+            top: bodyTop + 12,
             left: "50%",
             transform: "translateX(-50%)",
-            zIndex: 1100,
+            zIndex: 1250,
             display: "flex",
             alignItems: "center",
             gap: 8,
@@ -737,20 +718,13 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         </div>
       )}
 
-      <SideNavRail
-        active={activePage}
-        onSelect={(page) => {
-          setActivePage(page)
-          if (page !== "map") setIsFilterOpen(false)
-        }}
-        topOffset={topOffset}
-      />
       <FilterSideSheet
         variant="floating"
-        floatingLeft={chipsLeft}
-        floatingTop={filterTop}
+        floatingLeft={mapLeft + 8}
+        floatingTop={bodyTop + INSET + 48}
+        floatingBottom={INSET + 8}
         onActiveFilterCountChange={setActiveFilterCount}
-        isOpen={isFilterOpen && isMapPage}
+        isOpen={isFilterOpen && mode === "planning"}
         topOffset={topOffset}
         onClose={() => setIsFilterOpen(false)}
         totalRoutes={mockRoutes.length}
@@ -774,11 +748,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onProductSelectionChange={setAppliedFilterProducts}
       />
 
-
-      {/* Collapsed tab — clicking opens workspace with empty state */}
-      {!isWorkspaceOpen && isMapPage && (
-        <RouteSheetCollapsed onExpand={() => setIsWorkspaceOpen(true)} hideExpandButton={isCreateOrderSideSheetOpen} topOffset={topOffset} />
-      )}
+      {mode === "reconciliation" && <ReconciliationView top={APP_HEADER_HEIGHT + topOffset} />}
 
       <CreateRoutePanel isOpen={isCreatePanelOpen} onClose={() => setIsCreatePanelOpen(false)} />
 

@@ -236,22 +236,7 @@ export function RouteMap({
   useEffect(() => { onRouteClickRef.current = onRouteClick }, [onRouteClick])
   useEffect(() => { onOrderPinClickRef.current = onOrderPinClick }, [onOrderPinClick])
 
-  // ── shift map when workspace panel opens / closes ─────────────────────────
-  const prevWorkspaceOpenRef = useRef<boolean | null>(null)
-  useEffect(() => {
-    if (!mapRef.current || !mapReady) return
-    if (prevWorkspaceOpenRef.current === null) {
-      prevWorkspaceOpenRef.current = isWorkspaceOpen
-      return
-    }
-    if (prevWorkspaceOpenRef.current === isWorkspaceOpen) return
-    prevWorkspaceOpenRef.current = isWorkspaceOpen
-    // Skip pan when modal3 side sheet is involved — the drawer replaces the workspace
-    // panel visually so the map should stay still during that transition
-    if (isCreateOrderSideSheetOpen) return
-    const panAmount = workspaceWidth / 2
-    mapRef.current.panBy(isWorkspaceOpen ? [panAmount, 0] : [-panAmount, 0], { duration: 400 })
-  }, [isWorkspaceOpen, workspaceWidth, mapReady, isCreateOrderSideSheetOpen])
+  // Map sits in its own bounded box in the 3D shell; side panels resize it (ResizeObserver below) instead of panning it.
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -335,11 +320,14 @@ export function RouteMap({
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── resize when panels open/close ────────────────────────────────────────
+  // ── resize whenever the map's box changes size (panels open/close) ────────
   useEffect(() => {
-    const t = setTimeout(() => mapRef.current?.resize(), 310)
-    return () => clearTimeout(t)
-  }, [isRouteListOpen, isCreatePanelOpen, isWorkspaceOpen])
+    const el = mapContainer.current
+    if (!el || typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(() => mapRef.current?.resize())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // ── window globals that depend on mapReady ───────────────────────────────
   useEffect(() => {
@@ -355,7 +343,7 @@ export function RouteMap({
       if (bounds && mapRef.current) {
         // Right padding accounts for 560px workspace panel so route stays centred in visible area
         mapRef.current.fitBounds(bounds, {
-          padding: { top: 80, right: 640, bottom: 80, left: 80 },
+          padding: { top: 80, right: 80, bottom: 80, left: 80 },
           maxZoom: opts?.maxZoom ?? 13,
           duration: 800,
         })
@@ -376,7 +364,7 @@ export function RouteMap({
 
       // 1. Zoom — 380px left accounts for the 320px filter panel
       map.fitBounds(bounds, {
-        padding: { top: 100, right: 120, bottom: 100, left: 380 },
+        padding: { top: 100, right: 120, bottom: 100, left: 120 },
         maxZoom: 12,
         duration: 1400,
       })
@@ -465,7 +453,7 @@ export function RouteMap({
         Math.max(...lats),
       ]
       mapRef.current.fitBounds(bounds, {
-        padding: opts?.padding ?? { top: 80, right: 640, bottom: 80, left: 80 },
+        padding: opts?.padding ?? { top: 80, right: 80, bottom: 80, left: 80 },
         maxZoom: opts?.maxZoom ?? 14,
         duration,
         // Smooth ease-out so the camera lands gracefully instead of snapping
@@ -481,7 +469,7 @@ export function RouteMap({
           zoom: 12,
           duration: 800,
           // Shift focal point left so terminal centres in the visible portion (workspace is 560px right)
-          padding: { top: 0, right: 560, bottom: 0, left: 0 },
+          padding: { top: 0, right: 0, bottom: 0, left: 0 },
         })
       }
     }
@@ -616,7 +604,7 @@ export function RouteMap({
         const point = mapRef.current!.project([order.longitude, order.latitude])
         const mapW = mapContainer.current!.offsetWidth
         const mapH = mapContainer.current!.offsetHeight
-        const NAV_H = 68
+        const NAV_H = 0 // map box starts below the header in the 3D shell
         const TIP_H = 240 // approximate tooltip height
         const TIP_W = 420
         const spaceAbove = point.y - NAV_H
@@ -1377,15 +1365,11 @@ export function RouteMap({
 
   // ─── layout ──────────────────────────────────────────────────────────────
 
-  const rightOffset = isWorkspaceOpen ? "560px" : isRouteListOpen || isCreatePanelOpen ? "450px" : "44px"
-
   return (
     <>
-      <div
-        ref={mapContainer}
-        className="absolute inset-0 h-full transition-all duration-300 ease-in-out"
-        style={{ right: rightOffset }}
-      />
+      {/* Fills its positioned parent (the map region in page.tsx). Mapbox CSS forces position: relative
+          on this element, so the size has to come from h-full / w-full, not from inset. */}
+      <div ref={mapContainer} className="absolute inset-0 h-full w-full" />
       <style jsx global>{`
         /* ── cluster bubbles — disabled, will be rebuilt ──
         .cluster-marker { ... }
