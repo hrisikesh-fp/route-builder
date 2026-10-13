@@ -14,10 +14,10 @@ export const PLANNED_DATE = (() => {
 })()
 const DAY_ORDERS = 31
 
-const TRUCKS = ["T-104 Kenworth", "T-112 Peterbilt", "T-120 Freightliner", "T-131 International", "T-140 Mack"]
+export const TRUCKS = ["T-104 Kenworth", "T-112 Peterbilt", "T-120 Freightliner", "T-131 International", "T-140 Mack"]
 
 // Orders that never landed on a route in any run (beyond the five mock routes).
-const EXTRAS: UnassignedOrderRef[] = [
+export const EXTRAS: UnassignedOrderRef[] = [
   { id: "x-buda", name: "Buda Fuel Stop", latitude: 30.0852, longitude: -97.8403, gallons: 900 },
   { id: "x-hutto", name: "Hutto Ag Supply", latitude: 30.5427, longitude: -97.5467, gallons: 1200 },
   { id: "x-dripping", name: "Dripping Springs Ranch", latitude: 30.1902, longitude: -98.0867, gallons: 600 },
@@ -302,3 +302,8 @@ export function formatMinutes(min: number) {
 }
 
 export const formatGallons = (g: number) => g.toLocaleString("en-US")
+
+/** Every order of the planning day (the five mock routes' deliveries plus the extras). */
+export function dayOrders(): UnassignedOrderRef[] {
+  return [...allRoutes.flatMap((r) => ordersOf(r)), ...EXTRAS]
+}
