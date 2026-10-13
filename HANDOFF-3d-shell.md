@@ -17,7 +17,9 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000. Mock data only; no backend needed. A deployed link will follow.
+Open http://localhost:3000. Mock data only; no backend needed.
+
+**Or play with it online, no setup:** https://rb-3d-shell-handoff.vercel.app (Planning shell), https://rb-3d-shell-handoff.vercel.app/dev/workspace and https://rb-3d-shell-handoff.vercel.app/dev/run-components. Widen the browser to see the layout tiers change.
 
 **What to open:**
 
@@ -243,5 +245,6 @@ Most of what follows is a consequence of this.
 
 ## Changelog
 
+- **14 Oct 2026:** added the public preview link (rb-3d-shell-handoff.vercel.app).
 - **14 Oct 2026:** merged the latest prototype (Run history, run components, Workspace journey demo); added "What to open" and the decisions from the 13 Oct FE sync.
 - **14 Oct 2026:** first version, from `103dc4c`.
