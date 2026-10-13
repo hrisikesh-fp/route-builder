@@ -34,7 +34,7 @@ export function ReconciliationView({ top }: { top: number }) {
   )
   return (
     <div style={{ position: "absolute", top, left: 0, right: 0, bottom: 0, display: "flex", backgroundColor: "#111", fontFamily: "Geist, sans-serif", zIndex: 1000 }}>
-      <nav style={{ width: 180, flexShrink: 0, padding: 12, borderRight: "1px solid #282828", display: "flex", flexDirection: "column", gap: 4 }}>
+      <nav style={{ width: 220, flexShrink: 0, padding: 12, borderRight: "1px solid #282828", display: "flex", flexDirection: "column", gap: 4 }}>
         {item("history", "Run history")}
         {item("analytics", "Analytics & reporting")}
       </nav>
