@@ -1,7 +1,7 @@
 # Dev Handoff: Route Builder page shell (3D shell)
 
 **Repo:** `hrisikesh-fp/route-builder` (design prototype, mock data)
-**Branch:** `handoff/3d-shell`, cut from `iter/3d-shell-v2` at `103dc4c`. The code is identical to the frozen shell; this branch only adds this page.
+**Branch:** `handoff/3d-shell`. It holds the latest prototype: the frozen page shell (`103dc4c`) plus Run history, the run components and the Workspace journey demo (`b70fdc4`, `4415f1e`, `d2b441b`, merged 14 Oct).
 **ClickUp:** [Route Builder page shell: map in its own box, metrics bar, docked views (z97h2mpp3f)](https://app.clickup.com/t/8447923/z97h2mpp3f)
 **Target:** `route-builder-web`, re-implemented in its own conventions. Do not copy prototype files across; read them for behaviour and numbers.
 
@@ -18,6 +18,29 @@ pnpm dev
 ```
 
 Open http://localhost:3000. Mock data only; no backend needed. A deployed link will follow.
+
+**What to open:**
+
+| URL | What | Part of this task? |
+|---|---|---|
+| `/` → Planning | The page shell: header, metrics bar, rail views, bounded map, Routes / Workspace | **Yes, this is the task** |
+| `/` → Reconciliation → Run history | Runs of the day, read-only workspace per run, map snapshot | No, separate task; shown so the shell leaves room for it |
+| `/dev/workspace` | Workspace journey: before a run (live summary, issue strip, issue lines, Exclude), 3-pane Create Routes, after a run (summary, run banner, reasons by kind, Run details drawer, Trucks panel) | No, separate tasks; shows what will sit inside the shell |
+| `/dev/run-components` | The run components in their Planning states | No, separate tasks |
+
+---
+
+## 0. Agreed in the FE sync (13 Oct)
+
+- **The shell is one task.** Header with Planning / Reconciliation, metrics bar, and the pane framework (left, right, above and below the map, views) are hard to split, so they ship together. Create subtasks if useful. Empty states are fine for views that have no data yet.
+- **Planning and Reconciliation become real app routes**, not in-memory state. Today's Planning screen moves under Planning. The existing Routing Config navigation stays as it is.
+- **Branching:** one long-lived branch off `dev` for this rework. Every PR for it merges into that branch; when it's done, one PR to `dev`, then UAT, then production. **No feature flag:** it would mean shipping two versions of the app. Test on alpha or a preview app first.
+- **Meanwhile, keep UI changes going straight to UAT to a minimum**, since each would need building twice (old UI and new). Fleet Fuels fixes this week carry on as normal.
+- **Before branching,** make sure the merged run-transparency work (run summary, unassigned reasons, objective comparison) is in `dev`, so the new branch has it.
+- **Design tweaks:** design branches off this rework branch for small fixes, rather than building in parallel.
+- **Who does what:** the shell and the heavier parts here; lighter, separate tasks (Trucks and Drivers views, Inbox, route locking, Run history, the pre-run welcome modal) go to other FE engineers once the shell exists.
+- **Not for 17 Oct:** Save view (leave the control as a stub).
+- **Open, from the sync:** what a run's status means when only part of its routes are published (a run is a snapshot of what the solver returned; the dispatcher may change it before publishing). To be settled with the run-history work, not in the shell.
 
 ---
 
@@ -151,7 +174,7 @@ Most of what follows is a consequence of this.
 | 5 | **Right panel** | Routes (read-only) next to Workspace, widths per tier, collapse-to-rail rule, close keeps contents | `7e61ed5` |
 | 6 | **Power layout and Reconciliation** | Dock menu, drag to move, expand, two left columns on wide, Reconciliation tab | `e591207`, `0f7e587`, `a78e2a5`, `1faa0f5`, `103dc4c` |
 
-**Suggested start:** phases 1 and 2. They change nothing a dispatcher sees except the map no longer sitting under the panels, and they unblock everything after.
+**Suggested start:** phases 1 and 2 (or, as agreed on 13 Oct, the whole Planning frame as one task with subtasks). They change nothing a dispatcher sees except the map no longer sitting under the panels, and they unblock everything after.
 
 ---
 
@@ -220,4 +243,5 @@ Most of what follows is a consequence of this.
 
 ## Changelog
 
+- **14 Oct 2026:** merged the latest prototype (Run history, run components, Workspace journey demo); added "What to open" and the decisions from the 13 Oct FE sync.
 - **14 Oct 2026:** first version, from `103dc4c`.
