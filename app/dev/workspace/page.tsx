@@ -84,6 +84,7 @@ export default function WorkspaceJourneyDemo() {
   const [dialog, setDialog] = useState(false)
   const [running, setRunning] = useState(false)
   const [drawer, setDrawer] = useState(false)
+  const [detailsMode, setDetailsMode] = useState<"floating" | "docked">("floating")
   const [panels, setPanels] = useState<PanelId[]>([])
   const [driverFocus, setDriverFocus] = useState<string | null>(null)
 
@@ -158,6 +159,7 @@ export default function WorkspaceJourneyDemo() {
           <Seg label="Stage" value={stage} options={[["before", "Before a run"], ["after", "After a run"]]} onChange={(v) => { setStage(v); setTab(v === "before" ? "unassigned" : "routes"); setDrawer(false); setPanels(v === "after" ? ["trucks"] : []) }} />
           {stage === "before" && <Seg label="Checks" value={checks} options={[["clean", "Clean"], ["workspace", "In Workspace"], ["panel", "As a panel"]]} onChange={(v) => { setChecks(v); closePanel("issues") }} />}
           {stage === "after" && <Seg label="Edits" value={edits ? "on" : "off"} options={[["off", "None"], ["on", "3 orders added after"]]} onChange={(v) => setEdits(v === "on")} />}
+          {stage === "after" && <Seg label="Run details" value={detailsMode} options={[["floating", "Floating"], ["docked", "Docked in Workspace"]]} onChange={setDetailsMode} />}
         </span>
       </header>
 
@@ -200,6 +202,7 @@ export default function WorkspaceJourneyDemo() {
               onTrucks={() => openPanel("trucks")}
               onRoutes={() => setTab("routes")}
               onOrders={() => setTab("unassigned")}
+              compact={stage === "after"}
             />
 
             {/* Line 2: the run block */}
@@ -262,6 +265,12 @@ export default function WorkspaceJourneyDemo() {
             )}
           </div>
 
+          {drawer && detailsMode === "docked" && (
+            <div style={{ height: "45%", flexShrink: 0, minHeight: 0 }}>
+              <RunDetailsDrawer run={run} docked onClose={() => setDrawer(false)} />
+            </div>
+          )}
+
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 16px", borderTop: `1px solid ${RUN.border}`, flexShrink: 0 }}>
             {stage === "before" ? (
               <button type="button" onClick={() => setDialog(true)} style={{ height: 36, padding: "0 16px", borderRadius: 4, border: "none", background: "#4D55F8", color: "#fff", fontWeight: 500, fontFamily: "inherit", cursor: "pointer" }}>Create Routes</button>
@@ -272,7 +281,7 @@ export default function WorkspaceJourneyDemo() {
         </section>
       </div>
 
-      {drawer && <RunDetailsDrawer run={run} onClose={() => setDrawer(false)} anchorRight={typeof window !== "undefined" ? window.innerWidth - WORKSPACE_W : undefined} />}
+      {drawer && detailsMode === "floating" && <RunDetailsDrawer run={run} onClose={() => setDrawer(false)} anchorRight={typeof window !== "undefined" ? window.innerWidth - WORKSPACE_W : undefined} />}
 
       {dialog && <CreateRoutes3Pane orders={orders} excludedIds={excluded} trucks={ALL_TRUCKS} onClose={() => setDialog(false)} onOptimize={optimize} />}
 

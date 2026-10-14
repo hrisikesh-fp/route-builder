@@ -10,7 +10,7 @@ import { RUN } from "@/components/run/run-ui"
 
 export type TruckRow = { name: string; capacity: number; driver?: string; routeColor?: string; orders?: number; miles?: number; unusedReason?: string }
 
-const cell = { padding: "7px 10px", borderBottom: `1px solid ${RUN.border}`, fontSize: 13, textAlign: "left" as const }
+const cell = { padding: "7px 10px", borderBottom: `1px solid ${RUN.border}`, fontSize: 13, textAlign: "left" as const, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }
 
 function PanelHead({ title, sub, onClose }: { title: string; sub: string; onClose?: () => void }) {
   return (
@@ -28,8 +28,8 @@ export function TrucksPanel({ trucks, highlight, onClose, onDriver }: { trucks: 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: RUN.panel, borderTop: `1px solid ${highlight ? RUN.t3 : RUN.border2}`, transition: "border-color 300ms" }}>
       <PanelHead title="Trucks" sub={used.length > 0 ? `${used.length} planned · ${unused.length} not used` : `${trucks.length} available`} onClose={onClose} />
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <thead>
             <tr>{["Truck", "Capacity", "Driver", "Plan"].map((h) => <th key={h} style={{ ...cell, fontSize: 11, color: RUN.t4, fontWeight: 500 }}>{h}</th>)}</tr>
           </thead>
@@ -66,8 +66,8 @@ export function DriversPanel({ drivers, highlighted, onClose }: { drivers: { nam
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: RUN.panel, borderTop: `1px solid ${RUN.border2}` }}>
       <PanelHead title="Drivers" sub={`${drivers.length} on shift`} onClose={onClose} />
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <thead>
             <tr>{["Driver", "Truck", "Shift"].map((h) => <th key={h} style={{ ...cell, fontSize: 11, color: RUN.t4, fontWeight: 500 }}>{h}</th>)}</tr>
           </thead>

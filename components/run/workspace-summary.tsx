@@ -46,7 +46,7 @@ export function TopOffMark({ orders }: { orders: string[] }) {
   )
 }
 
-export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrders = [], availableTrucks, onTrucks, onRoutes, onOrders }: {
+export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrders = [], availableTrucks, onTrucks, onRoutes, onOrders, compact = false }: {
   gallons: number
   categories: CategoryGallons[]
   routes: number
@@ -57,8 +57,35 @@ export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrd
   onTrucks?: () => void
   onRoutes?: () => void
   onOrders?: () => void
+  /** After a run the run block leads; the Workspace summary steps back to one quiet line. */
+  compact?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  if (compact) {
+    const link = { background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 13, color: RUN.t2, cursor: "pointer" } as const
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, color: RUN.t3, padding: "2px 2px" }}>
+          <span style={{ color: RUN.t4 }}>In this Workspace</span>
+          <span style={{ display: "inline-flex", gap: 4, color: RUN.t2 }}>{formatGallons(gallons)} gal<TopOffMark orders={topOffOrders} /></span>
+          <span aria-hidden>·</span>
+          <button type="button" onClick={onRoutes} style={link}>{routes} routes</button>
+          <span aria-hidden>·</span>
+          <button type="button" onClick={onOrders} style={link}>{orders} orders</button>
+          <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} style={{ ...link, marginLeft: "auto", color: RUN.t3, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+            By product category <ChevronDown size={13} style={{ transform: open ? "rotate(180deg)" : "none" }} />
+          </button>
+        </div>
+        {open && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "6px 0 2px" }}>
+            {categories.map((c) => (
+              <span key={c.name} style={{ fontSize: 12, color: RUN.t2, backgroundColor: "#232323", borderRadius: 4, padding: "3px 8px" }}>{c.name} <b style={{ fontWeight: 500 }}>{formatGallons(c.gallons)}</b> gal</span>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
     <div>
       <div style={{ display: "flex", gap: 8 }}>

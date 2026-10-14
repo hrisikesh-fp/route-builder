@@ -46,7 +46,9 @@ function Row({ label, value, note }: { label: string; value: React.ReactNode; no
 }
 
 /** anchorRight: the left edge of the Workspace; the sheet sits just left of it. */
-export function RunDetailsDrawer({ run, onClose, anchorRight, top = 72 }: { run: RunRecord; onClose: () => void; anchorRight?: number; top?: number }) {
+/** docked: the same content as a view at the bottom of the Workspace column (the Workspace
+ *  then reads top to bottom: summary, the core lists, this run's details). */
+export function RunDetailsDrawer({ run, onClose, anchorRight, top = 72, docked = false }: { run: RunRecord; onClose: () => void; anchorRight?: number; top?: number; docked?: boolean }) {
   const [tab, setTab] = useState<Tab>("summary")
   const r = run.result
   const unplanned = r?.unassigned.reduce((s, g) => s + g.orders.length, 0) ?? 0
@@ -59,7 +61,15 @@ export function RunDetailsDrawer({ run, onClose, anchorRight, top = 72 }: { run:
   const left = Math.max(16, (anchorRight ?? viewportW - 560) - SHEET_W - 8)
 
   return (
-    <div role="dialog" aria-label={`Run ${run.number} details`} style={{ position: "fixed", top, left, width: SHEET_W, maxHeight: `calc(100vh - ${top + 24}px)`, zIndex: 10000, backgroundColor: "#1f1f1f", borderRadius: 8, padding: 16, display: "flex", flexDirection: "column", gap: 12, boxShadow: "0px 8px 24px rgba(0,0,0,0.5)", fontFamily: "Geist, sans-serif" }}>
+    <div
+      role={docked ? "region" : "dialog"}
+      aria-label={`Run ${run.number} details`}
+      style={
+        docked
+          ? { height: "100%", minHeight: 0, backgroundColor: "#1f1f1f", borderTop: "1px solid #333", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10, fontFamily: "Geist, sans-serif" }
+          : { position: "fixed", top, left, width: SHEET_W, maxHeight: `calc(100vh - ${top + 24}px)`, zIndex: 10000, backgroundColor: "#1f1f1f", borderRadius: 8, padding: 16, display: "flex", flexDirection: "column", gap: 12, boxShadow: "0px 8px 24px rgba(0,0,0,0.5)", fontFamily: "Geist, sans-serif" }
+      }
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <h3 style={{ fontSize: 18, fontWeight: 500, color: "#e5e5e5", margin: 0, lineHeight: "28px" }}>Run #{run.number}</h3>
         {statusChip(run.status)}
