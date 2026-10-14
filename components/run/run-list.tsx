@@ -2,20 +2,18 @@
 
 import { useState } from "react"
 import type { RunRecord } from "@/lib/run-types"
-import { Chip, RUN, fateChip } from "@/components/run/run-ui"
+import { Chip, RUN, statusChip } from "@/components/run/run-ui"
 
-// The day's runs, newest first. One entry per run: a 3-goal comparison is ONE entry
-// (not three rows, as the #433 list shows today). Each entry answers "what happened"
-// at a glance: placed of total, scope, and what became of the plan (published, used, not used).
+// The day's runs, newest first. Only data the backend stores today (#298, #433): when, who,
+// how long, outcome, goal, and the run's own summary (#296). A 3-goal comparison is ONE entry:
+// its runs share a request ID prefix (rb-…-y2ib1q--<goal>), so they group without new data.
 
-type Filter = "all" | "used" | "comparisons" | "failed"
+type Filter = "all" | "finished" | "failed" | "no_answer"
 
 export function RunList({ runs, selectedId, onSelect, plannedDate }: { runs: RunRecord[]; selectedId: string | null; onSelect: (id: string) => void; plannedDate: string }) {
   const [filter, setFilter] = useState<Filter>("all")
-  const shown = runs.filter((r) =>
-    filter === "all" ? true : filter === "used" ? r.fate === "used" || r.fate === "published" : filter === "comparisons" ? !!r.comparison : r.status !== "finished",
-  )
-  const filters: [Filter, string][] = [["all", "All"], ["used", "Used"], ["comparisons", "Comparisons"], ["failed", "Didn't finish"]]
+  const shown = runs.filter((r) => filter === "all" || r.status === filter || (filter === "failed" && r.status === "failed"))
+  const filters: [Filter, string][] = [["all", "All"], ["finished", "Finished"], ["failed", "Didn't finish"], ["no_answer", "No answer"]]
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
       <div style={{ padding: "14px 14px 8px", flexShrink: 0 }}>
@@ -39,7 +37,6 @@ export function RunList({ runs, selectedId, onSelect, plannedDate }: { runs: Run
 
 function RunListItem({ run, selected, onSelect }: { run: RunRecord; selected: boolean; onSelect: () => void }) {
   const [hover, setHover] = useState(false)
-  const scope = run.scope.kind === "reoptimize" ? `Re-optimize · ${run.scope.routeCount} routes` : "Full day"
   const what = run.comparison ? `Comparison · ${run.comparison.goals.length} goals` : run.goalLabel
   return (
     <button
@@ -49,44 +46,25 @@ function RunListItem({ run, selected, onSelect }: { run: RunRecord; selected: bo
       onClick={onSelect}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        padding: "10px 10px",
-        marginBottom: 4,
-        borderRadius: 6,
-        border: "none",
-        borderLeft: `2px solid ${selected ? RUN.t2 : "transparent"}`,
-        backgroundColor: selected ? RUN.hover : hover ? "#202020" : "transparent",
-        textAlign: "left",
-        fontFamily: "inherit",
-        cursor: "pointer",
-      }}
+      style={{ width: "100%", display: "flex", flexDirection: "column", gap: 4, padding: 10, marginBottom: 4, borderRadius: 6, border: "none", borderLeft: `2px solid ${selected ? RUN.t2 : "transparent"}`, backgroundColor: selected ? RUN.hover : hover ? "#202020" : "transparent", textAlign: "left", fontFamily: "inherit", cursor: "pointer" }}
     >
       <span style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
         <span style={{ fontSize: 14, fontWeight: 500, color: RUN.t1 }}>Run #{run.number}</span>
-        <span style={{ fontSize: 12, color: RUN.t4 }}>{run.submittedAt}</span>
-        <span style={{ marginLeft: "auto" }}>{fateChip(run.fate, run.status)}</span>
+        <span style={{ fontSize: 12, color: RUN.t4 }}>{run.submittedAt} · took {run.durationLabel.split(" ·")[0]}</span>
+        {run.status !== "finished" && <span style={{ marginLeft: "auto" }}>{statusChip(run.status)}</span>}
       </span>
-      <span style={{ fontSize: 12, color: RUN.t3 }}>
-        {scope} · {what}
-      </span>
+      <span style={{ fontSize: 12, color: RUN.t3 }}>{what}</span>
       <span style={{ fontSize: 12, color: RUN.t4, display: "flex", gap: 8 }}>
         {run.result ? (
           <>
-            <span><b style={{ color: run.result.placed < run.result.total ? RUN.warn : RUN.t2, fontWeight: 500 }}>{run.result.placed} of {run.result.total}</b> placed</span>
+            <span><b style={{ color: run.result.placed < run.result.total ? RUN.warn : RUN.t2, fontWeight: 500 }}>{run.result.placed} of {run.result.total}</b> planned</span>
             <span>{run.result.routes.length} routes</span>
           </>
         ) : (
-          <span style={{ color: RUN.bad }}>No plan</span>
+          <span style={{ color: RUN.bad }}>No plan came back</span>
         )}
         <span style={{ marginLeft: "auto" }}>{run.by}</span>
       </span>
-      {run.comparison?.chosen && (
-        <span style={{ fontSize: 11, color: RUN.info }}>Picked {run.comparison.goals.find((g) => g.goalId === run.comparison!.chosen)?.label}</span>
-      )}
     </button>
   )
 }

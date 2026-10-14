@@ -1,87 +1,92 @@
 "use client"
 
-import type { ReactNode } from "react"
-import { formatGallons, formatMinutes } from "@/lib/run-history-data"
-import { Kv, RUN } from "@/components/run/run-ui"
+import { useState, type ReactNode } from "react"
+import { ChevronDown, Truck } from "lucide-react"
+import { formatGallons } from "@/lib/run-history-data"
+import { RUN } from "@/components/run/run-ui"
 
-// A. Workspace summary: always on top of the Workspace, always LIVE. It describes the Workspace
-// as it is now, independent of any run. Content depends on the stage.
+// Line 1: the Workspace banner (decided 14 Oct). Always on top, describes whatever is in the
+// Workspace (a fresh lasso, or published routes plus orders). Not tied to any run.
+//   Total gallons (demand) · Routes (only when there are routes) · Orders · Available trucks (before a run)
+// Below it, an accordion with gallons by PRODUCT CATEGORY (Diesel, Gasoline, DEF), not products.
+// Any total-gallons figure gets an asterisk when at least one order is a top-off: approximate.
 
-function Divider() {
-  return <span aria-hidden style={{ width: 1, alignSelf: "stretch", backgroundColor: RUN.border2 }} />
-}
+export type CategoryGallons = { name: string; gallons: number }
 
-function Link({ children, onClick, tone }: { children: ReactNode; onClick?: () => void; tone?: "warn" }) {
-  return (
-    <button type="button" onClick={onClick} style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 13, color: tone === "warn" ? RUN.warn : RUN.t2, textDecoration: "underline", textUnderlineOffset: 2, textDecorationColor: RUN.border2, cursor: "pointer" }}>
-      {children}
-    </button>
+function Card({ label, children, onClick, title }: { label: string; children: ReactNode; onClick?: () => void; title?: string }) {
+  const [hover, setHover] = useState(false)
+  const inner = (
+    <>
+      <span style={{ fontSize: 12, color: RUN.t3 }}>{label}</span>
+      <span style={{ fontSize: 20, fontWeight: 500, color: RUN.t1, lineHeight: "28px", display: "flex", alignItems: "center", gap: 6 }}>{children}</span>
+    </>
+  )
+  const style = { flex: 1, minWidth: 0, display: "flex", flexDirection: "column" as const, gap: 2, padding: "10px 12px", borderRadius: 6, backgroundColor: onClick && hover ? "#2A2A2A" : "#232323", border: "none", textAlign: "left" as const, fontFamily: "inherit", cursor: onClick ? "pointer" : "default" }
+  return onClick ? (
+    <button type="button" title={title} onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={style}>{inner}</button>
+  ) : (
+    <div style={style} title={title}>{inner}</div>
   )
 }
 
-const box = { backgroundColor: RUN.raised, borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.35)" }
-
-/** Before a run (Dan Warren): orders, gallons by product category, trucks picked vs capacity. */
-export function WorkspaceSummaryBefore({ orders, gallons, products, trucks }: { orders: number; gallons: number; products: { name: string; gallons: number }[]; trucks?: { count: number; capacity: number } }) {
-  const over = trucks && gallons > trucks.capacity
+/** Asterisk with a hover list of the top-off orders. */
+export function TopOffMark({ orders }: { orders: string[] }) {
+  const [open, setOpen] = useState(false)
+  if (orders.length === 0) return null
   return (
-    <div style={box}>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", padding: "10px 14px", minHeight: 56 }}>
-        <Kv value={orders} label="orders" emphasis />
-        <Divider />
-        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontSize: 14, fontWeight: 500, color: RUN.t1 }}>{formatGallons(gallons)} gal</span>
-          <span style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {products.map((p) => (
-              <span key={p.name} style={{ fontSize: 11, color: RUN.t3, backgroundColor: "#2A2A2A", borderRadius: 3, padding: "0 6px" }}>{p.name} {formatGallons(p.gallons)}</span>
-            ))}
-          </span>
+    <span style={{ position: "relative", display: "inline-flex" }} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <span tabIndex={0} aria-label={`${orders.length} top-off orders, gallons are approximate`} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} style={{ color: RUN.warn, fontSize: 14, cursor: "help", lineHeight: 1 }}>*</span>
+      {open && (
+        <span role="tooltip" style={{ position: "absolute", top: 22, left: -8, zIndex: 20, width: 240, backgroundColor: "#171717", border: `1px solid ${RUN.border2}`, borderRadius: 6, padding: "8px 10px", boxShadow: "0 8px 24px rgba(0,0,0,0.5)", fontSize: 12, fontWeight: 400, color: RUN.t3, lineHeight: "18px" }}>
+          <span style={{ display: "block", color: RUN.t2, marginBottom: 4 }}>Approximate: {orders.length} top-off {orders.length === 1 ? "order" : "orders"}</span>
+          {orders.map((o) => <span key={o} style={{ display: "block" }}>{o}</span>)}
         </span>
-        {trucks && (
-          <>
-            <Divider />
-            <Kv value={`${trucks.count} trucks`} label={`${formatGallons(trucks.capacity)} gal in one load each`} />
-          </>
+      )}
+    </span>
+  )
+}
+
+export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrders = [], availableTrucks, onTrucks, onRoutes, onOrders }: {
+  gallons: number
+  categories: CategoryGallons[]
+  routes: number
+  orders: number
+  topOffOrders?: string[]
+  /** Shown on a fresh lasso (before any run). After a run, trucks move to the run block. */
+  availableTrucks?: number
+  onTrucks?: () => void
+  onRoutes?: () => void
+  onOrders?: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <Card label="Total gallons">
+          {formatGallons(gallons)}
+          <TopOffMark orders={topOffOrders} />
+        </Card>
+        {routes > 0 && <Card label="Routes" onClick={onRoutes}>{routes}</Card>}
+        <Card label="Orders" onClick={onOrders}>{orders}</Card>
+        {availableTrucks != null && (
+          <Card label="Available trucks" onClick={onTrucks} title="Opens the Trucks panel below the map">
+            {availableTrucks} <Truck size={16} color={RUN.t3} />
+          </Card>
         )}
       </div>
-      {over && (
-        <div style={{ borderTop: `1px solid ${RUN.border2}`, padding: "8px 14px", fontSize: 12, color: RUN.warn }}>
-          {formatGallons(gallons)} gal is more than these {trucks!.count} trucks carry in one load each. Plan reloads, or add a truck.
+      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, padding: "4px 2px", background: "none", border: "none", color: RUN.t3, fontSize: 12, fontFamily: "inherit", cursor: "pointer" }}>
+        <ChevronDown size={14} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 150ms" }} />
+        By product category
+      </button>
+      {open && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "4px 0 2px" }}>
+          {categories.map((c) => (
+            <span key={c.name} style={{ fontSize: 13, color: RUN.t2, backgroundColor: "#232323", borderRadius: 4, padding: "4px 10px" }}>
+              {c.name} <b style={{ fontWeight: 500 }}>{formatGallons(c.gallons)}</b> gal
+            </span>
+          ))}
         </div>
       )}
-    </div>
-  )
-}
-
-/** After a run: tier 1 is the plan's size and efficiency, tier 2 is coverage, each clickable. */
-export function WorkspaceSummaryAfter({ gallons, miles, driveMin, routes, planned, unassigned, trucksUsed, trucksAvailable, onUnassigned, onRoutes, onTrucks }: {
-  gallons: number
-  miles: number
-  driveMin: number
-  routes: number
-  planned: number
-  unassigned: number
-  trucksUsed: number
-  trucksAvailable: number
-  onUnassigned?: () => void
-  onRoutes?: () => void
-  onTrucks?: () => void
-}) {
-  return (
-    <div style={box}>
-      <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", padding: "10px 14px", minHeight: 56 }}>
-        <Kv value={formatGallons(gallons)} label="gal planned" emphasis />
-        <Kv value={miles > 0 ? (gallons / miles).toFixed(1) : "-"} label="gal / mile" emphasis />
-        <Kv value={miles} label="miles" emphasis />
-        <Kv value={formatMinutes(driveMin)} label="drive time" emphasis />
-      </div>
-      <div style={{ borderTop: `1px solid ${RUN.border2}`, padding: "8px 14px", display: "flex", gap: 18, flexWrap: "wrap", fontSize: 13, color: RUN.t3 }}>
-        <span><Link onClick={onRoutes}>{routes} routes</Link></span>
-        <span>
-          <b style={{ color: RUN.t1, fontWeight: 500 }}>{planned}</b> planned · {unassigned > 0 ? <Link tone="warn" onClick={onUnassigned}>{unassigned} unassigned</Link> : "0 unassigned"}
-        </span>
-        <span><Link onClick={onTrucks}>{trucksUsed} of {trucksAvailable} trucks</Link></span>
-      </div>
     </div>
   )
 }
