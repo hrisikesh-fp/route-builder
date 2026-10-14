@@ -46,7 +46,7 @@ export function TopOffMark({ orders }: { orders: string[] }) {
   )
 }
 
-export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrders = [], availableTrucks, onTrucks, onRoutes, onOrders, compact = false }: {
+export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrders = [], availableTrucks, onTrucks, onRoutes, onOrders, compact = true }: {
   gallons: number
   categories: CategoryGallons[]
   routes: number
@@ -57,7 +57,7 @@ export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrd
   onTrucks?: () => void
   onRoutes?: () => void
   onOrders?: () => void
-  /** After a run the run block leads; the Workspace summary steps back to one quiet line. */
+  /** One quiet line, before and after a run (14 Oct): the run block is what leads. */
   compact?: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -68,10 +68,22 @@ export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrd
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, color: RUN.t3, padding: "2px 2px" }}>
           <span style={{ color: RUN.t4 }}>In this Workspace</span>
           <span style={{ display: "inline-flex", gap: 4, color: RUN.t2 }}>{formatGallons(gallons)} gal<TopOffMark orders={topOffOrders} /></span>
-          <span aria-hidden>·</span>
-          <button type="button" onClick={onRoutes} style={link}>{routes} routes</button>
+          {routes > 0 && (
+            <>
+              <span aria-hidden>·</span>
+              <button type="button" onClick={onRoutes} style={link}>{routes} routes</button>
+            </>
+          )}
           <span aria-hidden>·</span>
           <button type="button" onClick={onOrders} style={link}>{orders} orders</button>
+          {availableTrucks != null && (
+            <>
+              <span aria-hidden>·</span>
+              <button type="button" onClick={onTrucks} title="Opens the Trucks panel below the map" style={{ ...link, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                {availableTrucks} available trucks <Truck size={13} color={RUN.t3} />
+              </button>
+            </>
+          )}
           <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} style={{ ...link, marginLeft: "auto", color: RUN.t3, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12 }}>
             By product category <ChevronDown size={13} style={{ transform: open ? "rotate(180deg)" : "none" }} />
           </button>

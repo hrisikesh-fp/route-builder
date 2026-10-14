@@ -13,6 +13,7 @@ import { TrucksPanel, DriversPanel, type TruckRow } from "@/components/run/truck
 import { CreateRoutes3Pane } from "@/components/run/create-routes-3pane"
 import { RunSnapshotMap } from "@/components/run/run-snapshot-map"
 import { RUN } from "@/components/run/run-ui"
+import { getLayoutTier, RUN_DETAILS_DOCKED_TIERS } from "@/lib/layout-tiers"
 
 // Demo: the Workspace before and after a run (workspace-journey.md, decisions of 14 Oct).
 //   Line 1  Workspace banner: Total gallons · Routes (when there are any) · Orders · Available trucks (before a run)
@@ -84,7 +85,10 @@ export default function WorkspaceJourneyDemo() {
   const [dialog, setDialog] = useState(false)
   const [running, setRunning] = useState(false)
   const [drawer, setDrawer] = useState(false)
-  const [detailsMode, setDetailsMode] = useState<"floating" | "docked">("floating")
+  const [detailsPref, setDetailsMode] = useState<"auto" | "floating" | "docked">("auto")
+  // Same rule as the left views: dock only on the wide tier, float below it.
+  const tier = typeof window !== "undefined" ? getLayoutTier(window.innerWidth) : "desk"
+  const detailsMode = detailsPref === "auto" ? (RUN_DETAILS_DOCKED_TIERS.includes(tier) ? "docked" : "floating") : detailsPref
   const [panels, setPanels] = useState<PanelId[]>([])
   const [driverFocus, setDriverFocus] = useState<string | null>(null)
 
@@ -159,7 +163,7 @@ export default function WorkspaceJourneyDemo() {
           <Seg label="Stage" value={stage} options={[["before", "Before a run"], ["after", "After a run"]]} onChange={(v) => { setStage(v); setTab(v === "before" ? "unassigned" : "routes"); setDrawer(false); setPanels(v === "after" ? ["trucks"] : []) }} />
           {stage === "before" && <Seg label="Checks" value={checks} options={[["clean", "Clean"], ["workspace", "In Workspace"], ["panel", "As a panel"]]} onChange={(v) => { setChecks(v); closePanel("issues") }} />}
           {stage === "after" && <Seg label="Edits" value={edits ? "on" : "off"} options={[["off", "None"], ["on", "3 orders added after"]]} onChange={(v) => setEdits(v === "on")} />}
-          {stage === "after" && <Seg label="Run details" value={detailsMode} options={[["floating", "Floating"], ["docked", "Docked in Workspace"]]} onChange={setDetailsMode} />}
+          {stage === "after" && <Seg label={`Run details (${tier} tier)`} value={detailsPref} options={[["auto", "Auto"], ["floating", "Floating"], ["docked", "Docked"]]} onChange={setDetailsMode} />}
         </span>
       </header>
 
@@ -202,7 +206,6 @@ export default function WorkspaceJourneyDemo() {
               onTrucks={() => openPanel("trucks")}
               onRoutes={() => setTab("routes")}
               onOrders={() => setTab("unassigned")}
-              compact={stage === "after"}
             />
 
             {/* Line 2: the run block */}
