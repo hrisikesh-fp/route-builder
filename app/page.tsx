@@ -991,6 +991,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onEscapePressed={handleLassoEscape}
       />
       <LassoWorkspaceSheet
+        onOpenTrucksView={() => { if (!openViews.includes("trucks")) handleRailSelect("trucks") }}
         isOpen={isWorkspaceOpen && mode === "planning" && isRightPanelShown}
         onClose={handleWorkspaceClose}
         selectedOrders={selectedOrders}

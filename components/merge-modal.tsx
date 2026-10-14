@@ -150,7 +150,7 @@ function FleetInfoPanel() {
 }
 
 export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassignedOrderIds = [], selectedOrders, modalMode = "create", onComplete }: MergeModalProps) {
-  const { optimizationInputLayout } = useSettings()
+  const { optimizationInputLayout, showObjectiveComparison } = useSettings()
   const [screen, setScreen] = useState<"main" | "loading" | "objectives">("main")
   const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [loadingPhase, setLoadingPhase] = useState("")
@@ -188,8 +188,8 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassigned
       { delay: 1800, text: "Optimising stop sequences...", canCancel: false },
       // The run now fans out across every available objective, so the last
       // phase names that rather than pretending it's one solve.
-      { delay: 1800, text: "Solving for each objective...", canCancel: false },
-      { delay: 1300, text: "Scoring the results...", canCancel: false },
+      { delay: 1800, text: showObjectiveComparison ? "Solving for each objective..." : "Solving...", canCancel: false },
+      { delay: 1300, text: showObjectiveComparison ? "Scoring the results..." : "Checking the plan...", canCancel: false },
     ]
 
     let i = 0
@@ -198,6 +198,12 @@ export function MergeModal({ isOpen, onClose, checkedRouteIds, checkedUnassigned
         // Every objective has finished solving. Hand off to the scorecard so the
         // dispatcher picks the goal before seeing any routes.
         setTimeout(() => {
+          // 17 Oct scope: no comparison; the run lands straight away (Prototype Settings).
+          if (!showObjectiveComparison) {
+            onComplete?.(buildMockOptimizationResult(orderRows, orderRows.length))
+            handleClose()
+            return
+          }
           setScreen("objectives")
           setCanCancel(true)
         }, 800)

@@ -29,6 +29,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     updateShowEditInFab,
     updateShowDriverConflict,
     updateOptimizationInputLayout,
+    showObjectiveComparison,
+    showReviewStage,
+    updateShowObjectiveComparison,
+    updateShowReviewStage,
   } = useSettings()
 
   if (!isOpen) return null
@@ -377,6 +381,34 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* Divider */}
           <div style={{ borderTop: "1px solid #282828" }} />
+
+          {/* ── AFTER YOU OPTIMIZE (17 Oct scope: both off) ── */}
+          <div>
+            <h3
+              className="mb-4"
+              style={{ color: "#A3A3A3", fontSize: "12px", fontWeight: 500, lineHeight: "16px", textTransform: "uppercase", letterSpacing: "0.05em" }}
+            >
+              After you optimize
+            </h3>
+            <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#1A1A1A", border: "1px solid #282828" }}>
+              {([
+                { on: showObjectiveComparison, set: updateShowObjectiveComparison, title: "Objective comparison", body: "Pick 2 or more goals, then choose a plan from the scorecard. Off: one goal, one run (17 Oct)." },
+                { on: showReviewStage, set: updateShowReviewStage, title: "Review stage before the Workspace", body: "Results open in the Optimized Routes drawer first. Off: they land straight in the Workspace with the run summary (17 Oct)." },
+              ] as const).map((row, i) => (
+                <button key={row.title} onClick={() => row.set(!row.on)} className="w-full text-left" style={{ borderBottom: i === 0 ? "1px solid #282828" : "none" }}>
+                  <div className="flex items-start gap-3 p-4">
+                    <div style={{ width: 34, height: 20, borderRadius: 10, backgroundColor: row.on ? "#6366F1" : "#404040", position: "relative", flexShrink: 0, marginTop: 2, transition: "background-color 150ms" }}>
+                      <div style={{ position: "absolute", top: 2, left: row.on ? 16 : 2, width: 16, height: 16, borderRadius: "50%", backgroundColor: "#FFF", transition: "left 150ms" }} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>{row.title}</span>
+                      <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>{row.body}</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* ── PREFERENCES (existing) ── */}
           <div>

@@ -25,6 +25,12 @@ import { TruckConflictModal } from "@/components/truck-conflict-modal"
 import { TruckSyncModal } from "@/components/truck-sync-modal"
 import { RouteSequenceModal } from "@/components/route-sequence-modal"
 import { RouteStartTimeModal } from "@/components/route-start-time-modal"
+import { WorkspaceBanner, type CategoryGallons } from "@/components/run/workspace-summary"
+import { RunBanner } from "@/components/run/run-banner"
+import { RunDetailsDrawer } from "@/components/run/run-details-drawer"
+import { runFromOptimization } from "@/lib/run-from-optimization"
+import type { RunRecord } from "@/lib/run-types"
+import { getLayoutTier, RUN_DETAILS_DOCKED_TIERS } from "@/lib/layout-tiers"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -62,6 +68,8 @@ interface LassoWorkspaceSheetProps {
   onCreateOrderSideSheetClose?: () => void
   /** Called when optimization drawer opens so page.tsx can collapse the workspace. */
   onOptimizationDrawerOpen?: () => void
+  /** Opens the Trucks view below / beside the map (from the Workspace summary or the run block). */
+  onOpenTrucksView?: () => void
   /** Called when optimization drawer closes so page.tsx can reopen the workspace. */
   onOptimizationDrawerClose?: () => void
   /** Modal 3: orders created via the side sheet flow (owned by page.tsx, merged into unassigned list). */
@@ -2966,6 +2974,7 @@ export function LassoWorkspaceSheet({
   onCreateOrderSideSheetClose,
   onOptimizationDrawerOpen,
   onOptimizationDrawerClose,
+  onOpenTrucksView,
   externalUnassignedOrders = [],
   openCreateOrderTrigger,
   onCreateOrderModalOpenChange,
@@ -3152,6 +3161,24 @@ export function LassoWorkspaceSheet({
   const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
   const [optimizationResult, setOptimizationResult] = useState<OptimizationResult | null>(null)
   const [isOptimizationDrawerOpen, setIsOptimizationDrawerOpen] = useState(false)
+  // Run block (14 Oct): the last run lands here when there's no review stage, or after Proceed.
+  const { showReviewStage } = useSettings()
+  const [lastRun, setLastRun] = useState<RunRecord | null>(null)
+  const [runCount, setRunCount] = useState(0)
+  const [isRunDetailsOpen, setIsRunDetailsOpen] = useState(false)
+  const goToSection = (tab: "routes" | "unassigned") => {
+    setActiveTab(tab)
+    const target = tab === "routes" ? routesSectionRef.current : unassignedSectionRef.current
+    if (target && scrollContainerRef.current) {
+      const containerRect = scrollContainerRef.current.getBoundingClientRect()
+      scrollContainerRef.current.scrollBy({ top: target.getBoundingClientRect().top - containerRect.top, behavior: "smooth" })
+    }
+  }
+  const landRun = (result: OptimizationResult) => {
+    const n = runCount + 1
+    setRunCount(n)
+    setLastRun(runFromOptimization(result, n))
+  }
   // Inline optimise loading state (per route, on the card itself)
   const [optimisingInlineRouteId, setOptimisingInlineRouteId] = useState<string | null>(null)
   const [optimisingPhaseIndex, setOptimisingPhaseIndex] = useState(0)
@@ -3544,6 +3571,7 @@ export function LassoWorkspaceSheet({
             onOptimizationDrawerClose?.()
           }}
           onProceed={() => {
+            if (optimizationResult) landRun(optimizationResult)
             onCheckedRoutesChange([])
             setCheckedUnassignedOrderIds([])
             setOptimiseRouteId(null)
@@ -3732,7 +3760,7 @@ export function LassoWorkspaceSheet({
             }}
           >
             <span style={{ fontSize: 18, fontWeight: 500, color: "#FFFFFF" }}>
-              {selectedOrders.length} Orders selected
+              Workspace
             </span>
             <button
               onClick={onClose}
@@ -3755,6 +3783,43 @@ export function LassoWorkspaceSheet({
               <X size={16} />
             </button>
           </div>
+
+          {/* ── WORKSPACE SUMMARY (live) + RUN BLOCK (frozen until the next optimize) ── */}
+          {(() => {
+            const deliveries = selectedOrders.filter((o) => !o.orderType || o.orderType === "D")
+            const cat = (p: string) => (/DEF/i.test(p) ? "DEF" : /OCT|GAS|ETH|UNL/i.test(p) ? "Gasoline" : /DIESEL|ULSD|DYED/i.test(p) ? "Diesel" : "Other")
+            const byCat = new Map<string, number>()
+            for (const o of deliveries) {
+              const parts = o.productBreakdown?.length ? o.productBreakdown : [{ product: "Other", volume: o.volume ?? 0 }]
+              for (const pb of parts) byCat.set(cat(pb.product), (byCat.get(cat(pb.product)) ?? 0) + (pb.volume ?? 0))
+            }
+            const categories: CategoryGallons[] = [...byCat.entries()].map(([name, gallons]) => ({ name, gallons }))
+            const topOffs = deliveries.filter((o) => (o.totalTopOffs ?? 0) > 0).map((o) => o.shipToName ?? o.customerName)
+            return (
+              <div style={{ padding: "0 24px 4px", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
+                <WorkspaceBanner
+                  gallons={deliveries.reduce((sum, o) => sum + (o.volume ?? 0), 0)}
+                  categories={categories}
+                  routes={allRouteIds.length}
+                  orders={deliveries.length}
+                  topOffOrders={topOffs}
+                  availableTrucks={lastRun ? undefined : TRUCKS.length}
+                  onTrucks={onOpenTrucksView}
+                  onRoutes={() => goToSection("routes")}
+                  onOrders={() => goToSection("unassigned")}
+                />
+                {lastRun && (
+                  <RunBanner
+                    run={lastRun}
+                    trucksAvailable={TRUCKS.length}
+                    onDetails={() => setIsRunDetailsOpen(true)}
+                    onUnassigned={() => goToSection("unassigned")}
+                    onTrucks={onOpenTrucksView}
+                  />
+                )}
+              </div>
+            )
+          })()}
 
           {/* ── TABS ── */}
           <div
@@ -5281,6 +5346,15 @@ export function LassoWorkspaceSheet({
             )
           })()}
 
+          {lastRun && isRunDetailsOpen && typeof window !== "undefined" && RUN_DETAILS_DOCKED_TIERS.includes(getLayoutTier(window.innerWidth)) && (
+            <div style={{ height: "45%", flexShrink: 0, minHeight: 0 }}>
+              <RunDetailsDrawer run={lastRun} docked onClose={() => setIsRunDetailsOpen(false)} />
+            </div>
+          )}
+          {lastRun && isRunDetailsOpen && typeof window !== "undefined" && !RUN_DETAILS_DOCKED_TIERS.includes(getLayoutTier(window.innerWidth)) && (
+            <RunDetailsDrawer run={lastRun} onClose={() => setIsRunDetailsOpen(false)} anchorRight={window.innerWidth - width} top={68 + topOffset + 8} />
+          )}
+
           {/* ── FOOTER ── */}
           <div
             style={{
@@ -5636,6 +5710,7 @@ export function LassoWorkspaceSheet({
             const result = buildMockOptimizationResult(orderRows, orderRows.length)
             setIsMergeModalOpen(false)
             setOptimiseRouteId(null)
+            if (!showReviewStage) { landRun(result); return }
             setOptimizationResult(result)
             setIsOptimizationDrawerOpen(true)
             onOptimizationDrawerOpen?.()
@@ -5652,6 +5727,7 @@ export function LassoWorkspaceSheet({
         onComplete={(result) => {
           setIsMergeModalOpen(false)
           setOptimiseRouteId(null)
+          if (!showReviewStage) { landRun(result); return }
           setOptimizationResult(result)
           setIsOptimizationDrawerOpen(true)
           onOptimizationDrawerOpen?.()
@@ -5669,6 +5745,7 @@ export function LassoWorkspaceSheet({
           onOptimizationDrawerClose?.()
         }}
         onProceed={() => {
+          if (optimizationResult) landRun(optimizationResult)
           onCheckedRoutesChange([])
           setCheckedUnassignedOrderIds([])
           setOptimiseRouteId(null)
