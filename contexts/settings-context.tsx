@@ -13,6 +13,10 @@ const DEFAULT_SHOW_DRIVER_CONFLICT = false
 const DEFAULT_OPTIMIZATION_INPUT_LAYOUT = "orders_only" as const
 // Prototype data: start the day with every order unassigned (no routes created yet)
 const DEFAULT_UNASSIGNED_ONLY = true
+// 17 Oct scope (14 Oct): no objective comparison, no review stage before the Workspace.
+// Both stay as prototype switches so they can be shown later.
+const DEFAULT_SHOW_OBJECTIVE_COMPARISON = false
+const DEFAULT_SHOW_REVIEW_STAGE = false
 
 type RouteLineDisplayType = "grayscale" | "colored"
 type OrderCardViewType = "condensed" | "detailed"
@@ -29,6 +33,8 @@ interface SettingsContextType {
   showDriverConflict: boolean
   optimizationInputLayout: OptimizationInputLayout
   unassignedOnly: boolean
+  showObjectiveComparison: boolean
+  showReviewStage: boolean
   updateRouteLineDisplay: (v: RouteLineDisplayType) => void
   updateShowBadges: (v: boolean) => void
   updateReducedOpacity: (v: boolean) => void
@@ -38,6 +44,8 @@ interface SettingsContextType {
   updateShowDriverConflict: (v: boolean) => void
   updateOptimizationInputLayout: (v: OptimizationInputLayout) => void
   updateUnassignedOnly: (v: boolean) => void
+  updateShowObjectiveComparison: (v: boolean) => void
+  updateShowReviewStage: (v: boolean) => void
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null)
@@ -52,6 +60,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [showDriverConflict, setShowDriverConflict] = useState<boolean>(DEFAULT_SHOW_DRIVER_CONFLICT)
   const [optimizationInputLayout, setOptimizationInputLayout] = useState<OptimizationInputLayout>(DEFAULT_OPTIMIZATION_INPUT_LAYOUT)
   const [unassignedOnly, setUnassignedOnly] = useState<boolean>(DEFAULT_UNASSIGNED_ONLY)
+  const [showObjectiveComparison, setShowObjectiveComparison] = useState<boolean>(DEFAULT_SHOW_OBJECTIVE_COMPARISON)
+  const [showReviewStage, setShowReviewStage] = useState<boolean>(DEFAULT_SHOW_REVIEW_STAGE)
 
   // Load persisted settings from localStorage on mount
   useEffect(() => {
@@ -73,6 +83,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
     const storedUnassignedOnly = localStorage.getItem("unassignedOnly")
     if (storedUnassignedOnly !== null) setUnassignedOnly(storedUnassignedOnly === "true")
+    const storedComparison = localStorage.getItem("showObjectiveComparison")
+    if (storedComparison !== null) setShowObjectiveComparison(storedComparison === "true")
+    const storedReview = localStorage.getItem("showReviewStage")
+    if (storedReview !== null) setShowReviewStage(storedReview === "true")
   }, [])
 
   const updateRouteLineDisplay = (v: RouteLineDisplayType) => setRouteLineDisplayValue(v)
@@ -102,6 +116,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setUnassignedOnly(v)
     localStorage.setItem("unassignedOnly", String(v))
   }
+  const updateShowObjectiveComparison = (v: boolean) => {
+    setShowObjectiveComparison(v)
+    localStorage.setItem("showObjectiveComparison", String(v))
+  }
+  const updateShowReviewStage = (v: boolean) => {
+    setShowReviewStage(v)
+    localStorage.setItem("showReviewStage", String(v))
+  }
 
   return (
     <SettingsContext.Provider
@@ -115,6 +137,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         showDriverConflict,
         optimizationInputLayout,
         unassignedOnly,
+        showObjectiveComparison,
+        showReviewStage,
         updateRouteLineDisplay,
         updateShowBadges,
         updateReducedOpacity,
@@ -124,6 +148,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         updateShowDriverConflict,
         updateOptimizationInputLayout,
         updateUnassignedOnly,
+        updateShowObjectiveComparison,
+        updateShowReviewStage,
       }}
     >
       {children}
@@ -144,6 +170,8 @@ export function useSettings(): SettingsContextType {
       showDriverConflict: DEFAULT_SHOW_DRIVER_CONFLICT,
       optimizationInputLayout: DEFAULT_OPTIMIZATION_INPUT_LAYOUT,
       unassignedOnly: DEFAULT_UNASSIGNED_ONLY,
+      showObjectiveComparison: DEFAULT_SHOW_OBJECTIVE_COMPARISON,
+      showReviewStage: DEFAULT_SHOW_REVIEW_STAGE,
       updateRouteLineDisplay: () => {},
       updateShowBadges: () => {},
       updateReducedOpacity: () => {},
@@ -153,6 +181,8 @@ export function useSettings(): SettingsContextType {
       updateShowDriverConflict: () => {},
       updateOptimizationInputLayout: () => {},
       updateUnassignedOnly: () => {},
+      updateShowObjectiveComparison: () => {},
+      updateShowReviewStage: () => {},
     }
   }
   return ctx

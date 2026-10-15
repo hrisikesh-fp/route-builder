@@ -1,6 +1,6 @@
 "use client"
 
-import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route, XCircle, Pencil } from "lucide-react"
+import { X, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Home, Truck, Caravan, TriangleAlert, Plus, ArrowUp, ArrowDown, Info, Search, UserCheck, Check, ChevronsLeft, ExternalLink, Sparkles, Package, Route, XCircle, Pencil, Droplet } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockRoutes, mockHubs } from "@/lib/mock-data"
 import { useState, useRef, useEffect } from "react"
@@ -25,6 +25,12 @@ import { TruckConflictModal } from "@/components/truck-conflict-modal"
 import { TruckSyncModal } from "@/components/truck-sync-modal"
 import { RouteSequenceModal } from "@/components/route-sequence-modal"
 import { RouteStartTimeModal } from "@/components/route-start-time-modal"
+import { RunBanner } from "@/components/run/run-banner"
+import { UnassignedReasons } from "@/components/run/unassigned-reasons"
+import { RunDetailsDrawer } from "@/components/run/run-details-drawer"
+import { runFromOptimization } from "@/lib/run-from-optimization"
+import type { RunRecord } from "@/lib/run-types"
+import { getLayoutTier, RUN_DETAILS_DOCKED_TIERS } from "@/lib/layout-tiers"
 
 interface LassoWorkspaceSheetProps {
   isOpen: boolean
@@ -62,6 +68,8 @@ interface LassoWorkspaceSheetProps {
   onCreateOrderSideSheetClose?: () => void
   /** Called when optimization drawer opens so page.tsx can collapse the workspace. */
   onOptimizationDrawerOpen?: () => void
+  /** Opens the Trucks view below / beside the map (from the Workspace summary or the run block). */
+  onOpenTrucksView?: () => void
   /** Called when optimization drawer closes so page.tsx can reopen the workspace. */
   onOptimizationDrawerClose?: () => void
   /** Modal 3: orders created via the side sheet flow (owned by page.tsx, merged into unassigned list). */
@@ -1996,8 +2004,11 @@ function OrderStopRow({
               {order.shipToName ?? order.customerName}
             </span>
           </div>
-
-          {/* Planned qty — ghost button, self-hover like driver dropdown */}
+          {order.shipToName && (
+            <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#A3A3A3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {order.customerName}
+            </span>
+          )}
           <button
             className="planned-qty-btn"
             onClick={(e) => {
@@ -2005,32 +2016,30 @@ function OrderStopRow({
               const rect = e.currentTarget.getBoundingClientRect()
               const card = e.currentTarget.closest<HTMLElement>("[data-order-card]")
               const cardLeft = card ? card.getBoundingClientRect().left : rect.left
-              // Toggle: click again to close
               onPlannedQtyClick?.(order, rect.top + rect.height / 2, cardLeft)
             }}
             style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: "#FAFAFA",
-              opacity: 0.6,
-              lineHeight: "20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              height: 28,
+              width: "100%",
+              padding: 0,
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              height: 28,
-              padding: "0 10px",
-              marginLeft: -10,
-              borderRadius: 4,
-              textAlign: "left",
-              transition: "opacity 0.15s, background-color 0.15s, box-shadow 0.15s",
-              alignSelf: "flex-start",
-              boxShadow: isDetailsOpen ? "0px 0px 0px 3px rgba(163,163,163,0.5)" : "none",
-              ...(isDetailsOpen ? { opacity: 1 } : {}),
+              fontFamily: "inherit",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.backgroundColor = "#404040" }}
-            onMouseLeave={(e) => { if (!isDetailsOpen) { e.currentTarget.style.opacity = "0.6" }; e.currentTarget.style.backgroundColor = "transparent" }}
           >
-            Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, opacity: 0.6 }}>
+              <Droplet size={16} color="#FAFAFA" />
+              <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "20px", color: "#FAFAFA" }}>
+                {(order.productBreakdown?.length || 1)} Product{(order.productBreakdown?.length || 1) === 1 ? "" : "s"}
+              </span>
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#E5E5E5" }}>
+              {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
+            </span>
           </button>
         </div>
 
@@ -2479,6 +2488,11 @@ function OrderStopRowDetailed({
                 {order.shipToName ?? order.customerName}
               </span>
             </div>
+            {order.shipToName && (
+              <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#A3A3A3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {order.customerName}
+              </span>
+            )}
 
             {/* Secondary section wrapper — « button + stats card */}
             <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-end", marginLeft: -44 }}>
@@ -2966,6 +2980,7 @@ export function LassoWorkspaceSheet({
   onCreateOrderSideSheetClose,
   onOptimizationDrawerOpen,
   onOptimizationDrawerClose,
+  onOpenTrucksView,
   externalUnassignedOrders = [],
   openCreateOrderTrigger,
   onCreateOrderModalOpenChange,
@@ -3152,6 +3167,41 @@ export function LassoWorkspaceSheet({
   const [optimiseRouteId, setOptimiseRouteId] = useState<string | null>(null)
   const [optimizationResult, setOptimizationResult] = useState<OptimizationResult | null>(null)
   const [isOptimizationDrawerOpen, setIsOptimizationDrawerOpen] = useState(false)
+  // Run block (14 Oct): the last run lands here when there's no review stage, or after Proceed.
+  const { showReviewStage } = useSettings()
+  const [lastRun, setLastRun] = useState<RunRecord | null>(null)
+  const [runCount, setRunCount] = useState(0)
+  const [isRunDetailsOpen, setIsRunDetailsOpen] = useState(false)
+  const goToSection = (tab: "routes" | "unassigned") => {
+    setActiveTab(tab)
+    const target = tab === "routes" ? routesSectionRef.current : unassignedSectionRef.current
+    if (target && scrollContainerRef.current) {
+      const containerRect = scrollContainerRef.current.getBoundingClientRect()
+      scrollContainerRef.current.scrollBy({ top: target.getBoundingClientRect().top - containerRect.top, behavior: "smooth" })
+    }
+  }
+  const focusUnassignedOrder = (id: string, latitude: number, longitude: number) => {
+    setActiveTab("unassigned")
+    const card = scrollContainerRef.current?.querySelector<HTMLElement>(`[data-unassigned-id="${CSS.escape(id)}"]`)
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" })
+      card.classList.add("rb-unassigned-flicker")
+      onHoveredOrderChange?.(id)
+      window.setTimeout(() => {
+        card.classList.remove("rb-unassigned-flicker")
+        onHoveredOrderChange?.(null)
+      }, 2500)
+    }
+    if (latitude && longitude && typeof window !== "undefined") {
+      const zoom = (window as unknown as { __zoomToShipTo?: (lat: number, lng: number) => void }).__zoomToShipTo
+      zoom?.(latitude, longitude)
+    }
+  }
+  const landRun = (result: OptimizationResult) => {
+    const n = runCount + 1
+    setRunCount(n)
+    setLastRun(runFromOptimization(result, n))
+  }
   // Inline optimise loading state (per route, on the card itself)
   const [optimisingInlineRouteId, setOptimisingInlineRouteId] = useState<string | null>(null)
   const [optimisingPhaseIndex, setOptimisingPhaseIndex] = useState(0)
@@ -3544,6 +3594,7 @@ export function LassoWorkspaceSheet({
             onOptimizationDrawerClose?.()
           }}
           onProceed={() => {
+            if (optimizationResult) landRun(optimizationResult)
             onCheckedRoutesChange([])
             setCheckedUnassignedOrderIds([])
             setOptimiseRouteId(null)
@@ -3723,7 +3774,7 @@ export function LassoWorkspaceSheet({
           {/* ── HEADER ── */}
           <div
             style={{
-              padding: "20px 24px 12px",
+              padding: "20px 24px 0",
               display: "flex",
               flexDirection: "row",
               alignItems: "center",
@@ -3731,30 +3782,56 @@ export function LassoWorkspaceSheet({
               flexShrink: 0,
             }}
           >
-            <span style={{ fontSize: 18, fontWeight: 500, color: "#FFFFFF" }}>
-              {selectedOrders.length} Orders selected
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 16 }}>
+              <span style={{ fontSize: 18, fontWeight: 500, lineHeight: "28px", color: "#FFFFFF" }}>Workspace</span>
+              {(() => {
+                const deliveries = selectedOrders.filter((o) => !o.orderType || o.orderType === "D")
+                const gallons = deliveries.reduce((sum, o) => sum + (o.volume ?? 0), 0)
+                const badge = { backgroundColor: "#282828", borderRadius: 4, padding: "2px 8px", fontSize: 14, fontWeight: 500, lineHeight: "20px", color: "#FAFAFA" } as const
+                return (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span style={badge}>{gallons.toLocaleString("en-US")} gal</span>
+                    <button type="button" onClick={() => goToSection("routes")} style={{ ...badge, border: "none", fontFamily: "inherit", cursor: "pointer" }}>{allRouteIds.length} Routes</button>
+                    <span style={badge}>{deliveries.length} Orders</span>
+                  </span>
+                )
+              })()}
             </span>
             <button
               onClick={onClose}
+              aria-label="Close workspace"
               style={{
-                width: 24,
-                height: 24,
+                width: 28,
+                height: 28,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#737373",
+                color: "#A3A3A3",
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                borderRadius: 4,
+                borderRadius: 8,
                 padding: 0,
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#FFFFFF")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#737373")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#A3A3A3")}
             >
               <X size={16} />
             </button>
           </div>
+
+          {/* Product category stays in WorkspaceBanner for a later pass. Counts are the header badges. */}
+          {lastRun && (
+            <div style={{ padding: "20px 24px 0", flexShrink: 0 }}>
+              <RunBanner
+                run={lastRun}
+                onDetails={() => setIsRunDetailsOpen(true)}
+                onRoutes={() => goToSection("routes")}
+                onUnassigned={() => goToSection("unassigned")}
+                onTrucks={onOpenTrucksView}
+              />
+            </div>
+          )}
 
           {/* ── TABS ── */}
           <div
@@ -4909,6 +4986,13 @@ export function LassoWorkspaceSheet({
                       Select All Unassigned Orders
                     </span>
                   </div>
+                  {lastRun?.result && lastRun.result.unassigned.length > 0 && (
+                    <UnassignedReasons
+                      groups={lastRun.result.unassigned}
+                      total={lastRun.result.total}
+                      onOrder={(order) => focusUnassignedOrder(order.id, order.latitude, order.longitude)}
+                    />
+                  )}
                   {unassignedOrders.map((order) => {
                     const type = order.orderType ?? "D"
                     const totalAssets = order.totalAssets ?? 0
@@ -4922,6 +5006,7 @@ export function LassoWorkspaceSheet({
                       return (
                         <div
                           key={order.id}
+                          data-unassigned-id={order.id}
                           style={{
                             backgroundColor: "#1F1F1F",
                             borderRadius: 4,
@@ -4975,22 +5060,20 @@ export function LassoWorkspaceSheet({
                                 {order.shipToName ?? order.customerName}
                               </span>
                             </div>
-                            {/* Planned qty + time row */}
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <button
-                                style={{
-                                  fontSize: 14, fontWeight: 500, color: "#FAFAFA", opacity: 0.6, lineHeight: "20px",
-                                  background: "transparent", border: "none", cursor: "pointer",
-                                  height: 28, padding: "0 10px", marginLeft: -10, borderRadius: 4,
-                                  textAlign: "left", transition: "opacity 0.15s, background-color 0.15s",
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.backgroundColor = "#404040" }}
-                                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; e.currentTarget.style.backgroundColor = "transparent" }}
-                              >
-                                Planned Qty: {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
-                              </button>
-                              <span style={{ fontSize: 12, fontWeight: 400, color: "#A3A3A3", lineHeight: "16px", flexShrink: 0 }}>
-                                5:45 AM
+                            {order.shipToName && (
+                              <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#A3A3A3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {order.customerName}
+                              </span>
+                            )}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 28 }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, opacity: 0.6 }}>
+                                <Droplet size={16} color="#FAFAFA" />
+                                <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "20px", color: "#FAFAFA" }}>
+                                  {(order.productBreakdown?.length || 1)} Product{(order.productBreakdown?.length || 1) === 1 ? "" : "s"}
+                                </span>
+                              </span>
+                              <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#E5E5E5" }}>
+                                {order.volume > 0 ? `${order.volume.toLocaleString()} gal` : "—"}
                               </span>
                             </div>
                           </div>
@@ -5024,6 +5107,7 @@ export function LassoWorkspaceSheet({
                     return (
                     <div
                       key={order.id}
+                      data-unassigned-id={order.id}
                       style={{
                         backgroundColor: "#1F1F1F",
                         borderRadius: 4,
@@ -5047,15 +5131,11 @@ export function LassoWorkspaceSheet({
                         <span style={{ fontSize: 16, fontWeight: 500, color: "#FFFFFF", lineHeight: "24px" }}>
                           {order.shipToName ?? order.customerName}
                         </span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#737373" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                            <circle cx="12" cy="10" r="3" />
-                          </svg>
-                          <span style={{ fontSize: 14, fontWeight: 400, color: "#737373", lineHeight: "20px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {order.shipToAddress}
+                        {order.shipToName && (
+                          <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#A3A3A3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {order.customerName}
                           </span>
-                        </div>
+                        )}
                       </div>
 
                       {/* Inner card: time + badge + stats */}
@@ -5280,6 +5360,15 @@ export function LassoWorkspaceSheet({
               </div>
             )
           })()}
+
+          {lastRun && isRunDetailsOpen && typeof window !== "undefined" && RUN_DETAILS_DOCKED_TIERS.includes(getLayoutTier(window.innerWidth)) && (
+            <div style={{ height: "45%", flexShrink: 0, minHeight: 0 }}>
+              <RunDetailsDrawer run={lastRun} docked onClose={() => setIsRunDetailsOpen(false)} />
+            </div>
+          )}
+          {lastRun && isRunDetailsOpen && typeof window !== "undefined" && !RUN_DETAILS_DOCKED_TIERS.includes(getLayoutTier(window.innerWidth)) && (
+            <RunDetailsDrawer run={lastRun} onClose={() => setIsRunDetailsOpen(false)} anchorRight={window.innerWidth - width} top={68 + topOffset + 8} />
+          )}
 
           {/* ── FOOTER ── */}
           <div
@@ -5636,6 +5725,7 @@ export function LassoWorkspaceSheet({
             const result = buildMockOptimizationResult(orderRows, orderRows.length)
             setIsMergeModalOpen(false)
             setOptimiseRouteId(null)
+            if (!showReviewStage) { landRun(result); return }
             setOptimizationResult(result)
             setIsOptimizationDrawerOpen(true)
             onOptimizationDrawerOpen?.()
@@ -5652,6 +5742,7 @@ export function LassoWorkspaceSheet({
         onComplete={(result) => {
           setIsMergeModalOpen(false)
           setOptimiseRouteId(null)
+          if (!showReviewStage) { landRun(result); return }
           setOptimizationResult(result)
           setIsOptimizationDrawerOpen(true)
           onOptimizationDrawerOpen?.()
@@ -5669,6 +5760,7 @@ export function LassoWorkspaceSheet({
           onOptimizationDrawerClose?.()
         }}
         onProceed={() => {
+          if (optimizationResult) landRun(optimizationResult)
           onCheckedRoutesChange([])
           setCheckedUnassignedOrderIds([])
           setOptimiseRouteId(null)

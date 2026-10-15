@@ -306,6 +306,15 @@
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
+/* Hover flash when a reason row scrolls to its unassigned card. Same fill as card hover. */
+@keyframes rb-unassigned-hover {
+  0%, 100% { background-color: #1F1F1F; }
+  50% { background-color: #282828; }
+}
+.rb-unassigned-flicker {
+  animation: rb-unassigned-hover 0.5s ease 5;
+}
+
 /* Flicker animation for newly added order cards */
 @keyframes rb-flicker {
   0%, 100% { background-color: #1F1F1F; }

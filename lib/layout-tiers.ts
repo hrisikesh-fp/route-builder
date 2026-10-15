@@ -40,3 +40,10 @@ export const STACK_MIN_HEIGHT = 240
 
 /** Two left columns side by side only on the wide tier */
 export const MAX_LEFT_COLUMNS: Record<LayoutTier, number> = { compact: 1, laptop: 1, desk: 1, wide: 2 }
+
+/** Run details: docked at the bottom of the Workspace on these tiers, a floating sheet below them
+ *  (same idea as the left views: dock only when the screen can spare the room). */
+export const RUN_DETAILS_DOCKED_TIERS: LayoutTier[] = ["wide"]
+
+/** Trucks opens under the map. Orders and Drivers stay in the left column. */
+export const TRUCKS_DEFAULT_DOCK = "bottom" as const

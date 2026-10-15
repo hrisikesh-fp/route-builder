@@ -80,8 +80,13 @@ const MOCK_UNASSIGNED: UnassignedOrder[] = [
   { id: "u10", name: "Riverbend Fleet", reason: "product_truck_fit", reasonDetail: "No available truck could carry this product.", suggestedFix: "Add a truck or re-optimize" },
 ]
 
+const RUN_REASONS: { reason: UnassignedOrder["reason"]; reasonDetail: string; suggestedFix: string }[] = [
+  { reason: "time_window", reasonDetail: "The route needed to serve it would exceed the 10h route duration limit.", suggestedFix: "Shorten the route or add a truck" },
+  { reason: "no_terminal_product", reasonDetail: "No terminal is configured to supply this order's product(s).", suggestedFix: "Configure a terminal for this product" },
+]
+
 export function buildMockOptimizationResult(
-  _orders: ExtractionOrder[],
+  orders: ExtractionOrder[],
   _orderCount?: number,
 ): OptimizationResult {
   const routes: OptimizedRoute[] = ALL_3_ROUTES.map((card, i) => ({
@@ -91,14 +96,33 @@ export function buildMockOptimizationResult(
     sequence: DETAIL_SEQUENCE,
   }))
 
+  // Prefer the orders that are actually unassigned, so the reason list names the cards below it.
+  const pool = orders.filter((o) => !o.routeId)
+  const source = pool.length > 0 ? pool : orders
+  // Always leave at least one order placed, so the line is never "3 of 3".
+  const take = source.length <= 1 ? 0 : Math.min(source.length - 1, Math.max(1, Math.round(source.length / 3)))
+  const left = source.slice(0, take)
+  const unassigned: UnassignedOrder[] = left.length > 0
+    ? left.map((o, i) => {
+        const reason = i === left.length - 1 && left.length > 1 ? RUN_REASONS[1] : RUN_REASONS[0]
+        return {
+          id: o.id,
+          name: o.shipToName || o.customerName || "Order",
+          latitude: o.latitude,
+          longitude: o.longitude,
+          ...reason,
+        }
+      })
+    : MOCK_UNASSIGNED
+
   return {
     routes,
-    unassigned: MOCK_UNASSIGNED,
+    unassigned,
     summary: {
       routeCount: 3,
-      ordersPlaced: 19,
-      ordersTotal: 29,
-      unassignedCount: 10,
+      ordersPlaced: left.length > 0 ? Math.max(0, source.length - take) : 19,
+      ordersTotal: left.length > 0 ? source.length : 29,
+      unassignedCount: unassigned.length,
       conflictCount: 2,
       loadsSequenced: 3,
     },

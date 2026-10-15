@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { ALL_HUBS, ALL_HUBS_LABEL, FLEET_HUB_GROUPS, type FleetUnit } from "@/lib/mock-truck-fleet"
 import { ObjectiveComparisonModal } from "@/components/objective-comparison-modal"
+import { useSettings } from "@/contexts/settings-context"
 
 // ─── Feature flags ──────────────────────────────────────────────────────────
 // Flip these back to `true` to restore features that were pulled per the Figma
@@ -78,6 +79,7 @@ const TypeBadge = ({ label }: { label: string }) => (
 // ─── Main Component ─────────────────────────────────────────────────────────
 export function CreateRoutesModalV2({ isOpen, onClose, checkedRouteIds, checkedUnassignedOrderIds = [], selectedOrders, onComplete }: CreateRoutesModalV2Props) {
   const [screen, setScreen] = useState<"main" | "loading" | "objectives">("main")
+  const { showObjectiveComparison } = useSettings()
   const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [driverMappingEnabled, setDriverMappingEnabled] = useState(true)
   const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
@@ -162,7 +164,7 @@ export function CreateRoutesModalV2({ isOpen, onClose, checkedRouteIds, checkedU
 
   // Build the products/meta segment for whichever tier is showing capacity data.
   // n === 0 → "0 Products" (plain). n === 1 → "1 Product" (plain, nothing to disambiguate).
-  // n >= 2 → "{n} Product Categories", underlined + hoverable to reveal the product list —
+  // n >= 2 → "{n} Products", underlined + hoverable to reveal the product list —
   // matches the Figma reference for both the trailer tier and standalone truck rows.
   const renderProductsMeta = (productNames: string[]) => {
     const n = productNames.length
@@ -187,7 +189,7 @@ export function CreateRoutesModalV2({ isOpen, onClose, checkedRouteIds, checkedU
           }}
           onMouseLeave={() => setProductTooltip(null)}
         >
-          {n} Product Categories
+          {n} Products
         </span>
       </>
     )
@@ -207,15 +209,22 @@ export function CreateRoutesModalV2({ isOpen, onClose, checkedRouteIds, checkedU
       { delay: 2200, text: "Applying compartment constraints...", canCancel: true },
       { delay: 2000, text: "Checking product compatibility...", canCancel: true },
       { delay: 2500, text: "Optimising stop sequences...", canCancel: false },
-      { delay: 1800, text: "Solving for each objective...", canCancel: false },
-      { delay: 1300, text: "Scoring the results...", canCancel: false },
+      { delay: 1800, text: showObjectiveComparison ? "Solving for each objective..." : "Solving...", canCancel: false },
+      { delay: 1300, text: showObjectiveComparison ? "Scoring the results..." : "Checking the plan...", canCancel: false },
     ]
 
     let i = 0
     const runPhase = () => {
       if (i >= phases.length) {
         setTimeout(() => {
-          setPendingUnits(allUnits.filter(u => selectedUnitIds.includes(u.id)))
+          const units = allUnits.filter(u => selectedUnitIds.includes(u.id))
+          // 17 Oct scope: no comparison, so the run lands straight away (Prototype Settings).
+          if (!showObjectiveComparison) {
+            onComplete?.(units, orderRows.length)
+            handleClose()
+            return
+          }
+          setPendingUnits(units)
           setScreen("objectives")
           setCanCancel(true)
         }, 800)
@@ -829,7 +838,7 @@ export function CreateRoutesModalV2({ isOpen, onClose, checkedRouteIds, checkedU
             display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
             fontFamily: "Geist, sans-serif", minWidth: "max-content",
           }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: "#111", lineHeight: "20px", whiteSpace: "nowrap" }}>Product Categories</span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#111", lineHeight: "20px", whiteSpace: "nowrap" }}>Products</span>
             <div style={{ width: "100%", borderTop: "1px dashed #A3A3A3" }} />
             <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start", width: "100%" }}>
               {productTooltip.products.map((p, i) => (

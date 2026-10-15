@@ -26,8 +26,6 @@ export function CreateRoutes3Pane({ orders, excludedIds, trucks, onClose, onOpti
   const [startTime, setStartTime] = useState("07:00")
   const [topOff, setTopOff] = useState(false)
   const inRun = orders.filter((o) => !excludedIds.includes(o.id))
-  const capacity = trucks.filter((t) => picked.includes(t.name)).reduce((s, t) => s + t.capacity, 0)
-  const gallons = inRun.reduce((s, o) => s + o.gallons, 0)
   const pane = { display: "flex", flexDirection: "column" as const, minHeight: 0, borderRight: `1px solid ${RUN.border}`, padding: "12px 16px" }
   const head = { fontSize: 12, color: RUN.t4, fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 8 }
   const cb = (on: boolean, disabled?: boolean) => ({ width: 16, height: 16, borderRadius: 3, border: `1px solid ${on ? RUN.t2 : RUN.border2}`, backgroundColor: on ? RUN.t2 : "transparent", color: "#111", fontSize: 11, display: "grid", placeItems: "center", flexShrink: 0, opacity: disabled ? 0.4 : 1 })
@@ -78,9 +76,7 @@ export function CreateRoutes3Pane({ orders, excludedIds, trucks, onClose, onOpti
                 )
               })}
             </div>
-            <div style={{ fontSize: 12, color: gallons > capacity ? RUN.warn : RUN.t4, paddingTop: 8 }}>
-              {formatGallons(gallons)} gal across {picked.length} trucks, {formatGallons(capacity)} gal in one load each
-            </div>
+            <div style={{ fontSize: 12, color: RUN.t4, paddingTop: 8 }}>Trucks that can't take orders are greyed, with the reason.</div>
           </div>
           {/* Pane 3: goal and overrides */}
           <div style={{ ...pane, borderRight: "none", overflowY: "auto" }}>

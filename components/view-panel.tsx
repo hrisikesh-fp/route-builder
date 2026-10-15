@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AppWindow, ChevronDown, Maximize2, Minimize2, PanelBottom, PanelLeft, PanelTop, Truck, UserCheck, X, type LucideIcon } from "lucide-react"
+import { AppWindow, ChevronDown, Maximize2, Minimize2, PanelBottom, PanelLeft, PanelTop, UserCheck, X, type LucideIcon } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import type { LeftPanel } from "@/components/side-nav-rail"
 import { EmptyBody, OrdersBody } from "@/components/orders-panel"
+import { TrucksBody } from "@/components/trucks-view"
 
 // A dockable view (Orders, Trucks, Drivers). The map is the anchor, like the chat in Claude Code:
 // views dock to its left, above it or below it. The right edge is reserved for Routes / Workspace.
@@ -27,6 +28,8 @@ interface ViewPanelProps {
   onDockChange: (dock: ViewDock) => void
   onClose: () => void
   orders: ExtractionOrder[]
+  /** Truck ids already on a route in the Workspace. */
+  inPlanTruckIds?: string[]
   onHoverOrder: (id: string | null) => void
   onAddToWorkspace: (orderIds: string[]) => void
   /** Stacked views never get shorter than this */
@@ -109,7 +112,7 @@ function DockMenu({ dock, onDockChange }: { dock: ViewDock; onDockChange: (d: Vi
   )
 }
 
-export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrder, onAddToWorkspace, minHeight = 0, floating = false, isExpanded = false, onToggleExpand, onHeaderMouseDown, isDragging = false }: ViewPanelProps) {
+export function ViewPanel({ id, dock, onDockChange, onClose, orders, inPlanTruckIds = [], onHoverOrder, onAddToWorkspace, minHeight = 0, floating = false, isExpanded = false, onToggleExpand, onHeaderMouseDown, isDragging = false }: ViewPanelProps) {
   return (
     <section
       data-view={id}
@@ -169,7 +172,7 @@ export function ViewPanel({ id, dock, onDockChange, onClose, orders, onHoverOrde
       {id === "orders" && (
         <OrdersBody orders={orders} onHoverOrder={onHoverOrder} onAddToWorkspace={onAddToWorkspace} preferredView={dock === "left" && !isExpanded ? "list" : "table"} />
       )}
-      {id === "trucks" && <EmptyBody icon={Truck} text="Trucks for the day, with capacity and status, will show here." />}
+      {id === "trucks" && <TrucksBody inPlanTruckIds={inPlanTruckIds} />}
       {id === "drivers" && <EmptyBody icon={UserCheck} text="Drivers and their shifts will show here." />}
     </section>
   )

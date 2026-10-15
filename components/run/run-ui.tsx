@@ -82,6 +82,13 @@ export function fateChip(fate: RunFate, status: RunStatus) {
   return <Chip>Not used</Chip>
 }
 
+/** Only what the backend stores (#433): Finished, Didn't finish, No answer yet. */
+export function statusChip(status: RunStatus) {
+  if (status === "no_answer") return <Chip tone="bad">No answer</Chip>
+  if (status === "failed") return <Chip tone="bad">Didn&apos;t finish</Chip>
+  return <Chip tone="ok">Finished</Chip>
+}
+
 export function SectionLabel({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "16px 0 8px" }}>
