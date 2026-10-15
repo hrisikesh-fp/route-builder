@@ -1,8 +1,10 @@
 "use client"
 
-import { Bell, Calendar, ChevronDown, Key, LogOut, Maximize2, Settings, Shield, SlidersHorizontal, SquarePen } from "lucide-react"
+import { Bell, Calendar, ChevronDown, Key, LogOut, Settings, Shield, SlidersHorizontal, SquarePen } from "lucide-react"
 import Image from "next/image"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { KINDS, type IssueKind } from "@/components/run/issue-kinds"
+import { WELCOME_LINES, type WelcomeKind } from "@/components/welcome-checks"
 
 // 3D shell top nav — Figma RB - Routing v2, node 9175:88967.
 // Logo + title | Planning / Reconciliation tabs | date, bell (Inbox dropdown), profile.
@@ -16,13 +18,15 @@ interface AppHeaderProps {
   onSettingsClick: () => void
   /** Opens the prototype Settings modal (data and display flags) */
   onPrototypeSettingsClick?: () => void
+  planDateLabel: string
+  planDateIso: string
+  onPlanDateChange: (iso: string) => void
+  inboxCounts: Record<WelcomeKind, number>
+  onOpenInbox: (kind: WelcomeKind | null) => void
 }
 
-const INBOX_ITEMS = [
-  { title: "Run finished", detail: "5 routes, 1 unassigned", time: "6:12 AM" },
-  { title: "Missing location", detail: "Bear Construction", time: "5:40 AM" },
-  { title: "Gallons changed", detail: "Oak Hollow, 4,200 → 3,600 gal", time: "4:12 AM" },
-]
+const KIND_KEY: Record<WelcomeKind, IssueKind> = { act: "action", heads: "headsup" }
+const INBOX_KINDS: WelcomeKind[] = ["act", "heads"]
 
 const outlineButton: React.CSSProperties = {
   height: 36,
@@ -49,19 +53,13 @@ function useOutsideClose(ref: React.RefObject<HTMLElement | null>, onClose: () =
   }, [ref, onClose])
 }
 
-export function AppHeader({ mode, onModeChange, onSettingsClick, onPrototypeSettingsClick }: AppHeaderProps) {
+export function AppHeader({ mode, onModeChange, onSettingsClick, onPrototypeSettingsClick, planDateLabel, planDateIso, onPlanDateChange, inboxCounts, onOpenInbox }: AppHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isInboxOpen, setIsInboxOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
   const inboxRef = useRef<HTMLDivElement>(null)
   useOutsideClose(profileRef, () => setIsProfileOpen(false))
   useOutsideClose(inboxRef, () => setIsInboxOpen(false))
-
-  const tomorrowDate = useMemo(() => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    return `Tomorrow: ${tomorrow.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-  }, [])
 
   const tab = (value: AppMode, label: string) => {
     const isActive = mode === value
@@ -148,10 +146,17 @@ export function AppHeader({ mode, onModeChange, onSettingsClick, onPrototypeSett
 
       {/* Date, bell, profile */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ ...outlineButton, padding: "0 16px", cursor: "default" }}>
+        <label style={{ ...outlineButton, padding: "0 16px", position: "relative", cursor: "pointer" }}>
           <Calendar size={16} />
-          <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "20px" }}>{tomorrowDate}</span>
-        </div>
+          <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "20px" }}>{planDateLabel}</span>
+          <input
+            type="date"
+            aria-label="Planning date"
+            value={planDateIso}
+            onChange={(e) => { if (e.target.value) onPlanDateChange(e.target.value) }}
+            style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
+          />
+        </label>
 
         {/* Bell → Inbox as a floating dropdown (ClickUp style), above every panel */}
         <div ref={inboxRef} style={{ position: "relative" }}>
@@ -171,7 +176,7 @@ export function AppHeader({ mode, onModeChange, onSettingsClick, onPrototypeSett
                 position: "absolute",
                 top: 44,
                 right: 0,
-                width: 360,
+                width: 440,
                 zIndex: 1400,
                 backgroundColor: "#1A1A1A",
                 border: "1px solid #282828",
@@ -182,20 +187,33 @@ export function AppHeader({ mode, onModeChange, onSettingsClick, onPrototypeSett
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #282828" }}>
                 <span style={{ fontSize: 16, fontWeight: 500, color: "#FAFAFA" }}>Inbox</span>
-                <span title="Full page not wired in the prototype" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#A3A3A3", cursor: "default" }}>
-                  <Maximize2 size={14} /> Open full page
-                </span>
+                <button type="button" onClick={() => { setIsInboxOpen(false); onOpenInbox(null) }} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, fontSize: 13, color: "#A3A3A3", cursor: "pointer", fontFamily: "inherit" }}>
+                  Open panel
+                </button>
               </div>
               <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                {INBOX_ITEMS.map((item) => (
-                  <div key={item.title} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 12px", borderRadius: 6, backgroundColor: "#1F1F1F" }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: "#FAFAFA" }}>{item.title}</div>
-                      <div style={{ fontSize: 13, color: "#A3A3A3" }}>{item.detail}</div>
-                    </div>
-                    <span style={{ fontSize: 12, color: "#737373", whiteSpace: "nowrap" }}>{item.time}</span>
-                  </div>
-                ))}
+                {INBOX_KINDS.filter((kind) => inboxCounts[kind] > 0).map((kind) => {
+                  const K = KINDS[KIND_KEY[kind]]
+                  const Icon = K.icon
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => { setIsInboxOpen(false); onOpenInbox(kind) }}
+                      style={{ display: "flex", alignItems: "flex-start", gap: 10, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 6, border: "none", backgroundColor: "#1F1F1F", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      <Icon size={16} color={K.fg} style={{ marginTop: 2, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 14, fontWeight: 500, color: "#FAFAFA" }}>{inboxCounts[kind] === 1 ? K.label : K.plural}</span>
+                        <span style={{ display: "block", marginTop: 2, fontSize: 12, lineHeight: "16px", color: "#A3A3A3" }}>{WELCOME_LINES[kind]}</span>
+                      </span>
+                      <span style={{ fontSize: 13, color: K.fg }}>{inboxCounts[kind]}</span>
+                    </button>
+                  )
+                })}
+                {INBOX_KINDS.every((kind) => inboxCounts[kind] === 0) && (
+                  <div style={{ padding: "12px", fontSize: 13, color: "#737373" }}>Nothing needs a look for this date.</div>
+                )}
               </div>
             </div>
           )}

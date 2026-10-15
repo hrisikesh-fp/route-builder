@@ -5288,7 +5288,7 @@ export function LassoWorkspaceSheet({
                       </button>
                     </>
                   ) : hasRoutes ? (
-                    /* ── Routes only → Unassign | Optimise/Merge ── */
+                    /* ── Routes only → Unassign | Optimise/Re-optimize ── */
                     (() => {
                       const singleId = checkedRouteIds.length === 1 ? checkedRouteIds[0] : null
                       const singleRoute = singleId ? mockRoutes.find(r => r.id === singleId) : null
@@ -5331,7 +5331,7 @@ export function LassoWorkspaceSheet({
                                 onMouseEnter={hoverIn}
                                 onMouseLeave={hoverOut}
                               >
-                                Merge
+                                Re-optimize
                               </button>
                             </>
                           )}

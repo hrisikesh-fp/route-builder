@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 // 3D shell left rail — Figma RB - Routing v2, node 9175:89003 ("Filter List").
 // Toggles views (Orders, Trucks, Drivers). Views are not pages: several can be open, each docked around the map.
 
-export type LeftPanel = "orders" | "trucks" | "drivers"
+export type LeftPanel = "orders" | "trucks" | "drivers" | "inbox"
 
 const ITEMS: { id: LeftPanel; label: string; icon: LucideIcon }[] = [
   { id: "orders", label: "Orders", icon: ClipboardList },

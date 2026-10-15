@@ -32,6 +32,10 @@ export function RoutesPanel({ routes, orders, onClose, onHoverRoute, onHoverStop
   const q = search.trim().toLowerCase()
   const visible = routes.filter((r) => !q || [r.driverName, r.truckId ?? ""].some((v) => v.toLowerCase().includes(q)))
 
+  const deliveries = orders.filter((o) => o.routeId && (!o.orderType || o.orderType === "D"))
+  const headerGallons = deliveries.reduce((sum, o) => sum + (o.volume ?? 0), 0)
+  const badge = { backgroundColor: "#282828", borderRadius: 4, padding: "2px 8px", fontSize: 14, fontWeight: 500, lineHeight: "20px", color: "#FAFAFA" } as const
+
   return (
     <aside
       style={{
@@ -46,9 +50,13 @@ export function RoutesPanel({ routes, orders, onClose, onHoverRoute, onHoverStop
         ...style,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 24px", borderBottom: "1px solid #282828", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 24px", flexShrink: 0 }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500, lineHeight: "28px", color: "#FFFFFF" }}>Routes</h2>
-        <span style={{ fontSize: 12, fontWeight: 500, color: "#A3A3A3", border: "1px dashed #333", borderRadius: 4, padding: "1px 6px" }}>View only</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={badge}>{headerGallons.toLocaleString("en-US")} gal</span>
+          <span style={badge}>{routes.length} Routes</span>
+          <span style={badge}>{deliveries.length} Orders</span>
+        </span>
         <button type="button" aria-label="Close routes" onClick={onClose} style={{ marginLeft: "auto", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 4, background: "transparent", cursor: "pointer" }}>
           <X size={16} color="#A3A3A3" />
         </button>

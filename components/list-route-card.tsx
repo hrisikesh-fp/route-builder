@@ -1,8 +1,9 @@
 "use client"
 
-import { ArrowUpRight, ChevronDown } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { ORDER_TYPE_COLORS, getStopDisplayTime } from "@/lib/route-display"
+import { TRUCK_CAPACITIES } from "@/lib/truck-data"
 import { CheckboxInput } from "@/components/lasso-workspace-sheet"
 
 // Route card in the floating List panel (Routes tab, HTML spec V3). Read-only: opening a route here
@@ -60,8 +61,10 @@ export function ListRouteCard({
   onEditInWorkspace,
   isFocused,
 }: ListRouteCardProps) {
-  // Gallons delivered (load orders pick fuel up, so they don't count toward the route's volume)
-  const totalGal = stops.filter((s) => s.orderType !== "L").reduce((sum, s) => sum + (s.volume ?? 0), 0)
+  const truck = route.truckId ? TRUCK_CAPACITIES[route.truckId] : null
+  const specLine = truck
+    ? `${truck.totalCapacity.toLocaleString()} gal · ${truck.compartments.length} Compartments · ${Object.keys(truck.productCapacities).length} Products`
+    : "No truck selected"
 
   return (
     <div
@@ -102,6 +105,7 @@ export function ListRouteCard({
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span
             style={{
+              flex: 1,
               minWidth: 0,
               fontSize: 16,
               fontWeight: 500,
@@ -119,6 +123,21 @@ export function ListRouteCard({
               Published
             </span>
           )}
+          <span
+            style={{
+              flexShrink: 0,
+              backgroundColor: "#111",
+              padding: "2px 8px",
+              borderRadius: 4,
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#FAFAFA",
+              lineHeight: "20px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {stops.length} Orders
+          </span>
           <button
             type="button"
             aria-label={isExpanded ? "Collapse route" : "Expand route"}
@@ -128,7 +147,6 @@ export function ListRouteCard({
               onToggleExpand()
             }}
             style={{
-              marginLeft: "auto",
               width: 24,
               height: 24,
               flexShrink: 0,
@@ -150,7 +168,7 @@ export function ListRouteCard({
         </div>
 
         <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#A3A3A3" }}>
-          {stops.length} stop{stops.length === 1 ? "" : "s"} · {totalGal.toLocaleString()} gal
+          {specLine}
         </span>
 
         {isExpanded && (
@@ -194,7 +212,7 @@ export function ListRouteCard({
               )
             })}
 
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
               <button
                 type="button"
                 onClick={onEditInWorkspace}
@@ -203,11 +221,6 @@ export function ListRouteCard({
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent" }}
               >
                 Edit in workspace
-              </button>
-              {/* Route page (V8) — shown, not wired yet */}
-              <button type="button" title="Route page not wired in the prototype" style={{ ...ghostButton, cursor: "default", color: "#A3A3A3" }}>
-                View route
-                <ArrowUpRight size={14} />
               </button>
             </div>
           </div>

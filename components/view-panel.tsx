@@ -6,6 +6,8 @@ import type { ExtractionOrder } from "@/lib/mock-data"
 import type { LeftPanel } from "@/components/side-nav-rail"
 import { EmptyBody, OrdersBody } from "@/components/orders-panel"
 import { TrucksBody } from "@/components/trucks-view"
+import { InboxBody } from "@/components/inbox-panel"
+import type { WelcomeKind, WelcomeRow } from "@/components/welcome-checks"
 
 // A dockable view (Orders, Trucks, Drivers). The map is the anchor, like the chat in Claude Code:
 // views dock to its left, above it or below it. The right edge is reserved for Routes / Workspace.
@@ -20,7 +22,7 @@ const DOCKS: { id: ViewDock; label: string; icon: LucideIcon }[] = [
   { id: "bottom", label: "Dock below map", icon: PanelBottom },
 ]
 
-const TITLES: Record<LeftPanel, string> = { orders: "Orders", trucks: "Trucks", drivers: "Drivers" }
+const TITLES: Record<LeftPanel, string> = { orders: "Unassigned orders", trucks: "Trucks", drivers: "Drivers", inbox: "Inbox" }
 
 interface ViewPanelProps {
   id: LeftPanel
@@ -28,10 +30,16 @@ interface ViewPanelProps {
   onDockChange: (dock: ViewDock) => void
   onClose: () => void
   orders: ExtractionOrder[]
-  /** Truck ids already on a route in the Workspace. */
+  /** Truck ids on a Workspace route that is not published. */
   inPlanTruckIds?: string[]
+  /** Truck ids on a published route. Published wins over In-plan. */
+  publishedTruckIds?: string[]
   onHoverOrder: (id: string | null) => void
   onAddToWorkspace: (orderIds: string[]) => void
+  welcomeRows?: WelcomeRow[]
+  onWelcomeFix?: (row: WelcomeRow) => void
+  inboxFocusKind?: WelcomeKind | null
+  inboxFocusToken?: number
   /** Stacked views never get shorter than this */
   minHeight?: number
   /** Floating over the map (when docking would squeeze the map below its minimum) */
@@ -112,7 +120,7 @@ function DockMenu({ dock, onDockChange }: { dock: ViewDock; onDockChange: (d: Vi
   )
 }
 
-export function ViewPanel({ id, dock, onDockChange, onClose, orders, inPlanTruckIds = [], onHoverOrder, onAddToWorkspace, minHeight = 0, floating = false, isExpanded = false, onToggleExpand, onHeaderMouseDown, isDragging = false }: ViewPanelProps) {
+export function ViewPanel({ id, dock, onDockChange, onClose, orders, inPlanTruckIds = [], publishedTruckIds = [], onHoverOrder, onAddToWorkspace, welcomeRows = [], onWelcomeFix, inboxFocusKind = null, inboxFocusToken = 0, floating = false, isExpanded = false, onToggleExpand, onHeaderMouseDown, isDragging = false }: ViewPanelProps) {
   return (
     <section
       data-view={id}
@@ -121,7 +129,8 @@ export function ViewPanel({ id, dock, onDockChange, onClose, orders, inPlanTruck
         position: "relative",
         flex: 1,
         minWidth: 0,
-        minHeight,
+        height: "100%",
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
         backgroundColor: "#171717",
@@ -172,8 +181,9 @@ export function ViewPanel({ id, dock, onDockChange, onClose, orders, inPlanTruck
       {id === "orders" && (
         <OrdersBody orders={orders} onHoverOrder={onHoverOrder} onAddToWorkspace={onAddToWorkspace} preferredView={dock === "left" && !isExpanded ? "list" : "table"} />
       )}
-      {id === "trucks" && <TrucksBody inPlanTruckIds={inPlanTruckIds} />}
+      {id === "trucks" && <TrucksBody inPlanTruckIds={inPlanTruckIds} publishedTruckIds={publishedTruckIds} />}
       {id === "drivers" && <EmptyBody icon={UserCheck} text="Drivers and their shifts will show here." />}
+      {id === "inbox" && <InboxBody rows={welcomeRows} focusKind={inboxFocusKind} focusToken={inboxFocusToken} onFix={(row) => onWelcomeFix?.(row)} />}
     </section>
   )
 }

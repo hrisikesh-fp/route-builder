@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus } from "lucide-react"
+import { ChevronDown, Plus } from "lucide-react"
 import { APP_HEADER_HEIGHT } from "@/components/app-header"
 
 // Planning metrics bar — Figma RB - Routing v2, node 9175:88983.
@@ -18,6 +18,8 @@ interface MetricsBarProps {
   onRightPanelChange: (panel: RightPanel) => void
   onCreateOrder: () => void
   isCreateOrderDisabled?: boolean
+  /** Orders currently in the Workspace. Same count as the Workspace header. Stays visible when the sheet is closed. */
+  workspaceOrderCount: number
   topOffset?: number
 }
 
@@ -30,13 +32,12 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-function BarButton({ label, isActive, onClick, icon, disabled = false }: { label: string; isActive: boolean; onClick: () => void; icon?: React.ReactNode; disabled?: boolean }) {
+function BarButton({ label, isActive, onClick, badge }: { label: string; isActive: boolean; onClick: () => void; badge?: number }) {
   const [hover, setHover] = useState(false)
   return (
     <button
       type="button"
       aria-pressed={isActive}
-      disabled={disabled}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -46,7 +47,6 @@ function BarButton({ label, isActive, onClick, icon, disabled = false }: { label
         alignItems: "center",
         gap: 8,
         padding: "0 12px",
-        opacity: disabled ? 0.4 : 1,
         border: "none",
         borderRadius: 4,
         backgroundColor: isActive ? "#282828" : hover ? "#1F1F1F" : "#111",
@@ -55,16 +55,87 @@ function BarButton({ label, isActive, onClick, icon, disabled = false }: { label
         fontWeight: 500,
         lineHeight: "20px",
         fontFamily: "inherit",
-        cursor: disabled ? "not-allowed" : "pointer",
+        cursor: "pointer",
       }}
     >
-      {icon}
       {label}
+      {badge != null && (
+        <span
+          style={{
+            minWidth: 20,
+            height: 20,
+            padding: "0 6px",
+            borderRadius: 4,
+            backgroundColor: isActive ? "#333" : "#282828",
+            fontSize: 12,
+            fontWeight: 500,
+            lineHeight: "20px",
+            textAlign: "center",
+            boxSizing: "border-box",
+          }}
+        >
+          {badge}
+        </span>
+      )}
     </button>
   )
 }
 
-export function MetricsBar({ totalGallons, routeCount, unassignedCount, rightPanel, onRightPanelChange, onCreateOrder, isCreateOrderDisabled = false, topOffset = 0 }: MetricsBarProps) {
+function CreateOrderSplit({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
+  const [hover, setHover] = useState<"label" | "chevron" | null>(null)
+  return (
+    <div style={{ display: "flex", height: 32, border: "1px solid #333", borderRadius: 4, overflow: "hidden", opacity: disabled ? 0.4 : 1 }}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        onMouseEnter={() => setHover("label")}
+        onMouseLeave={() => setHover(null)}
+        style={{
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "0 12px",
+          border: "none",
+          borderRight: "1px solid #333",
+          backgroundColor: hover === "label" && !disabled ? "#1F1F1F" : "#111",
+          color: "#FAFAFA",
+          fontSize: 14,
+          fontWeight: 500,
+          lineHeight: "20px",
+          fontFamily: "inherit",
+          cursor: disabled ? "not-allowed" : "pointer",
+        }}
+      >
+        <Plus size={16} />
+        Create Order
+      </button>
+      <button
+        type="button"
+        aria-label="More ways to create an order"
+        disabled={disabled}
+        onMouseEnter={() => setHover("chevron")}
+        onMouseLeave={() => setHover(null)}
+        style={{
+          width: 36,
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "none",
+          backgroundColor: hover === "chevron" && !disabled ? "#1F1F1F" : "#111",
+          color: "#FAFAFA",
+          cursor: disabled ? "not-allowed" : "default",
+        }}
+      >
+        <ChevronDown size={16} />
+      </button>
+    </div>
+  )
+}
+
+export function MetricsBar({ totalGallons, routeCount, unassignedCount, rightPanel, onRightPanelChange, onCreateOrder, isCreateOrderDisabled = false, workspaceOrderCount, topOffset = 0 }: MetricsBarProps) {
   const toggle = (panel: Exclude<RightPanel, null>) => onRightPanelChange(rightPanel === panel ? null : panel)
   return (
     <div
@@ -91,11 +162,11 @@ export function MetricsBar({ totalGallons, routeCount, unassignedCount, rightPan
         <Metric label="Unassigned Orders" value={unassignedCount} />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <BarButton label="Create Order" icon={<Plus size={16} />} isActive={false} disabled={isCreateOrderDisabled} onClick={onCreateOrder} />
+        <CreateOrderSplit onClick={onCreateOrder} disabled={isCreateOrderDisabled} />
         <span style={{ width: 1, height: 18.5, backgroundColor: "#333" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <BarButton label="Routes" isActive={rightPanel === "routes"} onClick={() => toggle("routes")} />
-          <BarButton label="Workspace" isActive={rightPanel === "workspace"} onClick={() => toggle("workspace")} />
+          <BarButton label="Workspace" badge={workspaceOrderCount} isActive={rightPanel === "workspace"} onClick={() => toggle("workspace")} />
         </div>
       </div>
     </div>

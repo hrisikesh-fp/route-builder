@@ -9,7 +9,6 @@ const RouteMap = dynamic(
   () => import("@/components/route-map").then((m) => ({ default: m.RouteMap })),
   { ssr: false },
 )
-import { CreateRoutePanel } from "@/components/create-route-panel"
 import { FilterSideSheet } from "@/components/filter-side-sheet"
 import { LassoWorkspaceSheet } from "@/components/lasso-workspace-sheet"
 import { LassoCanvas } from "@/components/lasso-canvas"
@@ -19,6 +18,8 @@ import type { ExtractionOrder } from "@/lib/mock-data"
 import { mockExtractionOrders, mockRoutes, shipTosWithoutOrders, buildShipToCoordLookup, buildCustomerCoordLookup } from "@/lib/mock-data"
 import { CheckCircle2 } from "lucide-react"
 import { ConflictAssignmentBanner } from "@/components/conflict-assignment-banner"
+import { ChecksClearToast, WelcomeModal, WelcomeStrip, WELCOME_STRIP_HEIGHT } from "@/components/welcome-modal"
+import { rowsForScenario, tomorrowNoon, toDateInput, fromDateInput, formatPlanDate, type WelcomeKind, type WelcomeRow } from "@/components/welcome-checks"
 import { ConflictResolutionModal } from "@/components/conflict-resolution-modal"
 import { SideNavRail, SIDE_NAV_WIDTH, type LeftPanel } from "@/components/side-nav-rail"
 import { ViewPanel, type ViewDock } from "@/components/view-panel"
@@ -36,7 +37,6 @@ import type { ListRoute } from "@/components/list-route-card"
 import { getRouteColor } from "@/lib/route-display"
 
 export default function Home() {
-const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   // Filters float over the map, opened from the Filters button at the map's top left
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -46,7 +46,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // Views (Orders, Trucks, Drivers) — several can be open. All open in the left column (stacked) so the
   // map keeps its height; above / below the map is a choice from each view's dock menu.
   const [openViews, setOpenViews] = useState<LeftPanel[]>(["orders"])
-  const [viewDocks, setViewDocks] = useState<Record<LeftPanel, ViewDock>>({ orders: "left", trucks: TRUCKS_DEFAULT_DOCK, drivers: "left" })
+  const [viewDocks, setViewDocks] = useState<Record<LeftPanel, ViewDock>>({ orders: "left", trucks: TRUCKS_DEFAULT_DOCK, drivers: "left", inbox: "bottom" })
   // Views collapsed to the rail because the right panel needed their room; they come back when it closes
   const [stashedViews, setStashedViews] = useState<LeftPanel[]>([])
   const [leftWidth, setLeftWidth] = useState(LEFT_MIN)
@@ -91,7 +91,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
   // Driver conflict banner — Mark Ruffalo (routes 1+2) and Kyle Reese (routes 3+4) each have 2 active routes.
   // Gated behind the `showDriverConflict` prototype flag (Settings → Driver Multi-Route Conflict).
-  const { showDriverConflict, unassignedOnly, createOrderModalView } = useSettings()
+  const { showDriverConflict, unassignedOnly, createOrderModalView, welcomeScenario } = useSettings()
   const [isConflictBannerResolved, setIsConflictBannerResolved] = useState(false)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
   // Flipping the flag on always re-arms a fresh banner so the scenario can be re-demoed.
@@ -103,6 +103,27 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const conflictOrdersRemaining = 5
   const BANNER_HEIGHT = 95
   const topOffset = isConflictBannerVisible ? BANNER_HEIGHT : 0
+  const [welcomeOpen, setWelcomeOpen] = useState(true)
+  const [welcomeRows, setWelcomeRows] = useState<WelcomeRow[]>(() => rowsForScenario("all"))
+  const [checksToast, setChecksToast] = useState<string | null>(null)
+  const [planDate, setPlanDate] = useState(tomorrowNoon)
+  const [inboxFocus, setInboxFocus] = useState<{ kind: WelcomeKind | null; token: number }>({ kind: null, token: 0 })
+  useEffect(() => {
+    const rows = rowsForScenario(welcomeScenario)
+    setWelcomeRows(rows)
+    if (welcomeScenario === "clear") {
+      setWelcomeOpen(false)
+      setChecksToast(`All 45 orders, 7 trucks and 6 drivers passed the checks for ${formatPlanDate(planDate).replace(/^Tomorrow: /, "")}.`)
+    } else {
+      setWelcomeOpen(true)
+      setChecksToast(null)
+    }
+  }, [welcomeScenario])
+  useEffect(() => {
+    if (!checksToast) return
+    const timer = window.setTimeout(() => setChecksToast(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [checksToast])
 
   // Top-nav Create Order trigger — incrementing this counter opens the Create Order modal.
   const [openCreateOrderTrigger, setOpenCreateOrderTrigger] = useState(0)
@@ -228,7 +249,8 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const GAP = 4
   // Expanded (a view or the map) hides everything else in Planning: metrics bar, rail, other panels.
   // Only the app header stays, like the app chrome around an expanded pane in Claude Code.
-  const bodyTop = APP_HEADER_HEIGHT + topOffset + (mode === "planning" && !expanded ? METRICS_BAR_HEIGHT : 0)
+  const welcomeStripVisible = mode === "planning" && !expanded && !welcomeOpen && welcomeRows.some((r) => r.kind === "act")
+  const bodyTop = APP_HEADER_HEIGHT + topOffset + (mode === "planning" && !expanded ? METRICS_BAR_HEIGHT + (welcomeStripVisible ? WELCOME_STRIP_HEIGHT : 0) : 0)
   const isRightPanelOpen = isWorkspaceOpen || isRoutesOpen
   // While something is expanded the right panel is covered (map) or sits underneath (view); state is kept
   const isRightPanelShown = isRightPanelOpen && !expanded
@@ -286,6 +308,13 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   const isFilterCompact = freeMapWidth < MAP_COMPACT_WIDTH
   const unassignedCount = filteredOrders.filter((o) => !o.routeId).length
   const totalGallons = filteredOrders.filter((o) => o.orderType !== "L").reduce((sum, o) => sum + (o.volume ?? 0), 0)
+  const workspaceOrderCount = selectedOrders.filter((o) => !o.orderType || o.orderType === "D").length
+  const publishedTruckIds = listRoutes.filter((r) => r.isPublished && r.truckId).map((r) => r.truckId as string)
+  const inPlanTruckIds = selectedRouteIds.flatMap((id) => {
+    const route = mockRoutes.find((r) => r.id === id)
+    if (!route?.truckId || route.id !== "route-6") return []
+    return [route.truckId as string]
+  })
 
   // Rail toggles a view; it reopens where it was last docked. A floating view and the Filters
   // panel share the same spot on the map, so opening one closes the other.
@@ -306,6 +335,20 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
     setOpenViews((cur) => cur.filter((v) => v !== view))
   }
   const dockView = (view: LeftPanel, dock: ViewDock) => setViewDocks((cur) => ({ ...cur, [view]: dock }))
+  const openInbox = (kind: WelcomeKind | null) => {
+    setExpanded(null)
+    setOpenViews((cur) => (cur.includes("inbox") ? cur : [...cur, "inbox"]))
+    setInboxFocus((cur) => ({ kind, token: cur.token + 1 }))
+  }
+  const handleWelcomeFix = (row: WelcomeRow) => {
+    if (row.where === "dispatch" && row.href) {
+      window.open(row.href, "_blank", "noopener,noreferrer")
+      return
+    }
+    setWelcomeOpen(false)
+    if (row.where === "order") setOpenCreateOrderTrigger((n) => n + 1)
+    if (row.where === "map") setChecksToast("Shown on the map.")
+  }
   const handleFilterToggle = () => {
     if (!isFilterOpen && leftFloats) setOpenViews((cur) => cur.filter((v) => !leftViews.includes(v)))
     setIsFilterOpen((open) => !open)
@@ -444,9 +487,14 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       onDockChange={(d) => dockView(view, d)}
       onClose={() => closeView(view)}
       orders={filteredOrders}
-      inPlanTruckIds={selectedRouteIds.map((id) => mockRoutes.find((r) => r.id === id)?.truckId).filter((id): id is string => !!id)}
+      inPlanTruckIds={inPlanTruckIds}
+      publishedTruckIds={publishedTruckIds}
       onHoverOrder={setHoveredWorkspaceOrderId}
       onAddToWorkspace={(orderIds) => handleAddFromList({ orderIds, routeIds: [] })}
+      welcomeRows={welcomeRows}
+      onWelcomeFix={handleWelcomeFix}
+      inboxFocusKind={inboxFocus.kind}
+      inboxFocusToken={inboxFocus.token}
     />
   )
 
@@ -519,7 +567,6 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
   const handleAddRoute = () => {
     console.log("[v0] Add route clicked")
-    setIsCreatePanelOpen(true)
   }
 
   const handleZoomIn = () => {
@@ -817,6 +864,14 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onModeChange={(m) => { setMode(m); setIsFilterOpen(false) }}
         onSettingsClick={() => setIsRoutingConfigOpen(true)}
         onPrototypeSettingsClick={() => setIsSettingsOpen(true)}
+        planDateLabel={formatPlanDate(planDate)}
+        planDateIso={toDateInput(planDate)}
+        onPlanDateChange={(iso) => setPlanDate(fromDateInput(iso))}
+        inboxCounts={{
+          act: welcomeRows.filter((r) => r.kind === "act").length,
+          heads: welcomeRows.filter((r) => r.kind === "heads").length,
+        }}
+        onOpenInbox={openInbox}
       />
 
       {isConflictBannerVisible && (
@@ -835,8 +890,14 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           onRightPanelChange={(p) => { setExpanded(null); handleRightPanelChange(p) }}
           onCreateOrder={() => setOpenCreateOrderTrigger((n) => n + 1)}
           isCreateOrderDisabled={isCreateOrderModalOpen}
+          workspaceOrderCount={workspaceOrderCount}
           topOffset={topOffset}
         />
+      )}
+      {welcomeStripVisible && (
+        <div style={{ position: "absolute", top: APP_HEADER_HEIGHT + topOffset + METRICS_BAR_HEIGHT, left: 0, right: 0, height: WELCOME_STRIP_HEIGHT, zIndex: 1140 }}>
+          <WelcomeStrip rows={welcomeRows} onReview={() => openInbox("act")} />
+        </div>
       )}
 
       {/* Rail toggles views; open views dock around the map */}
@@ -908,7 +969,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           onResetNorth={handleResetNorth}
           onLocate={handleLocate}
           isRouteListOpen={false}
-          isCreatePanelOpen={isCreatePanelOpen}
+          isCreatePanelOpen={false}
           isLassoActive={isLassoDrawing}
           onRouteClick={handleRouteClick}
           onTerminalClick={handleTerminalClick}
@@ -947,7 +1008,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
           onZoomOut={handleZoomOut}
           onResetNorth={handleResetNorth}
           onLocate={handleLocate}
-          isCreatePanelOpen={isCreatePanelOpen}
+          isCreatePanelOpen={false}
           isRouteListOpen={false}
           isLassoActive={isLassoDrawing}
           onLassoToggle={handleLassoToggle}
@@ -1096,11 +1157,26 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
 
       {mode === "reconciliation" && <ReconciliationView top={APP_HEADER_HEIGHT + topOffset} />}
 
-      <CreateRoutePanel isOpen={isCreatePanelOpen} onClose={() => setIsCreatePanelOpen(false)} />
-
       <RoutingConfigOverlay isOpen={isRoutingConfigOpen} onClose={() => setIsRoutingConfigOpen(false)} />
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      {mode === "planning" && welcomeOpen && (
+        <WelcomeModal
+          key={welcomeScenario}
+          rows={welcomeRows}
+          initialSyncing={welcomeScenario === "syncing"}
+          sourceFailed={welcomeScenario === "failed"}
+          onClose={() => setWelcomeOpen(false)}
+          onRowsChange={setWelcomeRows}
+          onFix={handleWelcomeFix}
+          onReviewIssues={() => { setWelcomeOpen(false); openInbox(null) }}
+          dateLabel={formatPlanDate(planDate)}
+          dateIso={toDateInput(planDate)}
+          onDateChange={(iso) => setPlanDate(fromDateInput(iso))}
+        />
+      )}
+      {checksToast && <ChecksClearToast text={checksToast} />}
 
       {/* Dragging a view: where it will land, plus a label that follows the pointer */}
       {drag?.target && (
@@ -1119,7 +1195,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       )}
       {drag && (
         <div style={{ position: "fixed", left: drag.x + 12, top: drag.y + 12, zIndex: 2600, pointerEvents: "none", padding: "6px 10px", borderRadius: 4, backgroundColor: "#282828", border: "1px solid #333", color: "#FAFAFA", fontSize: 13, fontWeight: 500, fontFamily: "Geist, sans-serif", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
-          {drag.view === "orders" ? "Orders" : drag.view === "trucks" ? "Trucks" : "Drivers"}
+          {drag.view === "orders" ? "Orders" : drag.view === "trucks" ? "Trucks" : drag.view === "drivers" ? "Drivers" : "Inbox"}
           <span style={{ color: "#A3A3A3", fontWeight: 400 }}>{drag.target ? ` → ${drag.target.dock === "left" ? "left" : drag.target.dock === "top" ? "above map" : "below map"}` : ""}</span>
         </div>
       )}
