@@ -245,6 +245,7 @@ Most of what follows is a consequence of this.
 
 ## Changelog
 
+- **15 Oct 2026:** Workspace header badges (gallons, routes, orders), run card (four metrics, dashed results row, Trucks used opens under the map), unassigned reasons inside the 1 Issue banner. Trucks view uses the Create Routes card.
 - **14 Oct 2026:** added the public preview link (rb-3d-shell-handoff.vercel.app).
 - **14 Oct 2026:** merged the latest prototype (Run history, run components, Workspace journey demo); added "What to open" and the decisions from the 13 Oct FE sync.
 - **14 Oct 2026:** first version, from `103dc4c`.
