@@ -243,6 +243,43 @@ Most of what follows is a consequence of this.
 
 ---
 
+## 9. Workspace run card and unassigned reasons (Prashant)
+
+**ClickUp:** [RB web: Workspace update: summary, run block, pre-run and post-run states (parent)](https://app.clickup.com/t/z97h2mppj5). Prashant takes the run summary. The metrics task is [Run totals after an optimize run](https://app.clickup.com/t/z97h2mpnbr) (his panel is route-builder-web #432 and #461). Unplanned reasons on the cards are [mxq](https://app.clickup.com/t/z97h2mpmxq).
+
+**Look at:** https://rb-3d-shell-handoff.vercel.app. Add orders to the Workspace, optimize, then open the Unassigned tab. Figma: [Workspace top, 15 Oct](https://www.figma.com/design/u963FtnSOWvu2pPj0LyEom/RB---Routing-v2?node-id=9325-130500). The yellow banner is the same alert as [7518:33872](https://www.figma.com/design/3zQcvo51p6v57bYKCOdIee/RB---Routing-v1?node-id=7518-33872).
+
+**Files:** `components/run/run-banner.tsx`, `components/run/unassigned-reasons.tsx`, the Workspace header in `components/lasso-workspace-sheet.tsx`.
+
+### Header
+
+`Workspace`, then three badges on `#282828`: `{gallons} gal`, `{n} Routes`, `{n} Orders`. These are what is in the Workspace right now, not the run. Routes scrolls to the routes section. There is no second summary bar under the title.
+
+### Run card
+
+One card, 1px border `#282828`, background `#1B1B1B`. It appears only after a run and stays frozen until the next optimize.
+
+- Header: `Run #6` · `Completed 9:40 AM` · clock icon and `41s`. **Run Details** opens the floating sheet. The chevron on the right collapses the body.
+- Four equal cards, fill `#282828`, value 16px: **Planned Gallons**, **Miles**, **Driver Hours** (the times on the route cards added together), **GPM**.
+- A dashed line, then three results: **Routes** (scrolls to Driver Routes), **Unassigned Orders** (yellow chip `#EAB308` on `rgba(234,179,8,0.1)`, scrolls to the Unassigned section), a hairline, **Trucks used** (dotted underline, opens the Trucks view under the map).
+- The Unassigned number on the chip is orders this run was given and did not place. The tab count is every order not on a route right now. They are allowed to differ.
+
+### Unassigned section
+
+**Select all unassigned** is the sub-header. The banner sits under it.
+
+The banner uses the same fill as **1 Issue**: `rgba(234, 179, 8, 0.09)`, text `#EAB308`. One line: `3 of 9 orders could not be placed`. The chevron is on the far right, same as the run card. The whole banner is one accordion. Each reason opens inside that body, with its count and the ship-to names.
+
+Clicking a ship-to does three things together: the map flies to the pin, the list scrolls to that order card, and the card flashes the hover fill (`#282828`) for about 2.5 seconds.
+
+### Not in this pass
+
+- Pre-run checks on a Workspace that has never been optimized. They exist only on `/dev/workspace`.
+- A group-by control.
+- A last section for orders this run never saw (added after the run, or left from an earlier one). Working name: previous runs. Those cards have no reason from this run.
+
+---
+
 ## Changelog
 
 - **15 Oct 2026:** Workspace header badges (gallons, routes, orders), run card (four metrics, dashed results row, Trucks used opens under the map), unassigned reasons inside the 1 Issue banner. Trucks view uses the Create Routes card.
