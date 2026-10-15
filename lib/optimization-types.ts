@@ -43,6 +43,8 @@ export type UnassignedOrder = {
   reasonDetail: string
   mustGo?: boolean
   suggestedFix?: string
+  latitude?: number
+  longitude?: number
 }
 
 export type OptimizationResult = {

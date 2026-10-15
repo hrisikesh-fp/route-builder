@@ -217,6 +217,7 @@ export default function WorkspaceJourneyDemo() {
                   topOffOrders={TOP_OFF_ORDERS}
                   notInRun={edits ? { routes: 0, orders: LATE_ORDERS.length } : undefined}
                   onDetails={() => setDrawer(true)}
+                  onRoutes={() => setTab("routes")}
                   onUnassigned={() => setTab("unassigned")}
                   onTrucks={() => openPanel("trucks")}
                 />

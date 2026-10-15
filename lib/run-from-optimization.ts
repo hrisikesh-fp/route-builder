@@ -34,7 +34,7 @@ export function runFromOptimization(result: OptimizationResult, number: number, 
   for (const u of result.unassigned) {
     const key = `${u.reason}|${u.reasonDetail}`
     const g = byReason.get(key) ?? { id: key, message: u.reasonDetail.replace(/\.$/, ""), hint: u.suggestedFix, tier: TIER[u.reason], orders: [] }
-    g.orders.push({ id: u.id, name: u.name, latitude: 0, longitude: 0, gallons: 0 })
+    g.orders.push({ id: u.id, name: u.name, latitude: u.latitude ?? 0, longitude: u.longitude ?? 0, gallons: 0 })
     byReason.set(key, g)
   }
 

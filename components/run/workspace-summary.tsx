@@ -46,7 +46,7 @@ export function TopOffMark({ orders }: { orders: string[] }) {
   )
 }
 
-export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrders = [], availableTrucks, onTrucks, onRoutes, onOrders, compact = true }: {
+export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrders = [], availableTrucks, onTrucks, onRoutes, onOrders, compact = true, layout }: {
   gallons: number
   categories: CategoryGallons[]
   routes: number
@@ -59,9 +59,31 @@ export function WorkspaceBanner({ gallons, categories, routes, orders, topOffOrd
   onOrders?: () => void
   /** One quiet line, before and after a run (14 Oct): the run block is what leads. */
   compact?: boolean
+  /**
+   * `bar` is the 15 Oct Workspace row (Figma 9312:141614): Total Gallons, Routes, Orders.
+   * Product category stays in this file for the compact layout. The bar does not show it this pass.
+   */
+  layout?: "compact" | "cards" | "bar"
 }) {
   const [open, setOpen] = useState(false)
-  if (compact) {
+  const resolved = layout ?? (compact ? "compact" : "cards")
+  if (resolved === "bar") {
+    const pair = (label: string, value: string) => (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, lineHeight: "20px", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 14, fontWeight: 400, color: "#A3A3A3" }}>{label}</span>
+        <span style={{ fontSize: 14, fontWeight: 500, color: "#E5E5E5" }}>{value}</span>
+      </span>
+    )
+    const hit = { background: "none", border: "none", padding: 0, fontFamily: "inherit", cursor: "pointer" } as const
+    return (
+      <div style={{ width: "100%", boxSizing: "border-box", backgroundColor: "#1B1B1B", borderRadius: 4, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {pair("Total Gallons", formatGallons(gallons))}
+        <button type="button" onClick={onRoutes} style={hit}>{pair("Routes", String(routes))}</button>
+        {pair("Orders", String(orders))}
+      </div>
+    )
+  }
+  if (resolved === "compact") {
     const link = { background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 13, color: RUN.t2, cursor: "pointer" } as const
     return (
       <div>

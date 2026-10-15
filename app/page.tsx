@@ -28,6 +28,7 @@ import {
   getLayoutTier, TIER_LABELS, LEFT_MIN, LEFT_MAX, RIGHT_MIN, RIGHT_MAX,
   MAP_MIN_WIDTH, MAP_MIN_HEIGHT, STACK_MIN_HEIGHT, MAX_LEFT_COLUMNS,
   MAP_COMPACT_WIDTH, CREATE_SHEET_WIDTH, CREATE_SHEET_MIN_WIDTH,
+  TRUCKS_DEFAULT_DOCK,
 } from "@/lib/layout-tiers"
 import { ReconciliationView } from "@/components/reconciliation-view"
 import { ListFilter } from "lucide-react"
@@ -45,7 +46,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
   // Views (Orders, Trucks, Drivers) — several can be open. All open in the left column (stacked) so the
   // map keeps its height; above / below the map is a choice from each view's dock menu.
   const [openViews, setOpenViews] = useState<LeftPanel[]>(["orders"])
-  const [viewDocks, setViewDocks] = useState<Record<LeftPanel, ViewDock>>({ orders: "left", trucks: "left", drivers: "left" })
+  const [viewDocks, setViewDocks] = useState<Record<LeftPanel, ViewDock>>({ orders: "left", trucks: TRUCKS_DEFAULT_DOCK, drivers: "left" })
   // Views collapsed to the rail because the right panel needed their room; they come back when it closes
   const [stashedViews, setStashedViews] = useState<LeftPanel[]>([])
   const [leftWidth, setLeftWidth] = useState(LEFT_MIN)
@@ -443,6 +444,7 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
       onDockChange={(d) => dockView(view, d)}
       onClose={() => closeView(view)}
       orders={filteredOrders}
+      inPlanTruckIds={selectedRouteIds.map((id) => mockRoutes.find((r) => r.id === id)?.truckId).filter((id): id is string => !!id)}
       onHoverOrder={setHoveredWorkspaceOrderId}
       onAddToWorkspace={(orderIds) => handleAddFromList({ orderIds, routeIds: [] })}
     />
@@ -991,7 +993,10 @@ const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false)
         onEscapePressed={handleLassoEscape}
       />
       <LassoWorkspaceSheet
-        onOpenTrucksView={() => { if (!openViews.includes("trucks")) handleRailSelect("trucks") }}
+        onOpenTrucksView={() => {
+          setViewDocks((cur) => ({ ...cur, trucks: TRUCKS_DEFAULT_DOCK }))
+          if (!openViews.includes("trucks")) handleRailSelect("trucks")
+        }}
         isOpen={isWorkspaceOpen && mode === "planning" && isRightPanelShown}
         onClose={handleWorkspaceClose}
         selectedOrders={selectedOrders}

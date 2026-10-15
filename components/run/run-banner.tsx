@@ -1,80 +1,140 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
+import { ChevronDown, Clock } from "lucide-react"
 import type { RunRecord } from "@/lib/run-types"
-import { formatGallons, formatMinutes } from "@/lib/run-history-data"
-import { RUN } from "@/components/run/run-ui"
-import { TopOffMark } from "@/components/run/workspace-summary"
+import { formatGallons } from "@/lib/run-history-data"
 
-// Line 2: the run block (decided 14 Oct). The run banner and the run's metrics are ONE block:
-// Prashant's run summary panel (#432, #461), restyled. It changes only when you optimize or
-// re-optimize; no automatic recalculation. C1: "planned vs unplanned count at the top".
-// The "Not in this run" line shows when the Workspace holds orders or routes the run didn't include.
+// Run block, Figma 9312:141626 (15 Oct). Frozen on the last run.
+// Four cards are the run: Planned Gallons, Miles, Driver Hours (the route times added up), GPM.
+// The row under them is this run's results. Routes scrolls to the routes section.
+// Unassigned Orders is only the orders this run did not place. Trucks used opens the Trucks panel.
+// Product category is not in this block.
 
-function Link({ children, onClick, tone }: { children: ReactNode; onClick?: () => void; tone?: "warn" }) {
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: "inherit", color: tone === "warn" ? RUN.warn : RUN.t2, textDecoration: "underline", textUnderlineOffset: 2, textDecorationColor: RUN.border2, cursor: "pointer" }}>
-      {children}
-    </button>
-  )
-}
-
-function Big({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
-  return (
-    <div style={{ backgroundColor: "#232323", borderRadius: 6, padding: "10px 12px", minWidth: 0 }}>
-      <div style={{ fontSize: 12, color: RUN.t3 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 500, color: RUN.t1, lineHeight: "28px", whiteSpace: "nowrap" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: RUN.t4 }}>{sub}</div>}
+    <div style={{ flex: 1, minWidth: 0, backgroundColor: "#282828", borderRadius: 4, padding: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, lineHeight: "16px", color: "#A3A3A3", whiteSpace: "nowrap" }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 500, lineHeight: "24px", color: "#E5E5E5", whiteSpace: "nowrap" }}>{value}</div>
     </div>
   )
 }
 
-export function RunBanner({ run, notInRun, trucksAvailable, topOffOrders = [], onDetails, onUnassigned, onTrucks }: {
+function Dot() {
+  return <span aria-hidden style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#737373", flexShrink: 0 }} />
+}
+
+function Result({ label, value, onClick, warn }: { label: string; value: ReactNode; onClick?: () => void; warn?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "4px 8px",
+        border: "none",
+        borderRadius: 4,
+        backgroundColor: warn ? "rgba(234,179,8,0.1)" : "transparent",
+        fontFamily: "inherit",
+        cursor: onClick ? "pointer" : "default",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#A3A3A3", textDecoration: warn ? "none" : undefined }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "20px", color: warn ? "#EAB308" : "#E5E5E5" }}>{value}</span>
+    </button>
+  )
+}
+
+export function RunBanner({ run, onDetails, onRoutes, onUnassigned, onTrucks }: {
   run: RunRecord
+  /** Kept so older callers still type-check. Not drawn in this pass. */
   notInRun?: { routes: number; orders: number }
   trucksAvailable?: number
   topOffOrders?: string[]
   onDetails?: () => void
+  onRoutes?: () => void
   onUnassigned?: () => void
   onTrucks?: () => void
 }) {
+  const [open, setOpen] = useState(true)
   const r = run.result
-  const dot = !r ? RUN.bad : r.placed < r.total ? RUN.warn : RUN.ok
-  const unplanned = r ? r.total - r.placed : 0
+  const duration = run.durationLabel.split(" ·")[0]
+  const driverHours = r ? Math.round(r.routes.reduce((sum, route) => sum + route.minutes, 0) / 60) : 0
+  const gpm = r && r.miles > 0 ? Math.round(r.gallons / r.miles) : 0
+  const unassigned = r ? r.total - r.placed : 0
   return (
-    <div style={{ borderRadius: 6, backgroundColor: "#1A1A1A", border: `1px solid ${RUN.border}` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", fontSize: 13, color: RUN.t3, borderBottom: `1px solid ${RUN.border}` }}>
-        <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: dot }} />
-        <span>
-          <b style={{ color: RUN.t1, fontWeight: 500 }}>Run #{run.number}</b> · {r ? "Completed" : "Didn't finish"} {run.submittedAt} · took {run.durationLabel.split(" ·")[0]}
-        </span>
-        <button type="button" onClick={onDetails} style={{ marginLeft: "auto", height: 26, padding: "0 10px", borderRadius: 13, border: `1px solid ${RUN.border2}`, background: "transparent", color: RUN.t2, fontSize: 12, fontWeight: 500, fontFamily: "inherit", cursor: "pointer" }}>
-          Run details
-        </button>
+    <div style={{ width: "100%", borderRadius: 4, backgroundColor: "#1B1B1B", border: "1px solid #282828", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", borderBottom: open ? "1px solid #282828" : "none" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "24px", color: "#FFFFFF", whiteSpace: "nowrap" }}>Run #{run.number}</span>
+          <Dot />
+          <span style={{ fontSize: 14, lineHeight: "20px", color: "#A3A3A3", whiteSpace: "nowrap" }}>{r ? "Completed" : "Didn't finish"} {run.submittedAt}</span>
+          <Dot />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, lineHeight: "20px", color: "#A3A3A3", whiteSpace: "nowrap" }}>
+            <Clock size={12} color="#A3A3A3" />
+            {duration}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={onDetails}
+            style={{
+              height: 28,
+              padding: "0 10px 0 8px",
+              borderRadius: 4,
+              border: "1px solid #333",
+              background: "transparent",
+              color: "#FAFAFA",
+              fontSize: 14,
+              fontWeight: 500,
+              lineHeight: "20px",
+              fontFamily: "inherit",
+              cursor: "pointer",
+              boxShadow: "0px 1px 2px rgba(0,0,0,0.05)",
+            }}
+          >
+            Run Details
+          </button>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={open ? "Collapse run" : "Expand run"}
+            onClick={() => setOpen((v) => !v)}
+            style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, border: "none", background: "none", cursor: "pointer" }}
+          >
+            <ChevronDown size={12} color="#A3A3A3" style={{ transform: open ? "rotate(180deg)" : "none" }} />
+          </button>
+        </div>
       </div>
-      {r ? (
-        <div style={{ padding: "10px 12px 12px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
-            <Big label="Planned" value={`${r.placed} of ${r.total}`} sub={unplanned > 0 ? <Link tone="warn" onClick={onUnassigned}>{unplanned} not planned</Link> : "all planned"} />
-            <Big label="Gallons" value={<span style={{ display: "inline-flex", gap: 4 }}>{formatGallons(r.gallons)}<TopOffMark orders={topOffOrders} /></span>} />
-            <Big label="Miles" value={r.miles} />
-            <Big label="To complete" value={formatMinutes(r.timeToCompleteMin)} sub="last truck back" />
+      {open && r && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16 }}>
+          <div style={{ display: "flex", gap: 12 }}>
+            <Metric label="Planned Gallons" value={formatGallons(r.gallons)} />
+            <Metric label="Miles" value={r.miles} />
+            <Metric label="Driver Hours" value={driverHours} />
+            <Metric label="GPM" value={gpm} />
           </div>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 10, fontSize: 13, color: RUN.t3 }}>
-            <span><b style={{ color: RUN.t1, fontWeight: 500 }}>{r.routes.length}</b> routes</span>
-            <span><Link onClick={onTrucks}>{r.trucksUsed}{trucksAvailable ? ` of ${trucksAvailable}` : ""} trucks used</Link></span>
-            <span><b style={{ color: RUN.t1, fontWeight: 500 }}>{r.miles > 0 ? (r.gallons / r.miles).toFixed(1) : "-"}</b> gal / mile</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, borderTop: "1px dashed #282828", paddingTop: 12 }}>
+            <Result label="Routes" value={r.routes.length} onClick={onRoutes} />
+            <Result label="Unassigned Orders" value={unassigned} onClick={onUnassigned} warn={unassigned > 0} />
+            <span aria-hidden style={{ width: 1, height: 18, backgroundColor: "#333" }} />
+            <button
+              type="button"
+              onClick={onTrucks}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 8px", border: "none", background: "none", fontFamily: "inherit", cursor: "pointer" }}
+            >
+              <span style={{ fontSize: 14, lineHeight: "20px", color: "#A3A3A3", textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 3 }}>Trucks used</span>
+              <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "20px", color: "#E5E5E5" }}>{r.trucksUsed}</span>
+            </button>
           </div>
         </div>
-      ) : (
-        <div style={{ padding: "10px 12px", fontSize: 13, color: RUN.t3 }}>{run.failure?.summary}. Nothing changed in your Workspace.</div>
       )}
-      {notInRun && (notInRun.routes > 0 || notInRun.orders > 0) && (
-        <div style={{ borderTop: `1px dashed ${RUN.border2}`, padding: "6px 12px", fontSize: 12, color: RUN.t4 }}>
-          Not in this run: {notInRun.routes > 0 && `${notInRun.routes} route${notInRun.routes > 1 ? "s" : ""}`}
-          {notInRun.routes > 0 && notInRun.orders > 0 && ", "}
-          {notInRun.orders > 0 && `${notInRun.orders} order${notInRun.orders > 1 ? "s" : ""}`}. Re-optimize to include them.
-        </div>
+      {open && !r && (
+        <div style={{ padding: "12px 16px", fontSize: 14, color: "#A3A3A3" }}>{run.failure?.summary}. Nothing changed in your Workspace.</div>
       )}
     </div>
   )
