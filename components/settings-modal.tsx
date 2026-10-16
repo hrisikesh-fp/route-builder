@@ -3,6 +3,7 @@
 import { X, Settings, Route, Tag, Sun, Pencil, GitBranch, ClipboardList } from "lucide-react"
 import { useSettings } from "@/contexts/settings-context"
 import { Switch } from "@/components/ui/switch"
+import { WELCOME_SCENARIOS, type WelcomeScenario } from "@/components/welcome-checks"
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -33,6 +34,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     showReviewStage,
     updateShowObjectiveComparison,
     updateShowReviewStage,
+    welcomeScenario,
+    updateWelcomeScenario,
   } = useSettings()
 
   if (!isOpen) return null
@@ -98,6 +101,48 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               onCheckedChange={updateUnassignedOnly}
               className="data-[state=checked]:bg-[#6366F1] data-[state=unchecked]:bg-[#404040]"
             />
+          </div>
+
+          <div>
+            <h3
+              className="mb-4"
+              style={{ color: "#A3A3A3", fontSize: "12px", fontWeight: 500, lineHeight: "16px", textTransform: "uppercase", letterSpacing: "0.05em" }}
+            >
+              Welcome checks
+            </h3>
+            <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#1A1A1A", border: "1px solid #282828" }}>
+              {WELCOME_SCENARIOS.map((scenario, index) => (
+                <button
+                  key={scenario.id}
+                  type="button"
+                  onClick={() => updateWelcomeScenario(scenario.id as WelcomeScenario)}
+                  className="w-full text-left"
+                  style={{ borderBottom: index === WELCOME_SCENARIOS.length - 1 ? "none" : "1px solid #282828" }}
+                >
+                  <div className="flex items-start gap-3 p-4">
+                    <div
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        border: welcomeScenario === scenario.id ? "6px solid #6366F1" : "2px solid #404040",
+                        backgroundColor: welcomeScenario === scenario.id ? "#111" : "transparent",
+                        flexShrink: 0,
+                        marginTop: 2,
+                      }}
+                    />
+                    <div className="flex flex-col gap-1">
+                      <span style={{ color: "#FFF", fontSize: "14px", fontWeight: 500, lineHeight: "20px" }}>
+                        {scenario.label}
+                      </span>
+                      <span style={{ color: "#A3A3A3", fontSize: "13px", fontWeight: 400, lineHeight: "18px" }}>
+                        {scenario.hint}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── APPEARANCE ── */}

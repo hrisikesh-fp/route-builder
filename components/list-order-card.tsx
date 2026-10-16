@@ -4,6 +4,8 @@ import { Droplet } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import { ORDER_TYPE_COLORS } from "@/lib/route-display"
 import { CheckboxInput } from "@/components/lasso-workspace-sheet"
+import { KINDS, type IssueKind } from "@/components/run/issue-kinds"
+import type { WelcomeKind, WelcomeRow } from "@/components/welcome-checks"
 
 // Order card in the floating List panel — Figma RB - Routing v2, "Order Card" in node 9103:41099.
 // Read-only: the list never edits an order. The checkbox is not in Figma yet (needed for "N selected").
@@ -15,9 +17,14 @@ interface ListOrderCardProps {
   onHoverChange: (orderId: string | null) => void
   /** Briefly outlined after a map pin click scrolls the list to this card. */
   isFocused?: boolean
+  /** A2 check for this order, same line as the welcome modal and the inbox. */
+  issue?: WelcomeRow | null
+  onIssueFix?: (row: WelcomeRow) => void
 }
 
-export function ListOrderCard({ order, checked, onToggleCheck, onHoverChange, isFocused }: ListOrderCardProps) {
+const KIND_KEY: Record<WelcomeKind, IssueKind> = { act: "action", heads: "headsup" }
+
+export function ListOrderCard({ order, checked, onToggleCheck, onHoverChange, isFocused, issue, onIssueFix }: ListOrderCardProps) {
   const type = order.orderType ?? "D"
   const title = order.shipToName ?? order.customerName
   // Figma shows the legal customer name under the ship-to; fall back to the address when there is no ship-to name.
@@ -122,7 +129,28 @@ export function ListOrderCard({ order, checked, onToggleCheck, onHoverChange, is
             {order.volume.toLocaleString()} gal
           </span>
         </div>
+        {issue && <OrderIssueLine issue={issue} onFix={onIssueFix} />}
       </div>
+    </div>
+  )
+}
+
+export function OrderIssueLine({ issue, onFix }: { issue: WelcomeRow; onFix?: (row: WelcomeRow) => void }) {
+  const K = KINDS[KIND_KEY[issue.kind]]
+  const Icon = K.icon
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+      <Icon size={14} color={K.fg} style={{ flexShrink: 0 }} />
+      <span style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: "16px", color: K.fg }}>{issue.issue}</span>
+      {onFix && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onFix(issue) }}
+          style={{ height: 24, flexShrink: 0, border: "1px solid #333", borderRadius: 4, padding: "0 8px", background: "transparent", color: "#E5E5E5", font: "inherit", fontSize: 12, cursor: "pointer" }}
+        >
+          {issue.fix}
+        </button>
+      )}
     </div>
   )
 }

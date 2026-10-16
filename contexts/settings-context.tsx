@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { isWelcomeScenario, type WelcomeScenario } from "@/components/welcome-checks"
 
 // Simple settings object
 const DEFAULT_ROUTE_LINE_DISPLAY = "grayscale" as const
@@ -17,6 +18,7 @@ const DEFAULT_UNASSIGNED_ONLY = true
 // Both stay as prototype switches so they can be shown later.
 const DEFAULT_SHOW_OBJECTIVE_COMPARISON = false
 const DEFAULT_SHOW_REVIEW_STAGE = false
+const DEFAULT_WELCOME_SCENARIO: WelcomeScenario = "all"
 
 type RouteLineDisplayType = "grayscale" | "colored"
 type OrderCardViewType = "condensed" | "detailed"
@@ -35,6 +37,7 @@ interface SettingsContextType {
   unassignedOnly: boolean
   showObjectiveComparison: boolean
   showReviewStage: boolean
+  welcomeScenario: WelcomeScenario
   updateRouteLineDisplay: (v: RouteLineDisplayType) => void
   updateShowBadges: (v: boolean) => void
   updateReducedOpacity: (v: boolean) => void
@@ -46,6 +49,7 @@ interface SettingsContextType {
   updateUnassignedOnly: (v: boolean) => void
   updateShowObjectiveComparison: (v: boolean) => void
   updateShowReviewStage: (v: boolean) => void
+  updateWelcomeScenario: (v: WelcomeScenario) => void
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null)
@@ -62,6 +66,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [unassignedOnly, setUnassignedOnly] = useState<boolean>(DEFAULT_UNASSIGNED_ONLY)
   const [showObjectiveComparison, setShowObjectiveComparison] = useState<boolean>(DEFAULT_SHOW_OBJECTIVE_COMPARISON)
   const [showReviewStage, setShowReviewStage] = useState<boolean>(DEFAULT_SHOW_REVIEW_STAGE)
+  const [welcomeScenario, setWelcomeScenario] = useState<WelcomeScenario>(DEFAULT_WELCOME_SCENARIO)
 
   // Load persisted settings from localStorage on mount
   useEffect(() => {
@@ -87,6 +92,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (storedComparison !== null) setShowObjectiveComparison(storedComparison === "true")
     const storedReview = localStorage.getItem("showReviewStage")
     if (storedReview !== null) setShowReviewStage(storedReview === "true")
+    const storedWelcome = localStorage.getItem("welcomeScenario")
+    if (isWelcomeScenario(storedWelcome)) setWelcomeScenario(storedWelcome)
   }, [])
 
   const updateRouteLineDisplay = (v: RouteLineDisplayType) => setRouteLineDisplayValue(v)
@@ -124,6 +131,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setShowReviewStage(v)
     localStorage.setItem("showReviewStage", String(v))
   }
+  const updateWelcomeScenario = (v: WelcomeScenario) => {
+    setWelcomeScenario(v)
+    localStorage.setItem("welcomeScenario", v)
+  }
 
   return (
     <SettingsContext.Provider
@@ -150,6 +161,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         updateUnassignedOnly,
         updateShowObjectiveComparison,
         updateShowReviewStage,
+        welcomeScenario,
+        updateWelcomeScenario,
       }}
     >
       {children}
@@ -183,6 +196,8 @@ export function useSettings(): SettingsContextType {
       updateUnassignedOnly: () => {},
       updateShowObjectiveComparison: () => {},
       updateShowReviewStage: () => {},
+      welcomeScenario: DEFAULT_WELCOME_SCENARIO,
+      updateWelcomeScenario: () => {},
     }
   }
   return ctx

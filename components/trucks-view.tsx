@@ -1,23 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Caravan, List, Search, Table2, Truck, UserCheck, X } from "lucide-react"
+import { Caravan, List, ListFilter, Search, Table2, Truck, UserCheck, X } from "lucide-react"
 import { DataTable } from "@/components/data-table"
 import { FLEET_HUB_GROUPS, type FleetUnit } from "@/lib/mock-truck-fleet"
 
 // Same unit as Create Routes: truck, trailer, driver, products.
-// Available = not on a Workspace route. In-plan = already on one. Planned (opens Routes) is later.
+// Status (Available / In-plan / Published) is not drawn yet. The ids are still
+// passed in so that badge can be designed without changing the data hook.
 
 const UNITS: FleetUnit[] = FLEET_HUB_GROUPS.flatMap((g) => g.units)
-
-function truckKey(name: string) {
-  return name.split(/\s[·-]\s/)[0].trim().toLowerCase()
-}
-
-function isInPlan(unit: FleetUnit, ids: string[]) {
-  const key = truckKey(unit.name)
-  return ids.some((id) => id === unit.id || id.toLowerCase() === key)
-}
 
 const iconButton = (active: boolean): React.CSSProperties => ({
   width: 36,
@@ -31,23 +23,6 @@ const iconButton = (active: boolean): React.CSSProperties => ({
   cursor: "pointer",
 })
 
-function StatusBadge({ inPlan }: { inPlan: boolean }) {
-  return (
-    <span style={{
-      flexShrink: 0,
-      fontSize: 12,
-      fontWeight: 500,
-      lineHeight: "16px",
-      borderRadius: 4,
-      padding: "2px 8px",
-      backgroundColor: inPlan ? "rgba(99,102,241,0.18)" : "#333",
-      color: inPlan ? "#C7D2FE" : "#A3A3A3",
-    }}>
-      {inPlan ? "In-plan" : "Available"}
-    </span>
-  )
-}
-
 function TypeBadge({ label }: { label: string }) {
   return (
     <span style={{ flexShrink: 0, fontSize: 12, lineHeight: "16px", color: "#FAFAFA", backgroundColor: "#333", borderRadius: 4, padding: "2px 6px" }}>{label}</span>
@@ -59,7 +34,7 @@ function productLabel(names: string[]) {
   return `${n} Product${n === 1 ? "" : "s"}`
 }
 
-function FleetCard({ unit, inPlan }: { unit: FleetUnit; inPlan: boolean }) {
+function FleetCard({ unit }: { unit: FleetUnit }) {
   const capacity = unit.trailer?.capacity || unit.capacity || "0 gal"
   const compartments = unit.trailer?.compartments || unit.compartments || "0 Compartments"
   return (
@@ -68,7 +43,6 @@ function FleetCard({ unit, inPlan }: { unit: FleetUnit; inPlan: boolean }) {
         <Truck size={20} color="#A3A3A3" style={{ flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0, fontSize: 16, lineHeight: "24px", color: "#E5E5E5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{unit.name}</span>
         <TypeBadge label={unit.badge} />
-        <StatusBadge inPlan={inPlan} />
       </div>
       {unit.trailer && (
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -87,22 +61,26 @@ function FleetCard({ unit, inPlan }: { unit: FleetUnit; inPlan: boolean }) {
           {capacity} · {compartments} · {productLabel(unit.productNames)}
         </span>
       )}
-      {unit.driver && (
+      {unit.driver ? (
         <>
           <div style={{ height: 1, backgroundColor: "#282828" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <UserCheck size={16} color="#A3A3A3" />
-            <span style={{ fontSize: 13, color: "#A3A3A3" }}>{unit.driver.displayLine}</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "#A3A3A3" }}>{unit.driver.displayLine}</span>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   )
 }
 
-export function TrucksBody({ inPlanTruckIds = [] }: { inPlanTruckIds?: string[] }) {
-  const [view, setView] = useState<"list" | "table">("list")
+export function TrucksBody({ inPlanTruckIds = [], publishedTruckIds = [], preferredView = "list" }: { inPlanTruckIds?: string[]; publishedTruckIds?: string[]; preferredView?: "list" | "table" }) {
+  // Status badge is not drawn. These stay so the design can use which trucks are in a plan or published.
+  void inPlanTruckIds
+  void publishedTruckIds
+  const [view, setView] = useState<"list" | "table">(preferredView)
   const [search, setSearch] = useState("")
+  const [filtersHover, setFiltersHover] = useState(false)
   const query = search.trim().toLowerCase()
   const visible = useMemo(
     () => UNITS.filter((u) => !query || [u.name, u.badge, u.trailer?.name, u.driver?.displayLine, ...u.productNames].some((v) => v?.toLowerCase().includes(query))),
@@ -110,8 +88,8 @@ export function TrucksBody({ inPlanTruckIds = [] }: { inPlanTruckIds?: string[] 
   )
 
   return (
-    <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "16px 12px 12px", flexShrink: 0 }}>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 12px 12px", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, height: 36, padding: "6px 12px", border: "1px solid #333", borderRadius: 4, flex: 1, minWidth: 0, maxWidth: 400 }}>
           <Search size={16} color="#737373" />
           <input
@@ -126,7 +104,34 @@ export function TrucksBody({ inPlanTruckIds = [] }: { inPlanTruckIds?: string[] 
             </button>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        {/* Filters come back as soon as they are ready. */}
+        {false && <button
+          type="button"
+          title="Filters are not wired yet"
+          onMouseEnter={() => setFiltersHover(true)}
+          onMouseLeave={() => setFiltersHover(false)}
+          style={{
+            height: 36,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "0 12px",
+            border: "1px solid transparent",
+            borderRadius: 4,
+            backgroundColor: filtersHover ? "#333" : "transparent",
+            color: "#E5E5E5",
+            fontSize: 16,
+            fontWeight: 400,
+            lineHeight: "24px",
+            fontFamily: "inherit",
+            cursor: "default",
+            flexShrink: 0,
+          }}
+        >
+          <ListFilter size={16} color="#E5E5E5" />
+          Filters
+        </button>}
+        <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
           <button type="button" aria-label="Table view" aria-pressed={view === "table"} onClick={() => setView("table")} style={iconButton(view === "table")}>
             <Table2 size={16} color="#E5E5E5" />
           </button>
@@ -135,12 +140,13 @@ export function TrucksBody({ inPlanTruckIds = [] }: { inPlanTruckIds?: string[] 
           </button>
         </div>
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 12px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 12px 12px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {view === "list" ? (
           visible.length === 0 ? (
             <div style={{ padding: "32px 0", textAlign: "center", fontSize: 14, color: "#737373" }}>No trucks match "{search}"</div>
           ) : (
-            visible.map((unit) => <FleetCard key={unit.id} unit={unit} inPlan={isInPlan(unit, inPlanTruckIds)} />)
+            visible.map((unit) => <FleetCard key={unit.id} unit={unit} />)
           )
         ) : (
           <DataTable
@@ -150,14 +156,14 @@ export function TrucksBody({ inPlanTruckIds = [] }: { inPlanTruckIds?: string[] 
               { key: "driver", label: "Driver", width: "180px", render: (u: FleetUnit) => u.driver?.displayLine ?? "—" },
               { key: "products", label: "Products", width: "160px", render: (u: FleetUnit) => u.productNames.join(", ") || "—" },
               { key: "capacity", label: "Capacity", width: "110px", render: (u: FleetUnit) => u.trailer?.capacity || u.capacity || "0 gal" },
-              { key: "status", label: "Status", width: "100px", render: (u: FleetUnit) => <StatusBadge inPlan={isInPlan(u, inPlanTruckIds)} /> },
             ]}
             rows={visible}
             getRowId={(u) => u.id}
             emptyText={`No trucks match "${search}"`}
           />
         )}
+        </div>
       </div>
-    </>
+    </div>
   )
 }
