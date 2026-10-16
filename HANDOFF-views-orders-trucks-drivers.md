@@ -26,6 +26,10 @@ The prototype stamps the seven order checks onto the first seven unassigned orde
 
 Left rail: Orders, Trucks, Drivers. Each can sit left of the map, above it, or below it.
 
+Use the real rail icons for these three, not stand-in icons. Hover tooltip on each: **Unassigned orders**, **Trucks**, **Drivers**.
+
+Map controls need a tooltip on every button. Zoom in and Zoom out have none. The others in the prototype (expand map, map entities, zoom to fit, save view, lasso, add all to workspace) already have one. Match those, on the left of the button.
+
 The Routes button in the top bar is hidden. That list is not ready for this handoff. The code is still there, behind `false &&` in `components/metrics-bar.tsx`. Do not build a new route view for this pass.
 
 **Unassigned orders.** Cards or table. A check shows on the card and in a What's wrong column. Fix buttons are Edit order, Set gallons, Edit window, Go to ShipTo, Go to Terminal. Dispatch links use the real `/self_customer/...` paths.
