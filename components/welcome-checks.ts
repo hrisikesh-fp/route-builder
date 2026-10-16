@@ -43,16 +43,14 @@ export const WELCOME_ROWS: WelcomeRow[] = [
   { id: 3, kind: "act", cat: "Order", name: "Buda Feed Store", sub: "Buda Feed & Supply", det: "Delivery · Diesel", issue: "No planned gallons.", fix: "Edit order", where: "order" },
   { id: 4, kind: "act", cat: "Order", name: "Manor Ag Supply", sub: "Manor Ag", det: "Delivery · Top off", issue: "Top-off can't be sized: no tank reading.", fix: "Set gallons", where: "order" },
   { id: 5, kind: "act", cat: "Order", name: "Round Rock Plant", sub: "Round Rock Materials", det: "Delivery · DEF 600 gal", issue: "No terminal this hub uses carries DEF.", fix: "Go to Terminal", where: "dispatch", href: TERMINAL },
-  { id: 6, kind: "act", cat: "Order", name: "Smithville Yard", sub: "Smithville Paving", det: "Delivery · 1,200 gal", issue: "Delivery window ends before it starts.", fix: "Edit window", where: "order" },
   { id: 7, kind: "act", cat: "Order", name: "Bastrop Quarry", sub: "Bastrop Aggregates", det: "Delivery · 14,000 gal", issue: "Bigger than any truck (largest 9,800 gal).", fix: "Edit order", where: "order" },
   { id: 8, kind: "act", cat: "Truck", name: "H-118", sub: "2019 Kenworth Tank Wagon", det: "3,000 gal · 3 compartments", issue: "Fuel card expired on 30 Sep.", fix: "Go to Truck", where: "dispatch", href: TRUCK },
   { id: 9, kind: "act", cat: "Truck", name: "TR289", sub: "2020 Volvo VNL · TT-79", det: "8,500 gal · 4 compartments", issue: "Not allowed at any terminal for today's products.", fix: "Map terminals", where: "dispatch", href: TRUCK },
   { id: 10, kind: "act", cat: "Truck", name: "H-517", sub: "2023 Peterbilt 389 · Fuel 517-T", det: "6,000 gal · 4 compartments", issue: "No hub and no shift.", fix: "Go to Truck", where: "dispatch", href: TRUCK },
-  { id: 11, kind: "act", cat: "Driver", name: "Maria Lopez", sub: "H-118", det: "5:00 AM to 3:00 PM", issue: "TWIC expired on 2 Oct.", fix: "Go to Driver", where: "dispatch", href: DRIVER },
-  { id: 12, kind: "act", cat: "Setup", name: "Leander Hub", sub: "Hub", det: "4 trucks · 0 terminals", issue: "No terminals set up for this hub.", fix: "Go to Terminal", where: "dispatch", href: TERMINAL },
-  { id: 13, kind: "heads", cat: "Driver", name: "Jordan Morris", sub: "H-450", det: "5:00 AM to 5:00 PM", issue: "Licence expires at 2 PM, mid-shift.", fix: "Go to Driver", where: "dispatch", href: DRIVER },
-  { id: 14, kind: "heads", cat: "Driver", name: "Troy Hall", sub: "FF659", det: "8:00 AM to 1:00 PM today", issue: "Available 8 AM to 1 PM, shorter than usual.", fix: "Go to Driver", where: "dispatch", href: DRIVER },
+  { id: 11, kind: "heads", cat: "Driver", name: "Maria Lopez", sub: "H-118", det: "5:00 AM to 3:00 PM", issue: "TWIC expired on 2 Oct.", fix: "Go to Driver", where: "dispatch", href: DRIVER },
+  { id: 13, kind: "act", cat: "Driver", name: "Jordan Morris", sub: "H-450", det: "5:00 AM to 5:00 PM", issue: "Licence expires at 2 PM, mid-shift.", fix: "Go to Driver", where: "dispatch", href: DRIVER },
   { id: 15, kind: "heads", cat: "Setup", name: "Pflugerville DEF Storage", sub: "Bulk plant", det: "Austin Hub", issue: "No product on this bulk plant's tank.", fix: "Go to Bulk plant", where: "dispatch", href: PLANT },
+  { id: 19, kind: "heads", cat: "Setup", name: "Terminals", sub: "45 terminals", det: "No products", issue: "45 terminals have no products.", fix: "Go to Terminal", where: "dispatch", href: TERMINAL },
 ]
 
 export const WELCOME_LINES: Record<WelcomeKind, string> = {

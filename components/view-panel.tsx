@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AppWindow, ChevronDown, Maximize2, Minimize2, PanelBottom, PanelLeft, PanelTop, UserCheck, X, type LucideIcon } from "lucide-react"
+import { AppWindow, ChevronDown, Maximize2, Minimize2, PanelBottom, PanelLeft, PanelTop, X, type LucideIcon } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import type { LeftPanel } from "@/components/side-nav-rail"
-import { EmptyBody, OrdersBody } from "@/components/orders-panel"
+import { OrdersBody } from "@/components/orders-panel"
 import { TrucksBody } from "@/components/trucks-view"
+import { DriversBody } from "@/components/drivers-view"
 import { InboxBody } from "@/components/inbox-panel"
 import type { WelcomeKind, WelcomeRow } from "@/components/welcome-checks"
 
@@ -179,10 +180,10 @@ export function ViewPanel({ id, dock, onDockChange, onClose, orders, inPlanTruck
         </div>
       </div>
       {id === "orders" && (
-        <OrdersBody orders={orders} onHoverOrder={onHoverOrder} onAddToWorkspace={onAddToWorkspace} preferredView={dock === "left" && !isExpanded ? "list" : "table"} />
+        <OrdersBody orders={orders} onHoverOrder={onHoverOrder} onAddToWorkspace={onAddToWorkspace} preferredView={dock === "left" && !isExpanded ? "list" : "table"} welcomeRows={welcomeRows} onWelcomeFix={onWelcomeFix} />
       )}
-      {id === "trucks" && <TrucksBody inPlanTruckIds={inPlanTruckIds} publishedTruckIds={publishedTruckIds} />}
-      {id === "drivers" && <EmptyBody icon={UserCheck} text="Drivers and their shifts will show here." />}
+      {id === "trucks" && <TrucksBody inPlanTruckIds={inPlanTruckIds} publishedTruckIds={publishedTruckIds} preferredView={dock === "left" && !isExpanded ? "list" : "table"} />}
+      {id === "drivers" && <DriversBody welcomeRows={welcomeRows} onWelcomeFix={onWelcomeFix} preferredView={dock === "left" && !isExpanded ? "list" : "table"} />}
       {id === "inbox" && <InboxBody rows={welcomeRows} focusKind={inboxFocusKind} focusToken={inboxFocusToken} onFix={(row) => onWelcomeFix?.(row)} />}
     </section>
   )

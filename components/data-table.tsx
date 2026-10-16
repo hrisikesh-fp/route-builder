@@ -78,7 +78,8 @@ interface DataTableProps<Row> {
 }
 
 export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText = "Nothing to show", groupBy }: DataTableProps<Row>) {
-  const template = columns.map((c) => c.width ?? "minmax(0, 1fr)").join(" ")
+  const template = columns.map((c) => c.width ?? "minmax(140px, 1fr)").join(" ")
+  const tableMinWidth = Math.max(720, columns.length * 160)
   const groups: { key: string; rows: Row[] }[] = []
   if (groupBy) {
     for (const row of rows) {
@@ -91,10 +92,11 @@ export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText 
     groups.push({ key: "", rows })
   }
   return (
-    <div style={{ border: "1px solid #282828", borderRadius: 4, overflow: "hidden" }}>
+    <div style={{ border: "1px solid #282828", borderRadius: 4, overflowX: "auto" }}>
+      <div style={{ minWidth: tableMinWidth }}>
       <div style={{ display: "grid", gridTemplateColumns: template, backgroundColor: "#282828" }}>
         {columns.map((c) => (
-          <div key={c.key} style={{ minHeight: 40, display: "flex", alignItems: "center", padding: "0 12px", fontSize: 14, fontWeight: 500, lineHeight: "20px", color: "#A3A3A3" }}>
+          <div key={c.key} style={{ minHeight: 40, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", display: "flex", alignItems: "center", padding: "0 12px", fontSize: 14, fontWeight: 500, lineHeight: "20px", color: "#A3A3A3" }}>
             {c.label}
           </div>
         ))}
@@ -120,7 +122,7 @@ export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText 
             style={{ display: "grid", gridTemplateColumns: template, borderTop: "1px solid #282828" }}
           >
             {columns.map((c) => (
-              <div key={c.key} style={{ minHeight: 72, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", padding: 12, fontSize: 16, lineHeight: "24px", color: "#E5E5E5", boxSizing: "border-box" }}>
+              <div key={c.key} style={{ minHeight: 56, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", padding: "10px 12px", fontSize: 14, lineHeight: "20px", color: "#E5E5E5", boxSizing: "border-box" }}>
                 {c.render(row)}
               </div>
             ))}
@@ -129,6 +131,7 @@ export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText 
       })}
         </div>
       ))}
+      </div>
     </div>
   )
 }
@@ -136,7 +139,7 @@ export function DataTable<Row>({ columns, rows, getRowId, onRowHover, emptyText 
 /** Single-line text that ellipsises inside a table cell */
 export function CellText({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) {
   return (
-    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: muted ? "#A3A3A3" : undefined, fontSize: muted ? 14 : undefined, lineHeight: muted ? "20px" : undefined }}>
+    <span style={{ display: "block", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: muted ? "#A3A3A3" : undefined, fontSize: muted ? 13 : undefined, lineHeight: muted ? "18px" : undefined }}>
       {children}
     </span>
   )

@@ -60,6 +60,17 @@ Exclude leaves an order out of the plan. It stays in the list, marked Excluded, 
 
 **Left out of the mock, still with Dylan:** snap-to-road, unroutable, invalid retain, unsupported order type, shift starts at a ship-to, top-off sized from history.
 
+## Decisions, 17 Oct (Rodrigo's four calls)
+
+Use what the API already returns. Do not ask Dylan to change a severity or to build a check he does not have.
+
+- error maps to Needs action. warning maps to Heads-up. info is hidden. The API decides. TWIC expired is a warning, so it is Heads-up. Licence expires mid-shift is an error, so it is Needs action.
+- Cut from the design, parked for later: delivery window ends before it starts, driver available for less time than usual, hub with no terminals. Dylan did not build these.
+- The same check repeated many times is one row with the count. Example: "45 terminals have no products." Not 45 rows, and not "and 40 more", for now.
+- All-clear toast counts orders and trucks only. No driver count. Drop the "(across N product categories)" note on Total Gallons. Both have no data behind them yet.
+
+Parked: those three checks, the info severity, one row per terminal, a driver count in the toast, gallons by category on the tile.
+
 ## For Dylan
 
 The UI is mock so the shape is visible before the API is in. Two kinds only, Needs action and Heads-up. When the check API is ready, these rows are what it fills. A date change should load that day's checks. An empty list is all clear only when every source ran. If trucks or drivers failed to load, say so. Do not treat that as all clear.

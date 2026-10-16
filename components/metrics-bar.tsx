@@ -165,7 +165,8 @@ export function MetricsBar({ totalGallons, routeCount, unassignedCount, rightPan
         <CreateOrderSplit onClick={onCreateOrder} disabled={isCreateOrderDisabled} />
         <span style={{ width: 1, height: 18.5, backgroundColor: "#333" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <BarButton label="Routes" isActive={rightPanel === "routes"} onClick={() => toggle("routes")} />
+          {/* Route list is not in this handoff. Bring the button back when that view is ready. */}
+          {false && <BarButton label="Routes" isActive={rightPanel === "routes"} onClick={() => toggle("routes")} />}
           <BarButton label="Workspace" badge={workspaceOrderCount} isActive={rightPanel === "workspace"} onClick={() => toggle("workspace")} />
         </div>
       </div>

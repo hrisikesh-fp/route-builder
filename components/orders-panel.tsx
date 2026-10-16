@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, Layers3, List, PanelLeft, Search, Table2, Truck, UserCheck, X } from "lucide-react"
 import type { ExtractionOrder } from "@/lib/mock-data"
 import type { LeftPanel } from "@/components/side-nav-rail"
-import { ListOrderCard } from "@/components/list-order-card"
+import { ListOrderCard, OrderIssueLine } from "@/components/list-order-card"
+import type { WelcomeRow } from "@/components/welcome-checks"
 import { DataTable, DataTablePagination } from "@/components/data-table"
 import { orderTableColumns } from "@/components/rb-pages"
 
@@ -114,10 +115,23 @@ export function LeftPanelView({ panel, orders, onCollapse, onHoverOrder, onAddTo
   )
 }
 
-export function OrdersBody({ orders, onHoverOrder, onAddToWorkspace, preferredView }: { orders: ExtractionOrder[]; onHoverOrder: (id: string | null) => void; onAddToWorkspace: (ids: string[]) => void; preferredView?: OrdersView }) {
+// The check rows are not the same records as the demo orders. Stamp each order
+// check onto an unassigned order so the line shows on the card and in the table.
+function issuesForOrders(orders: ExtractionOrder[], rows: WelcomeRow[]) {
+  const issues = rows.filter((r) => r.cat === "Order")
+  const targets = orders.filter((o) => !o.routeId)
+  const map = new Map<string, WelcomeRow>()
+  issues.forEach((issue, i) => {
+    const order = targets[i]
+    if (order) map.set(order.id, issue)
+  })
+  return map
+}
+
+export function OrdersBody({ orders, onHoverOrder, onAddToWorkspace, preferredView, welcomeRows = [], onWelcomeFix }: { orders: ExtractionOrder[]; onHoverOrder: (id: string | null) => void; onAddToWorkspace: (ids: string[]) => void; preferredView?: OrdersView; welcomeRows?: WelcomeRow[]; onWelcomeFix?: (row: WelcomeRow) => void }) {
+  // Cards when the panel opens narrow (left). Table when it opens wide (above, below, or expanded).
+  // Resizing or moving the panel does not switch the view. Closing and opening again picks the default.
   const [view, setView] = useState<OrdersView>(preferredView ?? "list")
-  // Docking somewhere wide and short (top / bottom) suits the table; tall and narrow (left) suits cards
-  useEffect(() => { if (preferredView) setView(preferredView) }, [preferredView])
   const [search, setSearch] = useState("")
   const [groupKey, setGroupKey] = useState<GroupKey>("none")
   const [isGroupMenuOpen, setIsGroupMenuOpen] = useState(false)
@@ -131,6 +145,7 @@ export function OrdersBody({ orders, onHoverOrder, onAddToWorkspace, preferredVi
     return () => document.removeEventListener("mousedown", close)
   }, [])
 
+  const issueByOrder = useMemo(() => issuesForOrders(orders, welcomeRows), [orders, welcomeRows])
   const query = search.trim().toLowerCase()
   const visible = useMemo(
     () => orders.filter((o) => !query || [o.customerName, o.shipToName, o.shipToAddress, o.city].some((v) => v?.toLowerCase().includes(query))),
@@ -166,8 +181,8 @@ export function OrdersBody({ orders, onHoverOrder, onAddToWorkspace, preferredVi
               </button>
             )}
           </div>
-          {/* Group By — table view only */}
-          {view === "table" && (
+          {/* Group by comes back as soon as filters are ready. Commented out for this handoff. */}
+          {false && view === "table" && (
             <div ref={groupRef} style={{ position: "relative" }}>
               <button type="button" aria-label="Group by" title="Group by" onClick={() => setIsGroupMenuOpen((v) => !v)} style={iconButton(groupKey !== "none" || isGroupMenuOpen)}>
                 <Layers3 size={16} color="#E5E5E5" />
@@ -210,12 +225,30 @@ export function OrdersBody({ orders, onHoverOrder, onAddToWorkspace, preferredVi
             <div style={{ padding: "32px 0", textAlign: "center", fontSize: 14, color: "#737373" }}>No orders match "{search}"</div>
           ) : (
             visible.map((order) => (
-              <ListOrderCard key={order.id} order={order} checked={checkedIds.includes(order.id)} onToggleCheck={() => toggle(order.id)} onHoverChange={onHoverOrder} />
+              <ListOrderCard key={order.id} order={order} checked={checkedIds.includes(order.id)} onToggleCheck={() => toggle(order.id)} onHoverChange={onHoverOrder} issue={issueByOrder.get(order.id)} onIssueFix={onWelcomeFix} />
             ))
           )
         ) : (
           <>
-            <DataTable columns={orderTableColumns()} rows={tableRows} getRowId={(o) => o.id} onRowHover={onHoverOrder} groupBy={groupBy} emptyText={`No orders match "${search}"`} />
+            <DataTable
+              columns={[
+                ...orderTableColumns(),
+                {
+                  key: "issue",
+                  label: "What's wrong",
+                  width: "220px",
+                  render: (o: ExtractionOrder) => {
+                    const issue = issueByOrder.get(o.id)
+                    return issue ? <OrderIssueLine issue={issue} onFix={onWelcomeFix} /> : null
+                  },
+                },
+              ]}
+              rows={tableRows}
+              getRowId={(o) => o.id}
+              onRowHover={onHoverOrder}
+              groupBy={groupBy}
+              emptyText={`No orders match "${search}"`}
+            />
             {!groupBy && <DataTablePagination page={page} pageCount={pageCount} onPageChange={setPage} />}
           </>
         )}

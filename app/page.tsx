@@ -113,7 +113,7 @@ export default function Home() {
     setWelcomeRows(rows)
     if (welcomeScenario === "clear") {
       setWelcomeOpen(false)
-      setChecksToast(`All 45 orders, 7 trucks and 6 drivers passed the checks for ${formatPlanDate(planDate).replace(/^Tomorrow: /, "")}.`)
+      setChecksToast(`All 45 orders and 7 trucks passed the checks for ${formatPlanDate(planDate).replace(/^Tomorrow: /, "")}.`)
     } else {
       setWelcomeOpen(true)
       setChecksToast(null)

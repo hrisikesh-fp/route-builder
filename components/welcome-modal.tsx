@@ -137,7 +137,7 @@ export function WelcomeModal({
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          <Metric label="Total Gallons" value="20,000 gal" note="(across 4 product categories)" />
+          <Metric label="Total Gallons" value="20,000 gal" />
           <Metric label="Routes" value="0" />
           <Metric label="Unassigned Orders" value="45" />
         </div>

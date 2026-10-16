@@ -6,27 +6,10 @@ import { DataTable } from "@/components/data-table"
 import { FLEET_HUB_GROUPS, type FleetUnit } from "@/lib/mock-truck-fleet"
 
 // Same unit as Create Routes: truck, trailer, driver, products.
-// Available = not on a route. In-plan = on a Workspace route that is not published.
-// Published wins when the truck is on a published route.
+// Status (Available / In-plan / Published) is not drawn yet. The ids are still
+// passed in so that badge can be designed without changing the data hook.
 
 const UNITS: FleetUnit[] = FLEET_HUB_GROUPS.flatMap((g) => g.units)
-
-function truckKey(name: string) {
-  return name.split(/\s[·-]\s/)[0].trim().toLowerCase()
-}
-
-function matchesTruck(unit: FleetUnit, ids: string[]) {
-  const key = truckKey(unit.name)
-  return ids.some((id) => id === unit.id || id.toLowerCase() === key)
-}
-
-type TruckStatus = "available" | "in-plan" | "published"
-
-function truckStatus(unit: FleetUnit, publishedIds: string[], inPlanIds: string[]): TruckStatus {
-  if (matchesTruck(unit, publishedIds)) return "published"
-  if (matchesTruck(unit, inPlanIds)) return "in-plan"
-  return "available"
-}
 
 const iconButton = (active: boolean): React.CSSProperties => ({
   width: 36,
@@ -40,32 +23,6 @@ const iconButton = (active: boolean): React.CSSProperties => ({
   cursor: "pointer",
 })
 
-const STATUS_STYLE: Record<TruckStatus, { bg: string; color: string; label: string }> = {
-  available: { bg: "rgba(59,130,246,0.18)", color: "#93C5FD", label: "Available" },
-  "in-plan": { bg: "rgba(99,102,241,0.18)", color: "#C7D2FE", label: "In-plan" },
-  published: { bg: "#262626", color: "#E5E5E5", label: "Published" },
-}
-
-function StatusBadge({ status }: { status: TruckStatus }) {
-  const tone = STATUS_STYLE[status]
-  return (
-    <span style={{
-      flexShrink: 0,
-      width: "fit-content",
-      alignSelf: "flex-start",
-      fontSize: 12,
-      fontWeight: 500,
-      lineHeight: "16px",
-      borderRadius: 4,
-      padding: "2px 8px",
-      backgroundColor: tone.bg,
-      color: tone.color,
-    }}>
-      {tone.label}
-    </span>
-  )
-}
-
 function TypeBadge({ label }: { label: string }) {
   return (
     <span style={{ flexShrink: 0, fontSize: 12, lineHeight: "16px", color: "#FAFAFA", backgroundColor: "#333", borderRadius: 4, padding: "2px 6px" }}>{label}</span>
@@ -77,7 +34,7 @@ function productLabel(names: string[]) {
   return `${n} Product${n === 1 ? "" : "s"}`
 }
 
-function FleetCard({ unit, status }: { unit: FleetUnit; status: TruckStatus }) {
+function FleetCard({ unit }: { unit: FleetUnit }) {
   const capacity = unit.trailer?.capacity || unit.capacity || "0 gal"
   const compartments = unit.trailer?.compartments || unit.compartments || "0 Compartments"
   return (
@@ -110,20 +67,18 @@ function FleetCard({ unit, status }: { unit: FleetUnit; status: TruckStatus }) {
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <UserCheck size={16} color="#A3A3A3" />
             <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "#A3A3A3" }}>{unit.driver.displayLine}</span>
-            <StatusBadge status={status} />
           </div>
         </>
-      ) : (
-        <div style={{ paddingLeft: 32 }}>
-          <StatusBadge status={status} />
-        </div>
-      )}
+      ) : null}
     </div>
   )
 }
 
-export function TrucksBody({ inPlanTruckIds = [], publishedTruckIds = [] }: { inPlanTruckIds?: string[]; publishedTruckIds?: string[] }) {
-  const [view, setView] = useState<"list" | "table">("list")
+export function TrucksBody({ inPlanTruckIds = [], publishedTruckIds = [], preferredView = "list" }: { inPlanTruckIds?: string[]; publishedTruckIds?: string[]; preferredView?: "list" | "table" }) {
+  // Status badge is not drawn. These stay so the design can use which trucks are in a plan or published.
+  void inPlanTruckIds
+  void publishedTruckIds
+  const [view, setView] = useState<"list" | "table">(preferredView)
   const [search, setSearch] = useState("")
   const [filtersHover, setFiltersHover] = useState(false)
   const query = search.trim().toLowerCase()
@@ -149,7 +104,8 @@ export function TrucksBody({ inPlanTruckIds = [], publishedTruckIds = [] }: { in
             </button>
           )}
         </div>
-        <button
+        {/* Filters come back as soon as they are ready. */}
+        {false && <button
           type="button"
           title="Filters are not wired yet"
           onMouseEnter={() => setFiltersHover(true)}
@@ -174,7 +130,7 @@ export function TrucksBody({ inPlanTruckIds = [], publishedTruckIds = [] }: { in
         >
           <ListFilter size={16} color="#E5E5E5" />
           Filters
-        </button>
+        </button>}
         <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
           <button type="button" aria-label="Table view" aria-pressed={view === "table"} onClick={() => setView("table")} style={iconButton(view === "table")}>
             <Table2 size={16} color="#E5E5E5" />
@@ -190,7 +146,7 @@ export function TrucksBody({ inPlanTruckIds = [], publishedTruckIds = [] }: { in
           visible.length === 0 ? (
             <div style={{ padding: "32px 0", textAlign: "center", fontSize: 14, color: "#737373" }}>No trucks match "{search}"</div>
           ) : (
-            visible.map((unit) => <FleetCard key={unit.id} unit={unit} status={truckStatus(unit, publishedTruckIds, inPlanTruckIds)} />)
+            visible.map((unit) => <FleetCard key={unit.id} unit={unit} />)
           )
         ) : (
           <DataTable
@@ -200,7 +156,6 @@ export function TrucksBody({ inPlanTruckIds = [], publishedTruckIds = [] }: { in
               { key: "driver", label: "Driver", width: "180px", render: (u: FleetUnit) => u.driver?.displayLine ?? "—" },
               { key: "products", label: "Products", width: "160px", render: (u: FleetUnit) => u.productNames.join(", ") || "—" },
               { key: "capacity", label: "Capacity", width: "110px", render: (u: FleetUnit) => u.trailer?.capacity || u.capacity || "0 gal" },
-              { key: "status", label: "Status", width: "120px", render: (u: FleetUnit) => <StatusBadge status={truckStatus(u, publishedTruckIds, inPlanTruckIds)} /> },
             ]}
             rows={visible}
             getRowId={(u) => u.id}
